@@ -4,6 +4,8 @@ use std::{
     sync::{Mutex, MutexGuard},
 };
 
+use crate::errores::NodoBitcoinError;
+
 /// Representa el item de configuración
 struct ConfigItem {
     _key: String,
@@ -21,11 +23,11 @@ static HASH_CONFIG: Mutex<Vec<ConfigItem>> = Mutex::new(vec![]);
 ///
 /// Si otro usuario de este mutex entró en panic mientras mantenía lockeado el mutex, entonces
 /// esta llamada devolverá un error una vez que se obtenga el mutex.
-fn access_config() -> Result<MutexGuard<'static, Vec<ConfigItem>>, String> {
+fn access_config() -> Result<MutexGuard<'static, Vec<ConfigItem>>, NodoBitcoinError> {
     if let Ok(retorno) = HASH_CONFIG.lock() {
         return Ok(retorno);
     }
-    Err("Error al lockear el config".to_string())
+    Err(NodoBitcoinError::ConfigLock)
 }
 
 /// Inicializa el modulo de configuración
@@ -34,7 +36,7 @@ fn access_config() -> Result<MutexGuard<'static, Vec<ConfigItem>>, String> {
 /// # Errores
 ///
 /// Si no puede leer el archivo
-pub fn init_config(filename: String) -> Result<(), String> {
+pub fn init_config(filename: String) -> Result<(), NodoBitcoinError> {
     if let Ok(file) = File::open(filename) {
         let buf = BufReader::new(file);
         let lineas = parsear_archivo(buf);
@@ -47,7 +49,7 @@ pub fn init_config(filename: String) -> Result<(), String> {
         };
         return Ok(());
     }
-    Err("Error al leer archivo".to_string())
+    Err(NodoBitcoinError::NoExisteArchivo)
 }
 
 /// Parsea las lineas en ConfigItem
@@ -58,15 +60,12 @@ fn parsear_lineas(lineas: Vec<String>) -> Vec<ConfigItem> {
     let mut items: Vec<ConfigItem> = vec![];
     for linea in lineas {
         if !linea.starts_with(COMMENT_CHAR) {
-            match linea.split_once(KEY_VALUE_SEPARATOR) {
-                Some((key, value)) => {
-                    let item = ConfigItem {
-                        _key: key.to_string(),
-                        _value: value.to_string(),
-                    };
-                    items.push(item);
-                }
-                None => {}
+            if let Some((key, value)) = linea.split_once(KEY_VALUE_SEPARATOR) {
+                let item = ConfigItem {
+                    _key: key.to_string(),
+                    _value: value.to_string(),
+                };
+                items.push(item);
             }
         }
     }
@@ -92,7 +91,7 @@ fn parsear_archivo(buf: BufReader<File>) -> Vec<String> {
 /// # Errores
 ///
 /// Devuelve error en caso que no exista la clave solicitada
-pub fn _get_valor(key: String) -> Result<String, String> {
+pub fn get_valor(key: String) -> Result<String, NodoBitcoinError> {
     let config = access_config()?;
     for item in config.iter() {
         if item._key == key {
@@ -100,7 +99,7 @@ pub fn _get_valor(key: String) -> Result<String, String> {
             return Ok(valor_clonado);
         }
     }
-    Err("No existe la clave".to_string())
+    Err(NodoBitcoinError::NoExisteClave)
 }
 
 #[test]
@@ -119,13 +118,13 @@ fn test_archivo_correcto() {
     let config_result = init_config(filename);
     assert!(config_result.is_ok());
 
-    let valor_url_result = _get_valor("URL".to_string());
+    let valor_url_result = get_valor("URL".to_string());
     assert!(valor_url_result.is_ok());
 
     let valor_url = valor_url_result.unwrap();
     assert_eq!(valor_url, "www.github.com");
 
-    let valor_nombre_grupo_result = _get_valor("NOMBRE_GRUPO".to_string());
+    let valor_nombre_grupo_result = get_valor("NOMBRE_GRUPO".to_string());
     assert!(valor_nombre_grupo_result.is_ok());
 
     let valor_nombre_grupo = valor_nombre_grupo_result.unwrap();
@@ -140,14 +139,11 @@ fn test_archivo_con_comentarios() {
     let config_result = init_config(filename);
     assert!(config_result.is_ok());
 
-    let valor_comentado_result = _get_valor("COMENTADO".to_string());
+    let valor_comentado_result = get_valor("COMENTADO".to_string());
     assert!(valor_comentado_result.is_err());
-    assert_eq!(
-        valor_comentado_result,
-        Err("No existe la clave".to_string())
-    );
+    assert_eq!(valor_comentado_result, Err(NodoBitcoinError::NoExisteClave));
 
-    let valor_url_result = _get_valor("URL".to_string());
+    let valor_url_result = get_valor("URL".to_string());
     assert!(valor_url_result.is_ok());
 
     let valor_url = valor_url_result.unwrap();
@@ -162,11 +158,11 @@ fn test_archivo_con_formato_invalido() {
     let config_result = init_config(filename);
     assert!(config_result.is_ok());
 
-    let valor_invalido_result = _get_valor("FORMATO_INVALIDO".to_string());
+    let valor_invalido_result = get_valor("FORMATO_INVALIDO".to_string());
     assert!(valor_invalido_result.is_err());
-    assert_eq!(valor_invalido_result, Err("No existe la clave".to_string()));
+    assert_eq!(valor_invalido_result, Err(NodoBitcoinError::NoExisteClave));
 
-    let valor_url_result = _get_valor("URL".to_string());
+    let valor_url_result = get_valor("URL".to_string());
     assert!(valor_url_result.is_ok());
 
     let valor_url = valor_url_result.unwrap();
@@ -180,5 +176,5 @@ fn test_archivo_inexistente() {
     let filename = format!("{}{}", files_folder, "no_existe.conf".to_string());
     let config_result = init_config(filename);
     assert!(config_result.is_err());
-    assert_eq!(config_result, Err("Error al leer archivo".to_string()));
+    assert_eq!(config_result, Err(NodoBitcoinError::NoExisteArchivo));
 }
