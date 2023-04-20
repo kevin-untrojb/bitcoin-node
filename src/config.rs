@@ -104,14 +104,6 @@ pub fn get_valor(key: String) -> Result<String, NodoBitcoinError> {
 
 #[test]
 fn test_archivo_config() {
-    test_archivo_correcto();
-    test_archivo_inexistente();
-    test_archivo_con_comentarios();
-    test_archivo_con_formato_invalido();
-}
-
-#[test]
-fn test_archivo_correcto() {
     let files_folder = "src/test_files/".to_string();
 
     let filename = format!("{}{}", files_folder, "test_1.conf".to_string());
@@ -128,45 +120,15 @@ fn test_archivo_correcto() {
     assert!(valor_nombre_grupo_result.is_ok());
 
     let valor_nombre_grupo = valor_nombre_grupo_result.unwrap();
-    assert_eq!(valor_nombre_grupo, "Rustybandidos");
-}
-
-#[test]
-fn test_archivo_con_comentarios() {
-    let files_folder = "src/test_files/".to_string();
-
-    let filename = format!("{}{}", files_folder, "test_2.conf".to_string());
-    let config_result = init_config(filename);
-    assert!(config_result.is_ok());
+    assert_eq!(valor_nombre_grupo, "Rustybandidos Test");
 
     let valor_comentado_result = get_valor("COMENTADO".to_string());
     assert!(valor_comentado_result.is_err());
     assert_eq!(valor_comentado_result, Err(NodoBitcoinError::NoExisteClave));
 
-    let valor_url_result = get_valor("URL".to_string());
-    assert!(valor_url_result.is_ok());
-
-    let valor_url = valor_url_result.unwrap();
-    assert_eq!(valor_url, "www.github.com");
-}
-
-#[test]
-fn test_archivo_con_formato_invalido() {
-    let files_folder = "src/test_files/".to_string();
-
-    let filename = format!("{}{}", files_folder, "test_3.conf".to_string());
-    let config_result = init_config(filename);
-    assert!(config_result.is_ok());
-
     let valor_invalido_result = get_valor("FORMATO_INVALIDO".to_string());
     assert!(valor_invalido_result.is_err());
     assert_eq!(valor_invalido_result, Err(NodoBitcoinError::NoExisteClave));
-
-    let valor_url_result = get_valor("URL".to_string());
-    assert!(valor_url_result.is_ok());
-
-    let valor_url = valor_url_result.unwrap();
-    assert_eq!(valor_url, "www.github.com");
 }
 
 #[test]

@@ -1,16 +1,12 @@
 use std::env;
 
-use errores::NodoBitcoinError;
-
-mod config;
-mod errores;
-mod parse_args;
+use ::los_rustybandidos::inicializar;
+use los_rustybandidos::{config, errores::NodoBitcoinError};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
-        let filename = parse_args::parse_args(args)?;
-        config::init_config(filename)?;
+        inicializar(args)?;
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())
