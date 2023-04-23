@@ -9,7 +9,7 @@ fn integration_test_config() {
 fn cargar_config_test() {
     let args: Vec<String> = vec![
         "target".to_string(),
-        "src/test_files/test_1.conf".to_string(),
+        "src/test_files/config_file_con_todos_los_formatos.conf".to_string(),
     ];
     let init_result = inicializar(args);
     assert!(init_result.is_ok());

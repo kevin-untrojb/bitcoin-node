@@ -106,7 +106,11 @@ pub fn get_valor(key: String) -> Result<String, NodoBitcoinError> {
 fn test_archivo_config() {
     let files_folder = "src/test_files/".to_string();
 
-    let filename = format!("{}{}", files_folder, "test_1.conf".to_string());
+    let filename = format!(
+        "{}{}",
+        files_folder,
+        "config_file_con_todos_los_formatos.conf".to_string()
+    );
     let config_result = init_config(filename);
     assert!(config_result.is_ok());
 
