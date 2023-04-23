@@ -11,6 +11,7 @@
 /// * `time` - The Unix timestamp of the block's creation.
 /// * `n_bits` - The compressed target difficulty of the block in compact format.
 /// * `nonce` - A random number used in the mining process to try and find a valid block hash.
+
 pub struct BlockHeader {
     id:usize,
     version: i32,
