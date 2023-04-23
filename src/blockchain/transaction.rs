@@ -9,7 +9,7 @@
 /// * input - The vector of input transactions for the transaction.
 /// * output - The vector of output transactions for the transaction.
 /// * lock_time - The lock time for the transaction.
-struct Transaction {
+pub struct Transaction {
     id: usize,
     version: i32,
     input: Vec<TxIn>,
