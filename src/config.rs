@@ -1,6 +1,7 @@
 use std::{
+    collections::HashMap,
     fs::File,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Read},
     sync::{Mutex, MutexGuard},
 };
 
@@ -8,14 +9,14 @@ use crate::errores::NodoBitcoinError;
 
 /// Representa el item de configuración
 struct ConfigItem {
-    _key: String,
-    _value: String,
+    key: String,
+    value: String,
 }
 
 const COMMENT_CHAR: char = '#';
 const KEY_VALUE_SEPARATOR: char = '=';
 
-static HASH_CONFIG: Mutex<Vec<ConfigItem>> = Mutex::new(vec![]);
+static HASHMAP_CONFIG: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
 
 /// Brinda acceso multithread al vector de items de configuración
 ///
@@ -23,8 +24,9 @@ static HASH_CONFIG: Mutex<Vec<ConfigItem>> = Mutex::new(vec![]);
 ///
 /// Si otro usuario de este mutex entró en panic mientras mantenía lockeado el mutex, entonces
 /// esta llamada devolverá un error una vez que se obtenga el mutex.
-fn access_config() -> Result<MutexGuard<'static, Vec<ConfigItem>>, NodoBitcoinError> {
-    if let Ok(retorno) = HASH_CONFIG.lock() {
+fn access_hashmap() -> Result<MutexGuard<'static, Option<HashMap<String, String>>>, NodoBitcoinError>
+{
+    if let Ok(retorno) = HASHMAP_CONFIG.lock() {
         return Ok(retorno);
     }
     Err(NodoBitcoinError::ConfigLock)
@@ -38,18 +40,35 @@ fn access_config() -> Result<MutexGuard<'static, Vec<ConfigItem>>, NodoBitcoinEr
 /// Si no puede leer el archivo
 pub fn init_config(filename: String) -> Result<(), NodoBitcoinError> {
     if let Ok(file) = File::open(filename) {
-        let buf = BufReader::new(file);
-        let lineas = parsear_archivo(buf);
-        let items = parsear_lineas(lineas);
-
-        if let Ok(mut config) = access_config() {
-            for item in items {
-                config.push(item);
-            }
-        };
-        return Ok(());
+        return from_reader(file);
     }
     Err(NodoBitcoinError::NoExisteArchivo)
+}
+
+/// Parsea el archivo de configuración
+/// Recibe un reader del archivo de configuración
+fn from_reader<T: Read>(file: T) -> Result<(), NodoBitcoinError> {
+    let buf = BufReader::new(file);
+    let lineas = parsear_archivo(buf);
+    let items = parsear_lineas(lineas);
+    if let Ok(mut config_hashmap) = access_hashmap() {
+        *config_hashmap = Some(crear_hashmap(items));
+    };
+    Ok(())
+}
+
+/// Crea un hashmap a partir de los items de configuración
+/// Recibe un vector de items de configuración
+/// Devuelve un hashmap con los items de configuración
+///    donde la clave es el key del item
+///   y el valor es el value del item
+/// Si hay items con la misma clave, se queda con la última aparición
+fn crear_hashmap(items: Vec<ConfigItem>) -> HashMap<String, String> {
+    let mut map: HashMap<String, String> = HashMap::new();
+    for item in items {
+        map.insert(item.key, item.value);
+    }
+    map
 }
 
 /// Parsea las lineas en ConfigItem
@@ -62,8 +81,8 @@ fn parsear_lineas(lineas: Vec<String>) -> Vec<ConfigItem> {
         if !linea.starts_with(COMMENT_CHAR) {
             if let Some((key, value)) = linea.split_once(KEY_VALUE_SEPARATOR) {
                 let item = ConfigItem {
-                    _key: key.to_string(),
-                    _value: value.to_string(),
+                    key: key.to_string(),
+                    value: value.to_string(),
                 };
                 items.push(item);
             }
@@ -72,7 +91,7 @@ fn parsear_lineas(lineas: Vec<String>) -> Vec<ConfigItem> {
     items
 }
 
-fn parsear_archivo(buf: BufReader<File>) -> Vec<String> {
+fn parsear_archivo<T: Read>(buf: BufReader<T>) -> Vec<String> {
     let buf_lineas = buf.lines();
     let lineas: Vec<String> = buf_lineas
         .map(|l| {
@@ -92,14 +111,21 @@ fn parsear_archivo(buf: BufReader<File>) -> Vec<String> {
 ///
 /// Devuelve error en caso que no exista la clave solicitada
 pub fn get_valor(key: String) -> Result<String, NodoBitcoinError> {
-    let config = access_config()?;
-    for item in config.iter() {
-        if item._key == key {
-            let valor_clonado = item._value.clone();
-            return Ok(valor_clonado);
+    let config = access_hashmap()?;
+    if let Some(hashmap_config) = config.as_ref() {
+        if let Some(valor) = hashmap_config.get(&key) {
+            return Ok(valor.clone());
         }
     }
     Err(NodoBitcoinError::NoExisteClave)
+}
+
+#[test]
+fn test_all() {
+    test_archivo_config();
+    test_archivo_inexistente();
+    test_config_con_valores_comentados();
+    test_config_con_valores_validos();
 }
 
 #[test]
@@ -133,6 +159,55 @@ fn test_archivo_config() {
     let valor_invalido_result = get_valor("FORMATO_INVALIDO".to_string());
     assert!(valor_invalido_result.is_err());
     assert_eq!(valor_invalido_result, Err(NodoBitcoinError::NoExisteClave));
+}
+
+#[test]
+fn test_config_con_valores_validos() {
+    let contenido = "URL=www.github.com\n\
+                        NOMBRE_GRUPO=Rustybandidos Test\n"
+        .as_bytes();
+
+    let leer_config = from_reader(contenido);
+    assert!(leer_config.is_ok());
+
+    let valor_url_result = get_valor("URL".to_string());
+    assert!(valor_url_result.is_ok());
+
+    let valor_url = valor_url_result.unwrap();
+    assert_eq!(valor_url, "www.github.com");
+
+    let valor_nombre_grupo_result = get_valor("NOMBRE_GRUPO".to_string());
+    assert!(valor_nombre_grupo_result.is_ok());
+
+    let valor_nombre_grupo = valor_nombre_grupo_result.unwrap();
+    assert_eq!(valor_nombre_grupo, "Rustybandidos Test");
+}
+
+#[test]
+fn test_config_con_valores_comentados() {
+    let contenido = "#VALOR_COMENTADO=Este valor no se ve\n\
+                        NOMBRE_GRUPO=Rustybandidos\n\
+                        VALOR_NO_COMENTADO=Valor visible\n"
+        .as_bytes();
+
+    let leer_config = from_reader(contenido);
+    assert!(leer_config.is_ok());
+
+    let valor_comentado_result = get_valor("VALOR_COMENTADO".to_string());
+    assert!(valor_comentado_result.is_err());
+    assert_eq!(valor_comentado_result, Err(NodoBitcoinError::NoExisteClave));
+
+    let valor_visible_result = get_valor("VALOR_NO_COMENTADO".to_string());
+    assert!(valor_visible_result.is_ok());
+
+    let valor_visible = valor_visible_result.unwrap();
+    assert_eq!(valor_visible, "Valor visible");
+
+    let valor_nombre_grupo_result = get_valor("NOMBRE_GRUPO".to_string());
+    assert!(valor_nombre_grupo_result.is_ok());
+
+    let valor_nombre_grupo = valor_nombre_grupo_result.unwrap();
+    assert_eq!(valor_nombre_grupo, "Rustybandidos");
 }
 
 #[test]
