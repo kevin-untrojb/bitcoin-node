@@ -1,3 +1,4 @@
+use super::header;
 /// A struct representing a Bitcoin transaction
 /// ### Bitcoin Core References
 /// https://developer.bitcoin.org/reference/transactions.html

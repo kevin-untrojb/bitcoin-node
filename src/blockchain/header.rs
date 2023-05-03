@@ -1,3 +1,4 @@
+use std::io::{ Write };
 /// A struct representing a Bitcoin Header
 /// ### Bitcoin Core References
 /// https://developer.bitcoin.org/reference/block_chain.html
@@ -11,12 +12,138 @@
 /// * `time` - The Unix timestamp of the block's creation.
 /// * `n_bits` - The compressed target difficulty of the block in compact format.
 /// * `nonce` - A random number used in the mining process to try and find a valid block hash.
+#[derive(Debug, PartialEq)]
 pub struct BlockHeader {
-    id:usize,
+    id: usize,
     version: i32,
     previous_block_hash: String,
     merkle_root_hash: String,
     time: u32,
     n_bits: u32,
     nonce: u32,
+}
+
+impl BlockHeader {
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        bytes.write_all(&(self.version).to_le_bytes()).unwrap();
+        bytes.write_all(self.previous_block_hash.as_bytes()).unwrap();
+        bytes.write_all(self.merkle_root_hash.as_bytes()).unwrap();
+        bytes.write_all(&(self.time).to_le_bytes()).unwrap();
+        bytes.write_all(&(self.n_bits).to_le_bytes()).unwrap();
+        bytes.write_all(&(self.nonce).to_le_bytes()).unwrap();
+        bytes
+    }
+
+    pub fn deserialize(block_bytes: &[u8]) -> BlockHeader {
+        let id = 1;
+        let mut offset = 0;
+
+        let version = i32::from_le_bytes(block_bytes[offset..offset + 4].try_into().unwrap());
+        offset += 4;
+
+        let mut previous_block_hash_bytes = [0u8; 32];
+        previous_block_hash_bytes.copy_from_slice(&block_bytes[offset..offset + 32]);
+        offset += 32;
+
+        let mut merkle_root_hash_bytes = [0u8; 32];
+        merkle_root_hash_bytes.copy_from_slice(&block_bytes[offset..offset + 32]);
+        offset += 32;
+
+        let time = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().unwrap());
+        offset += 4;
+
+        let n_bits = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().unwrap());
+        offset += 4;
+
+        let nonce = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().unwrap());
+        let previous_block_hash = bytes_to_string(&previous_block_hash_bytes).unwrap();
+        let merkle_root_hash =  bytes_to_string(&merkle_root_hash_bytes).unwrap();
+
+        BlockHeader {
+            id,
+            version,
+            previous_block_hash,
+            merkle_root_hash,
+            time,
+            n_bits,
+            nonce,
+        }
+    }
+}
+
+fn bytes_to_string(bytes: &[u8]) -> Result<String, std::str::Utf8Error> {
+    let string = String::from_utf8(bytes.to_vec()).unwrap();
+    Ok(string)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_serialize() {
+        let block_header = BlockHeader {
+            id: 0,
+            version: 1,
+            previous_block_hash: String::from("12345678901234567890123456789012"),
+            merkle_root_hash: String::from("12345678901234567890123456789012"),
+            time: 123456789,
+            n_bits: 123456789,
+            nonce: 123456789,
+        };
+
+        let serialized = block_header.serialize();
+
+        assert_eq!(serialized.len(), 80);
+        assert_eq!(serialized[0..4], [1, 0, 0, 0]);
+        assert_eq!(
+            &serialized[4..36],
+            "12345678901234567890123456789012".as_bytes()
+        );
+        assert_eq!(
+            &serialized[36..68],
+            "12345678901234567890123456789012".as_bytes()
+        );
+        assert_eq!(serialized[68..72], [21, 205, 91, 7]);
+        assert_eq!(serialized[72..76], [21, 205, 91, 7]);
+        assert_eq!(serialized[76..80], [21, 205, 91, 7]);
+    }
+
+    #[test]
+    fn test_deserialize() {
+        let block_bytes = [
+            //version
+            1, 0, 0, 0,
+            // previous block
+            49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
+            48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
+            //merkle root
+            49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
+            48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
+            //time
+            21, 205, 91, 7,
+            // n bites
+            21, 205, 91, 7,
+            //nonce
+            21, 205, 91, 7,
+
+        ];
+
+        let block_header = BlockHeader::deserialize(&block_bytes);
+
+        assert_eq!(block_header.version, 1);
+        assert_eq!(
+            block_header.previous_block_hash,
+            String::from("12345678901234567890123456789012")
+        );
+        assert_eq!(
+            block_header.merkle_root_hash,
+            String::from("12345678901234567890123456789012")
+        );
+        assert_eq!(block_header.time, 123456789);
+        assert_eq!(block_header.n_bits, 123456789);
+        assert_eq!(block_header.nonce, 123456789);
+    }
 }
