@@ -1,4 +1,6 @@
 use std::io::{ Write };
+use crate::NodoBitcoinError;
+
 /// A struct representing a Bitcoin Header
 /// ### Bitcoin Core References
 /// https://developer.bitcoin.org/reference/block_chain.html
@@ -24,23 +26,23 @@ pub struct BlockHeader {
 }
 
 impl BlockHeader {
-    pub fn serialize(&self) -> Vec<u8> {
+    pub fn serialize(&self) -> Result<Vec<u8>,NodoBitcoinError> {
         let mut bytes = Vec::new();
 
-        bytes.write_all(&(self.version).to_le_bytes()).unwrap();
-        bytes.write_all(self.previous_block_hash.as_bytes()).unwrap();
-        bytes.write_all(self.merkle_root_hash.as_bytes()).unwrap();
-        bytes.write_all(&(self.time).to_le_bytes()).unwrap();
-        bytes.write_all(&(self.n_bits).to_le_bytes()).unwrap();
-        bytes.write_all(&(self.nonce).to_le_bytes()).unwrap();
-        bytes
+        bytes.write_all(&(self.version).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes.write_all(self.previous_block_hash.as_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes.write_all(self.merkle_root_hash.as_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes.write_all(&(self.time).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes.write_all(&(self.n_bits).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes.write_all(&(self.nonce).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        Ok(bytes)
     }
 
-    pub fn deserialize(block_bytes: &[u8]) -> BlockHeader {
+    pub fn deserialize(block_bytes: &[u8]) -> Result<BlockHeader,NodoBitcoinError> {
         let id = 1;
         let mut offset = 0;
 
-        let version = i32::from_le_bytes(block_bytes[offset..offset + 4].try_into().unwrap());
+        let version = i32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
         offset += 4;
 
         let mut previous_block_hash_bytes = [0u8; 32];
@@ -51,17 +53,17 @@ impl BlockHeader {
         merkle_root_hash_bytes.copy_from_slice(&block_bytes[offset..offset + 32]);
         offset += 32;
 
-        let time = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().unwrap());
+        let time = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
         offset += 4;
 
-        let n_bits = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().unwrap());
+        let n_bits = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
         offset += 4;
 
-        let nonce = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().unwrap());
+        let nonce = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
         let previous_block_hash = bytes_to_string(&previous_block_hash_bytes).unwrap();
         let merkle_root_hash =  bytes_to_string(&merkle_root_hash_bytes).unwrap();
 
-        BlockHeader {
+        Ok(BlockHeader {
             id,
             version,
             previous_block_hash,
@@ -69,7 +71,7 @@ impl BlockHeader {
             time,
             n_bits,
             nonce,
-        }
+        })
     }
 }
 
@@ -94,7 +96,7 @@ mod tests {
             nonce: 123456789,
         };
 
-        let serialized = block_header.serialize();
+        let serialized = block_header.serialize().unwrap();
 
         assert_eq!(serialized.len(), 80);
         assert_eq!(serialized[0..4], [1, 0, 0, 0]);
@@ -131,7 +133,7 @@ mod tests {
 
         ];
 
-        let block_header = BlockHeader::deserialize(&block_bytes);
+        let block_header = BlockHeader::deserialize(&block_bytes).unwrap();
 
         assert_eq!(block_header.version, 1);
         assert_eq!(
