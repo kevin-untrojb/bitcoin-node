@@ -1,3 +1,5 @@
+mod connection;
+
 use std::env;
 
 use ::los_rustybandidos::inicializar;
