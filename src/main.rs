@@ -5,13 +5,9 @@ use los_rustybandidos::{config, errores::NodoBitcoinError};
 
 mod blockchain {
     pub mod block;
-    pub mod transaction;
     pub mod header;
+    pub mod transaction;
 }
-
-use blockchain::block::SerializedBlock;
-use blockchain::transaction::Transaction;
-use blockchain::header::BlockHeader;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

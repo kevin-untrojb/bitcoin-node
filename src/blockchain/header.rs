@@ -1,5 +1,5 @@
-use std::io::{ Write };
 use crate::NodoBitcoinError;
+use std::io::Write;
 
 /// A struct representing a Bitcoin Header
 /// ### Bitcoin Core References
@@ -26,23 +26,39 @@ pub struct BlockHeader {
 }
 
 impl BlockHeader {
-    pub fn serialize(&self) -> Result<Vec<u8>,NodoBitcoinError> {
+    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
 
-        bytes.write_all(&(self.version).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(self.previous_block_hash.as_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(self.merkle_root_hash.as_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(&(self.time).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(&(self.n_bits).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(&(self.nonce).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.version).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(self.previous_block_hash.as_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(self.merkle_root_hash.as_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.time).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.n_bits).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.nonce).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         Ok(bytes)
     }
 
-    pub fn deserialize(block_bytes: &[u8]) -> Result<BlockHeader,NodoBitcoinError> {
+    pub fn _deserialize(block_bytes: &[u8]) -> Result<BlockHeader, NodoBitcoinError> {
         let id = 1;
         let mut offset = 0;
 
-        let version = i32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let version = i32::from_le_bytes(
+            block_bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
 
         let mut previous_block_hash_bytes = [0u8; 32];
@@ -53,15 +69,27 @@ impl BlockHeader {
         merkle_root_hash_bytes.copy_from_slice(&block_bytes[offset..offset + 32]);
         offset += 32;
 
-        let time = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let time = u32::from_le_bytes(
+            block_bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
 
-        let n_bits = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let n_bits = u32::from_le_bytes(
+            block_bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
 
-        let nonce = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
-        let previous_block_hash = bytes_to_string(&previous_block_hash_bytes).unwrap();
-        let merkle_root_hash =  bytes_to_string(&merkle_root_hash_bytes).unwrap();
+        let nonce = u32::from_le_bytes(
+            block_bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
+        let previous_block_hash = _bytes_to_string(&previous_block_hash_bytes)?;
+        let merkle_root_hash = _bytes_to_string(&merkle_root_hash_bytes)?;
 
         Ok(BlockHeader {
             id,
@@ -75,9 +103,11 @@ impl BlockHeader {
     }
 }
 
-fn bytes_to_string(bytes: &[u8]) -> Result<String, std::str::Utf8Error> {
-    let string = String::from_utf8(bytes.to_vec()).unwrap();
-    Ok(string)
+fn _bytes_to_string(bytes: &[u8]) -> Result<String, NodoBitcoinError> {
+    if let Ok(string) = String::from_utf8(bytes.to_vec()) {
+        return Ok(string);
+    }
+    Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
 }
 
 #[cfg(test)]
@@ -96,7 +126,7 @@ mod tests {
             nonce: 123456789,
         };
 
-        let serialized = block_header.serialize().unwrap();
+        let serialized = block_header._serialize()?;
 
         assert_eq!(serialized.len(), 80);
         assert_eq!(serialized[0..4], [1, 0, 0, 0]);
@@ -117,23 +147,20 @@ mod tests {
     fn test_deserialize() {
         let block_bytes = [
             //version
-            1, 0, 0, 0,
-            // previous block
-            49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
-            48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
-            //merkle root
-            49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
-            48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
-            //time
+            1, 0, 0, 0, // previous block
+            49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
+            51, 52, 53, 54, 55, 56, 57, 48, 49, 50, //merkle root
+            49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
+            51, 52, 53, 54, 55, 56, 57, 48, 49, 50, //time
+            21, 205, 91, 7, // n bites
+            21, 205, 91, 7, //nonce
             21, 205, 91, 7,
-            // n bites
-            21, 205, 91, 7,
-            //nonce
-            21, 205, 91, 7,
-
         ];
 
-        let block_header = BlockHeader::deserialize(&block_bytes).unwrap();
+        let result_block_header = BlockHeader::_deserialize(&block_bytes);
+        assert!(result_block_header.is_ok());
+
+        let block_header = result_block_header.unwrap();
 
         assert_eq!(block_header.version, 1);
         assert_eq!(
