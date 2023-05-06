@@ -6,6 +6,7 @@ pub enum NodoBitcoinError {
     NoExisteArchivo,
     NoExisteClave,
     ConfigLock,
+    NoSeEncontroURL,
 }
 
 impl Error for NodoBitcoinError {}
@@ -24,6 +25,9 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::NoExisteClave => {
                 write!(f, "ERROR: No existe la clave.")
+            }
+            NodoBitcoinError::NoSeEncontroURL => {
+                write!(f, "ERROR: No se pudo encontrar una URL válida.")
             }
         }
     }
