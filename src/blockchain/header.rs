@@ -126,7 +126,10 @@ mod tests {
             nonce: 123456789,
         };
 
-        let serialized = block_header._serialize()?;
+        let result_serialized = block_header._serialize();
+        assert!(result_serialized.is_ok());
+
+        let serialized = result_serialized.unwrap();
 
         assert_eq!(serialized.len(), 80);
         assert_eq!(serialized[0..4], [1, 0, 0, 0]);
