@@ -1,11 +1,11 @@
-mod connection;
+mod protocol;
 
 use std::env;
 
 use ::los_rustybandidos::inicializar;
 use los_rustybandidos::{config, errores::NodoBitcoinError};
 
-use crate::connection::connection::VersionMessage;
+use crate::protocol::connection::VersionMessage;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
