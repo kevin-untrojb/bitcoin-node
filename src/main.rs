@@ -3,6 +3,12 @@ use std::env;
 use ::los_rustybandidos::inicializar;
 use los_rustybandidos::{config, errores::NodoBitcoinError};
 
+mod blockchain {
+    pub mod block;
+    pub mod header;
+    pub mod transaction;
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
