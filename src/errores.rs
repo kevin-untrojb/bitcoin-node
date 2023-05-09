@@ -7,10 +7,6 @@ pub enum NodoBitcoinError {
     NoExisteClave,
     ConfigLock,
     NoSeEncontroURL,
-
-    // serialize - deserialize
-    NoSePuedeLeerLosBytes,
-    NoSePuedeEscribirLosBytes,
 }
 
 impl Error for NodoBitcoinError {}
@@ -30,21 +26,8 @@ impl fmt::Display for NodoBitcoinError {
             NodoBitcoinError::NoExisteClave => {
                 write!(f, "ERROR: No existe la clave.")
             }
-
             NodoBitcoinError::NoSeEncontroURL => {
                 write!(f, "ERROR: No se pudo encontrar una URL válida.")
-
-            NodoBitcoinError::NoSePuedeLeerLosBytes => {
-                write!(
-                    f,
-                    "ERROR: No se puede leer correctamente la estructura en bytes."
-                )
-            }
-            NodoBitcoinError::NoSePuedeEscribirLosBytes => {
-                write!(
-                    f,
-                    "ERROR: No se puede escribir correctamente la estructura en bytes."
-                )
             }
         }
     }
