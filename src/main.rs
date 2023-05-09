@@ -4,7 +4,6 @@ use std::env;
 
 use ::los_rustybandidos::inicializar;
 use los_rustybandidos::{config, errores::NodoBitcoinError};
-
 use crate::protocol::connection::VersionMessage;
 
 fn main() {
