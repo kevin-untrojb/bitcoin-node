@@ -4,6 +4,7 @@ pub mod config;
 pub mod errores;
 mod parse_args;
 pub mod protocol;
+pub mod messages;
 
 use crate::config::init_config;
 
