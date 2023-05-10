@@ -6,7 +6,11 @@ pub enum NodoBitcoinError {
     NoExisteArchivo,
     NoExisteClave,
     ConfigLock,
+
+    // conexion
     NoSePudoConectar,
+    MagicNumberIncorrecto,
+    ErrorEnHandshake,
 
     // serialize - deserialize
     NoSePuedeLeerLosBytes,
@@ -46,6 +50,19 @@ impl fmt::Display for NodoBitcoinError {
                 write!(
                     f,
                     "ERROR: No se pudo conectar al servidor."
+                )
+            }
+
+            NodoBitcoinError::MagicNumberIncorrecto => {
+                write!(
+                    f,
+                    "ERROR: El magic number recibido es incorrecto."
+                )
+            }
+            NodoBitcoinError::ErrorEnHandshake => {
+                write!(
+                    f,
+                    "ERROR: Hubo un error en el handshake."
                 )
             }
         }

@@ -1,5 +1,6 @@
 use crate::config;
 use crate::errores::NodoBitcoinError;
+use crate::messages::header::check_header;
 use crate::messages::version::VersionMessage;
 use std::io::Read;
 use std::io::Write;
@@ -30,15 +31,31 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<(), NodoBitco
 
     let version = VersionMessage::new(70015, 0, timestamp, 0, address.ip().to_string(), address.port(), 0, "181.165.131.147".to_string(), 18333, 0, 0, "".to_string(), 0, true);
     let mensaje = version.serialize()?;
-    socket.write_all(&mensaje).unwrap();
+    if socket.write_all(&mensaje).is_err() {
+        return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
+    }
 
     println!("{} bytes sent version", mensaje.len());
 
-    let mut num_buffer = [0u8; 1024];
+    let mut header = [0u8; 24];
+    if socket.read_exact(&mut header).is_err() {
+        return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+    }
 
-    let lectura = socket.read(&mut num_buffer);
+    //println!("{:02x?} bytes read version", &header);
 
-    println!("{} bytes read version", lectura.unwrap());
+    let (command, payload_len) = check_header(&header)?;
+
+    if command != "version" {
+        return Err(NodoBitcoinError::ErrorEnHandshake);
+    }
+
+    let mut payload = vec![0u8; payload_len];
+    if socket.read_exact(&mut payload).is_err() {
+        return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+    }
+
+    println!("{:02x?} bytes read version", &payload);
 
     Ok(())
 }
