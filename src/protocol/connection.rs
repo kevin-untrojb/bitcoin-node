@@ -21,6 +21,9 @@ pub fn connect() -> Result<(), NodoBitcoinError>{
         };
 
         handshake(socket, *address)?;
+
+
+        //si pasamos aca entonces ya esta asegurada la conexion al nodo.
     }
 
     Ok(())
@@ -42,8 +45,6 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<(), NodoBitco
         return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
     }
 
-    //println!("{:02x?} bytes read version", &header);
-
     let (command, payload_len) = check_header(&header)?;
 
     if command != "version" {
@@ -57,7 +58,24 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<(), NodoBitco
 
     println!("{:02x?} bytes read version", &payload);
 
+    // let verack = make_header(true, "verack".to_string(), &Vec::new())?;
+    // if socket.write_all(&verack).is_err() {
+    //     return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
+    // }
+
+    let mut verack_resp = vec![0u8; 24];
+    if socket.read_exact(&mut verack_resp).is_err() {
+        return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+    }
+
+    let (command, _payload_len) = check_header(&verack_resp)?;
+
+    if command != "verack"{
+        return Err(NodoBitcoinError::ErrorEnHandshake);
+    }
+
     Ok(())
+    
 }
 
 
