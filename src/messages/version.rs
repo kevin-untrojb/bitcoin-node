@@ -1,4 +1,4 @@
-use crate::messages::header::make_header;
+use crate::{messages::header::make_header, errores::NodoBitcoinError};
 pub struct VersionMessage{
     version: u32,
     services: u64,
@@ -50,7 +50,7 @@ impl VersionMessage {
             }
     }
 
-    pub fn serialize(&self) -> Vec<u8> {
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut payload = Vec::new();
         let mut msg = Vec::new();
         
@@ -71,11 +71,11 @@ impl VersionMessage {
         payload.extend_from_slice(&(self.start_height).to_le_bytes());
         payload.extend_from_slice(&(self.relay as u8).to_le_bytes());
 
-        let header = make_header(true, "version".to_string(), &payload);
+        let header = make_header(true, "version".to_string(), &payload)?;
 
         msg.extend_from_slice(&header);
         msg.extend_from_slice(&payload);
 
-        msg
+        Ok(msg)
     }
 }

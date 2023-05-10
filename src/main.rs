@@ -1,5 +1,6 @@
 mod protocol;
 mod messages;
+mod errores;
 use std::env;
 
 use ::los_rustybandidos::inicializar;

@@ -1,4 +1,5 @@
 use crate::config;
+use crate::errores::NodoBitcoinError;
 use crate::messages::version::VersionMessage;
 use std::io::Read;
 use std::io::Write;
@@ -7,36 +8,39 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use chrono::Utc;
 
 
-pub fn connect() {
+pub fn connect() -> Result<(), NodoBitcoinError>{
     let addresses = get_address();
 
     for address in addresses.iter() {
         println!("Address: {:?}", address);
 
-        let result_socket = TcpStream::connect(address);
-        if result_socket.is_err() {
-            println!("Error: {:?}", result_socket.err());
-            continue;
-        }
+        let socket: TcpStream = match TcpStream::connect(address){
+            Ok(socket) => socket,
+            Err(_) => return Err(NodoBitcoinError::NoSePudoConectar)
+        };
 
-        let mut socket = result_socket.unwrap();
-        let timestamp = Utc::now().timestamp() as u64;
-
-        let version = VersionMessage::new(70015, 0, timestamp, 0, address.ip().to_string(), address.port(), 0, "181.165.131.147".to_string(), 18333, 0, 0, "".to_string(), 0, true);
-        let mensaje = version.serialize();
-        socket.write_all(&mensaje).unwrap();
-
-        println!("{} bytes sent version", mensaje.len());
-
-        // let message_payload = read_message(&mut socket);
-        // println!("Message payload: {:?}", message_payload);
-
-        let mut num_buffer = [0u8; 1024];
-
-        let lectura = socket.read(&mut num_buffer);
-
-        println!("{} bytes read version", lectura.unwrap());
+        handshake(socket, *address)?;
     }
+
+    Ok(())
+}
+
+fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<(), NodoBitcoinError>{
+    let timestamp = Utc::now().timestamp() as u64;
+
+    let version = VersionMessage::new(70015, 0, timestamp, 0, address.ip().to_string(), address.port(), 0, "181.165.131.147".to_string(), 18333, 0, 0, "".to_string(), 0, true);
+    let mensaje = version.serialize()?;
+    socket.write_all(&mensaje).unwrap();
+
+    println!("{} bytes sent version", mensaje.len());
+
+    let mut num_buffer = [0u8; 1024];
+
+    let lectura = socket.read(&mut num_buffer);
+
+    println!("{} bytes read version", lectura.unwrap());
+
+    Ok(())
 }
 
 
