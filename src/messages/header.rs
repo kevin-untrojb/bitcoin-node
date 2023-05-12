@@ -17,13 +17,17 @@ fn string_to_bytes(s: String, fixed_size: usize) -> Vec<u8> {
     bytes
 }
 
-pub fn make_header(testnet: bool, command: String, payload: &Vec<u8>) -> Result<Vec<u8>, NodoBitcoinError>{
+pub fn make_header(
+    testnet: bool,
+    command: String,
+    payload: &Vec<u8>,
+) -> Result<Vec<u8>, NodoBitcoinError> {
     let mut result = Vec::new();
     let magic;
 
     if testnet {
         magic = MAGIC_NUMBER_TESTNET;
-    }else{
+    } else {
         magic = [0x00, 0x00, 0x00, 0x00];
     }
 
@@ -31,15 +35,23 @@ pub fn make_header(testnet: bool, command: String, payload: &Vec<u8>) -> Result<
     let hash = sha256d::Hash::hash(&payload);
     let checksum = &hash[..4];
 
-    result.write_all(&magic).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-    result.write_all(&string_to_bytes(command, 12)).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-    result.write_all(&payload_size.to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-    result.write_all(checksum).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+    result
+        .write_all(&magic)
+        .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+    result
+        .write_all(&string_to_bytes(command, 12))
+        .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+    result
+        .write_all(&payload_size.to_le_bytes())
+        .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+    result
+        .write_all(checksum)
+        .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
     Ok(result)
 }
 
-pub fn check_header(header: &[u8]) -> Result<(String, usize), NodoBitcoinError>{
+pub fn check_header(header: &[u8]) -> Result<(String, usize), NodoBitcoinError> {
     let mut offset = 0;
 
     let magic_num = &header[offset..offset + 4];
@@ -49,12 +61,18 @@ pub fn check_header(header: &[u8]) -> Result<(String, usize), NodoBitcoinError>{
     }
 
     offset += 4;
-    let command = from_utf8(&header[offset..offset + 12]).unwrap().trim_end_matches('\0').to_string();
+    let command = from_utf8(&header[offset..offset + 12])
+        .unwrap()
+        .trim_end_matches('\0')
+        .to_string();
 
     offset += 12;
 
-    let payload_len = u32::from_le_bytes(header[offset..offset + 4].try_into()
-        .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?) as usize;
+    let payload_len = u32::from_le_bytes(
+        header[offset..offset + 4]
+            .try_into()
+            .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+    ) as usize;
 
     Ok((command, payload_len))
 }

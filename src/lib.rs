@@ -2,9 +2,9 @@ use errores::NodoBitcoinError;
 
 pub mod config;
 pub mod errores;
+pub mod messages;
 mod parse_args;
 pub mod protocol;
-pub mod messages;
 
 use crate::config::init_config;
 

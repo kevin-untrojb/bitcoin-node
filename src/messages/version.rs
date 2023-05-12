@@ -1,5 +1,5 @@
-use crate::{messages::header::make_header, errores::NodoBitcoinError};
-pub struct VersionMessage{
+use crate::{errores::NodoBitcoinError, messages::header::make_header};
+pub struct VersionMessage {
     version: u32,
     services: u64,
     timestamp: u64,
@@ -13,7 +13,7 @@ pub struct VersionMessage{
     user_agent_bytes: u32,
     user_agent: String,
     start_height: u32,
-    relay: bool
+    relay: bool,
 }
 
 impl VersionMessage {
@@ -26,34 +26,44 @@ impl VersionMessage {
         bytes
     }
 
-    pub fn new(version: u32, services: u64,
-        timestamp: u64, addr_recv_services: u64, addr_recv_ip: String,
-        addr_recv_port: u16, addr_trans_services: u64,
-        addr_trans_ip: String, addr_trans_port: u16,
-        nonce: u64, user_agent_bytes: u32,
-        user_agent: String, start_height: u32, relay: bool) -> VersionMessage {
-            VersionMessage{
-                version: version,
-                services: services,
-                timestamp: timestamp,
-                addr_recv_services: addr_recv_services,
-                addr_recv_ip: addr_recv_ip,
-                addr_recv_port: addr_recv_port,
-                addr_trans_services: addr_trans_services,
-                addr_trans_ip: addr_trans_ip,
-                addr_trans_port: addr_trans_port,
-                nonce: nonce, 
-                user_agent_bytes: user_agent_bytes,
-                user_agent: user_agent,
-                start_height: start_height,
-                relay: relay
-            }
+    pub fn new(
+        version: u32,
+        services: u64,
+        timestamp: u64,
+        addr_recv_services: u64,
+        addr_recv_ip: String,
+        addr_recv_port: u16,
+        addr_trans_services: u64,
+        addr_trans_ip: String,
+        addr_trans_port: u16,
+        nonce: u64,
+        user_agent_bytes: u32,
+        user_agent: String,
+        start_height: u32,
+        relay: bool,
+    ) -> VersionMessage {
+        VersionMessage {
+            version: version,
+            services: services,
+            timestamp: timestamp,
+            addr_recv_services: addr_recv_services,
+            addr_recv_ip: addr_recv_ip,
+            addr_recv_port: addr_recv_port,
+            addr_trans_services: addr_trans_services,
+            addr_trans_ip: addr_trans_ip,
+            addr_trans_port: addr_trans_port,
+            nonce: nonce,
+            user_agent_bytes: user_agent_bytes,
+            user_agent: user_agent,
+            start_height: start_height,
+            relay: relay,
+        }
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut payload = Vec::new();
         let mut msg = Vec::new();
-        
+
         payload.extend_from_slice(&(self.version).to_le_bytes());
         payload.extend_from_slice(&(self.services).to_le_bytes());
         payload.extend_from_slice(&(self.timestamp).to_le_bytes());

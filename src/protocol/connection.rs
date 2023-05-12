@@ -1,44 +1,79 @@
 use crate::config;
 use crate::errores::NodoBitcoinError;
+use crate::messages::getheaders::GetHeadersMessage;
 use crate::messages::header::check_header;
 use crate::messages::version::VersionMessage;
+use chrono::Utc;
 use std::io::Read;
 use std::io::Write;
 use std::net::TcpStream;
 use std::net::{SocketAddr, ToSocketAddrs};
-use chrono::Utc;
 
-
-pub fn connect() -> Result<(), NodoBitcoinError>{
+pub fn connect() -> Result<(), NodoBitcoinError> {
     let addresses = get_address();
 
     for address in addresses.iter() {
         println!("Address: {:?}", address);
 
-        let socket: TcpStream = match TcpStream::connect(address){
+        let socket: TcpStream = match TcpStream::connect(address) {
             Ok(socket) => socket,
-            Err(_) => return Err(NodoBitcoinError::NoSePudoConectar)
+            Err(_) => return Err(NodoBitcoinError::NoSePudoConectar),
         };
 
-        handshake(socket, *address)?;
+        let mut connection = handshake(socket, *address)?;
 
+        //todo: threads
+        println!("{:?}", connection);
+        let _get_headers = GetHeadersMessage::new(70015, 200, [0; 32], [0; 32]);
+        let message = GetHeadersMessage::serialize(&_get_headers)?;
 
-        //si pasamos aca entonces ya esta asegurada la conexion al nodo.
+        if connection.write_all(&message).is_err() {
+            return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
+        }
+        println!("{} bytes sent getHeaders", message.len());
+
+        let mut buffer = Vec::new();
+        let mut response = Vec::new();
+
+        loop {
+            println!("Loop");
+            let bytes_read = connection.read(&mut buffer).unwrap(); //unwrap() para probar
+            if bytes_read == 0 {
+                println!("0 bytes read");
+                break;
+            }
+
+            response.extend_from_slice(&buffer[..bytes_read]);
+        }
     }
-
     Ok(())
 }
 
-fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<(), NodoBitcoinError>{
+fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, NodoBitcoinError> {
     let timestamp = Utc::now().timestamp() as u64;
 
-    let version = VersionMessage::new(70015, 0, timestamp, 0, address.ip().to_string(), address.port(), 0, "181.165.131.147".to_string(), 18333, 0, 0, "".to_string(), 0, true);
+    let version = VersionMessage::new(
+        70015,
+        0,
+        timestamp,
+        0,
+        address.ip().to_string(),
+        address.port(),
+        0,
+        "181.165.131.147".to_string(),
+        18333,
+        0,
+        0,
+        "".to_string(),
+        0,
+        true,
+    );
     let mensaje = version.serialize()?;
     if socket.write_all(&mensaje).is_err() {
         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
     }
 
-    println!("{} bytes sent version", mensaje.len());
+    //println!("{} bytes sent version", mensaje.len());
 
     let mut header = [0u8; 24];
     if socket.read_exact(&mut header).is_err() {
@@ -56,7 +91,7 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<(), NodoBitco
         return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
     }
 
-    println!("{:02x?} bytes read version", &payload);
+    //println!("{:02x?} bytes read version", &payload);
 
     // let verack = make_header(true, "verack".to_string(), &Vec::new())?;
     // if socket.write_all(&verack).is_err() {
@@ -70,14 +105,12 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<(), NodoBitco
 
     let (command, _payload_len) = check_header(&verack_resp)?;
 
-    if command != "verack"{
+    if command != "verack" {
         return Err(NodoBitcoinError::ErrorEnHandshake);
     }
 
-    Ok(())
-    
+    Ok(socket)
 }
-
 
 pub fn get_address() -> Vec<SocketAddr> {
     let mut seeds = Vec::new();

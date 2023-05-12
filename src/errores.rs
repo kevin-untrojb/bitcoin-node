@@ -47,23 +47,14 @@ impl fmt::Display for NodoBitcoinError {
                 )
             }
             NodoBitcoinError::NoSePudoConectar => {
-                write!(
-                    f,
-                    "ERROR: No se pudo conectar al servidor."
-                )
+                write!(f, "ERROR: No se pudo conectar al servidor.")
             }
 
             NodoBitcoinError::MagicNumberIncorrecto => {
-                write!(
-                    f,
-                    "ERROR: El magic number recibido es incorrecto."
-                )
+                write!(f, "ERROR: El magic number recibido es incorrecto.")
             }
             NodoBitcoinError::ErrorEnHandshake => {
-                write!(
-                    f,
-                    "ERROR: Hubo un error en el handshake."
-                )
+                write!(f, "ERROR: Hubo un error en el handshake.")
             }
         }
     }
