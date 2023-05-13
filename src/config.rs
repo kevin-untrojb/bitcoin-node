@@ -5,7 +5,7 @@ use std::{
     sync::{Mutex, MutexGuard},
 };
 
-use crate::errores::NodoBitcoinError;
+use crate::{errores::NodoBitcoinError, parse_args};
 
 /// Representa el item de configuración
 struct ConfigItem {
@@ -118,6 +118,12 @@ pub fn get_valor(key: String) -> Result<String, NodoBitcoinError> {
         }
     }
     Err(NodoBitcoinError::NoExisteClave)
+}
+
+pub fn inicializar(args: Vec<String>) -> Result<(), NodoBitcoinError> {
+    let filename = parse_args::parse_args(args)?;
+    init_config(filename)?;
+    Ok(())
 }
 
 #[test]
