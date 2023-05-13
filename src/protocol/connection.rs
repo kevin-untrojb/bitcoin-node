@@ -6,7 +6,9 @@ use crate::messages::version::VersionMessage;
 use chrono::Utc;
 use std::io::Read;
 use std::io::Write;
+use std::net::IpAddr;
 use std::net::TcpStream;
+use std::net::UdpSocket;
 use std::net::{SocketAddr, ToSocketAddrs};
 
 pub fn connect() -> Result<(), NodoBitcoinError> {
@@ -24,24 +26,26 @@ pub fn connect() -> Result<(), NodoBitcoinError> {
 
         //todo: threads
         println!("{:?}", connection);
-        let _get_headers = GetHeadersMessage::new(70015, 200, [0; 32], [0; 32]);
+        let _get_headers = GetHeadersMessage::new(70015, 1, [0; 32], [0; 32]);
         let message = GetHeadersMessage::serialize(&_get_headers)?;
 
-        if connection.write_all(&message).is_err() {
+        if connection.write(&message).is_err() {
             return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
         }
         println!("{} bytes sent getHeaders", message.len());
 
-        let mut buffer = Vec::new();
+        let mut buffer = [0u8; 1024];
         let mut response = Vec::new();
 
-        loop {
+        loop{
             println!("Loop");
             let bytes_read = connection.read(&mut buffer).unwrap(); //unwrap() para probar
             if bytes_read == 0 {
                 println!("0 bytes read");
                 break;
             }
+            println!("{:?} bytes read", bytes_read);
+            println!("{:02x?}", buffer);
 
             response.extend_from_slice(&buffer[..bytes_read]);
         }
@@ -127,4 +131,10 @@ pub fn get_address() -> Vec<SocketAddr> {
     }
     //Err(NodoBitcoinError::NoSeEncontroURL)
     seeds
+}
+
+fn _get_local_ip() -> Option<IpAddr> {
+    let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("8.8.8.8:80").ok()?;
+    socket.local_addr().ok()?.ip().into()
 }
