@@ -3,18 +3,20 @@ mod errores;
 mod messages;
 mod parse_args;
 mod protocol;
+mod blockchain;
 use std::env;
 
 use errores::NodoBitcoinError;
 
-use crate::protocol::{connection::connect, initial_block_download::get_headers};
+use crate::{protocol::{connection::connect, initial_block_download::get_headers}, blockchain::node::Node};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let connections = connect()?;
-        get_headers(connections)?;
+        let mut node = Node::new();
+        get_headers(connections, node)?;
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
