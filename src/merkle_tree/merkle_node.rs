@@ -1,7 +1,7 @@
 use crate::errores::NodoBitcoinError;
 use bitcoin_hashes::{sha256d, Hash};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MerkleNode {
     pub left: Option<Box<MerkleNode>>,
     pub right: Option<Box<MerkleNode>>,
@@ -16,7 +16,7 @@ impl MerkleNode {
         if left_node.is_none() && right_node.is_none() {
             return Err(NodoBitcoinError::NoChildren);
         }
-        let hash = MerkleNode::hash(left_node.clone(), right_node.clone());
+        let hash = Self::hash(left_node.clone(), right_node.clone());
         let left = left_node.map(Box::new);
         let right = right_node.map(Box::new);
         let node = MerkleNode { left, right, hash };
@@ -49,6 +49,7 @@ fn test_error() {
 
     let result_error = MerkleNode::from_nodes(left_node, right_node);
     assert!(result_error.is_err());
+    assert!(matches!(result_error, Err(NodoBitcoinError::NoChildren)));
 }
 
 #[test]
