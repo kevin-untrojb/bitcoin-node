@@ -17,19 +17,21 @@ pub fn connect() -> Result<Vec<TcpStream>, NodoBitcoinError> {
     for address in addresses.iter() {
         println!("Address: {:?}", address);
 
-        let socket: TcpStream = match TcpStream::connect(address) {
-            Ok(socket) => socket,
-            Err(_) => return Err(NodoBitcoinError::NoSePudoConectar),
+        match TcpStream::connect(address) {
+            Ok(socket) => {
+                handshake(&socket, *address)?;
+                connections.push(socket);
+                continue;
+            },
+            Err(_) => {
+                continue;
+            }
         };
-
-        let connection: TcpStream = handshake(socket, *address)?;
-        connections.push(connection);
     }
-
     Ok(connections)
 }
 
-fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, NodoBitcoinError> {
+fn handshake(mut socket: &TcpStream, address: SocketAddr) -> Result<(), NodoBitcoinError> {
     let timestamp = Utc::now().timestamp() as u64;
 
     let version = VersionMessage::new(
@@ -82,7 +84,7 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
         return Err(NodoBitcoinError::ErrorEnHandshake);
     }
 
-    Ok(socket)
+    Ok(())
 }
 
 pub fn get_address() -> Vec<SocketAddr> {

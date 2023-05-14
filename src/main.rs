@@ -15,7 +15,7 @@ fn main() {
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let connections = connect()?;
-        let mut node = Node::new();
+        let node = Node::new();
         get_headers(connections, node)?;
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;

@@ -6,16 +6,16 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use crate::errores::NodoBitcoinError;
 
-pub fn get_headers(mut connections: Vec<TcpStream>, mut node: Node) -> Result<(), NodoBitcoinError>{
+pub fn get_headers(connections: Vec<TcpStream>, mut node: Node) -> Result<(), NodoBitcoinError>{
     let start_block = [
         0x00, 0x00, 0x00, 0x00, 0x09, 0x33, 0xea, 0x01, 0xad, 0x0e, 0xe9, 0x84, 0x20, 0x97,
         0x79, 0xba, 0xae, 0xc3, 0xce, 0xd9, 0x0f, 0xa3, 0xf4, 0x08, 0x71, 0x95, 0x26, 0xf8,
         0xd7, 0x7f, 0x49, 0x43,
     ];
     let _get_headers = GetHeadersMessage::new(70015, 1, start_block, [0; 32]);
-    let mut message = GetHeadersMessage::serialize(&_get_headers)?;
+    let message = GetHeadersMessage::serialize(&_get_headers)?;
 
-    for mut connection in connections.iter() {
+    for mut connection in connections {
         println!("{:?}", connection);
     
         if connection.write(&message).is_err() {
@@ -35,7 +35,7 @@ pub fn get_headers(mut connections: Vec<TcpStream>, mut node: Node) -> Result<()
             println!("{}", command);
             if command == "headers"{
                 // thread descargar datos
-
+                println!("HEADERS");
                 let mut headers = vec![0u8; payload_len];
                 if connection.read_exact(&mut headers).is_err() {
                     return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
