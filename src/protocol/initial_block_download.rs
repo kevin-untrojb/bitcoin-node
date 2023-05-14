@@ -34,7 +34,10 @@ pub fn get_headers(
                 println!("0 bytes read");
                 break;
             }
-            let (command, payload_len) = check_header(&buffer)?;
+            let (command, payload_len) = match check_header(&buffer) {
+                Ok((command, payload_len)) => (command, payload_len),
+                Err(_) => continue,
+            };
             println!("{}", command);
             if command == "headers" {
                 // thread descargar datos
