@@ -1,5 +1,6 @@
-use crate::NodoBitcoinError;
 use std::io::Write;
+
+use crate::errores::NodoBitcoinError;
 
 /// A struct representing a Bitcoin Header
 /// ### Bitcoin Core References
@@ -50,7 +51,7 @@ impl BlockHeader {
         Ok(bytes)
     }
 
-    pub fn _deserialize(block_bytes: &[u8]) -> Result<BlockHeader, NodoBitcoinError> {
+    pub fn deserialize(block_bytes: &[u8]) -> Result<BlockHeader, NodoBitcoinError> {
         let id = 1;
         let mut offset = 0;
 
@@ -160,7 +161,7 @@ mod tests {
             21, 205, 91, 7,
         ];
 
-        let result_block_header = BlockHeader::_deserialize(&block_bytes);
+        let result_block_header = BlockHeader::deserialize(&block_bytes);
         assert!(result_block_header.is_ok());
 
         let block_header = result_block_header.unwrap();

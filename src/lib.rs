@@ -1,15 +1,7 @@
-use errores::NodoBitcoinError;
-
 pub mod blockchain;
 pub mod config;
 pub mod errores;
-pub mod merkle_tree;
+pub mod messages;
 pub mod parse_args;
-
-use crate::config::init_config;
-
-pub fn inicializar(args: Vec<String>) -> Result<(), NodoBitcoinError> {
-    let filename = parse_args::parse_args(args)?;
-    init_config(filename)?;
-    Ok(())
-}
+pub mod protocol;
+pub mod merkle_tree;

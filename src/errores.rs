@@ -7,6 +7,11 @@ pub enum NodoBitcoinError {
     NoExisteClave,
     ConfigLock,
 
+    // conexion
+    NoSePudoConectar,
+    MagicNumberIncorrecto,
+    ErrorEnHandshake,
+
     // serialize - deserialize
     NoSePuedeLeerLosBytes,
     NoSePuedeEscribirLosBytes,
@@ -43,6 +48,16 @@ impl fmt::Display for NodoBitcoinError {
                     f,
                     "ERROR: No se puede escribir correctamente la estructura en bytes."
                 )
+            }
+            NodoBitcoinError::NoSePudoConectar => {
+                write!(f, "ERROR: No se pudo conectar al servidor.")
+            }
+
+            NodoBitcoinError::MagicNumberIncorrecto => {
+                write!(f, "ERROR: El magic number recibido es incorrecto.")
+            }
+            NodoBitcoinError::ErrorEnHandshake => {
+                write!(f, "ERROR: Hubo un error en el handshake.")
             }
             NodoBitcoinError::NoChildren => {
                 write!(f, "ERROR: No hay TXs para crear el Merkle Tree.")
