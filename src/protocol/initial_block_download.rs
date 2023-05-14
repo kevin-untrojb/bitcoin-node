@@ -42,7 +42,7 @@ pub fn get_headers(
             if command == "headers" {
                 // thread descargar datos
                 println!("HEADERS");
-                let mut headers = vec![0u8; payload_len];
+                /*let mut headers = vec![0u8; payload_len];
                 if connection.read_exact(&mut headers).is_err() {
                     return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
                 }
@@ -55,7 +55,7 @@ pub fn get_headers(
 
                     let block_header = BlockHeader::deserialize(header)?;
                     node.add_header(block_header);
-                }
+                }*/
                 break; // descarga màs headers
             }
             println!("{:?} bytes read", bytes_read);

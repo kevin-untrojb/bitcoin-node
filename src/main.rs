@@ -4,7 +4,7 @@ mod errores;
 mod messages;
 mod parse_args;
 mod protocol;
-use std::env;
+use std::{env, println};
 
 use errores::NodoBitcoinError;
 
