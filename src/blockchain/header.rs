@@ -2,7 +2,6 @@ use std::io::Write;
 
 use crate::errores::NodoBitcoinError;
 
-
 /// A struct representing a Bitcoin Header
 /// ### Bitcoin Core References
 /// https://developer.bitcoin.org/reference/block_chain.html

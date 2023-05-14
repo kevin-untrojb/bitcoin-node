@@ -1,4 +1,4 @@
-pub mod header;
 pub mod block;
-pub mod transaction;
+pub mod header;
 pub mod node;
+pub mod transaction;

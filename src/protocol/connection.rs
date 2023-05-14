@@ -15,15 +15,16 @@ pub fn connect() -> Result<Vec<TcpStream>, NodoBitcoinError> {
     let mut connections = Vec::new();
 
     for address in addresses.iter() {
-        println!("Address: {:?}", address);
+        if !address.is_ipv6() {
+            println!("Address: {:?}", address);
+            let socket: TcpStream = match TcpStream::connect(address) {
+                Ok(socket) => socket,
+                Err(_) => return Err(NodoBitcoinError::NoSePudoConectar),
+            };
 
-        let socket: TcpStream = match TcpStream::connect(address) {
-            Ok(socket) => socket,
-            Err(_) => return Err(NodoBitcoinError::NoSePudoConectar),
-        };
-
-        let connection: TcpStream = handshake(socket, *address)?;
-        connections.push(connection);
+            let connection: TcpStream = handshake(socket, *address)?;
+            connections.push(connection);
+        }
     }
 
     Ok(connections)
@@ -52,8 +53,6 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
     if socket.write_all(&mensaje).is_err() {
         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
     }
-
-    //println!("{} bytes sent version", mensaje.len());
 
     let mut header = [0u8; 24];
     if socket.read_exact(&mut header).is_err() {
