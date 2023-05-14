@@ -43,7 +43,7 @@ fn _build_merkle_tree(ordered_txids: &[usize]) -> Result<MerkleNode, NodoBitcoin
             } else {
                 nodes[i].clone()
             };
-            let new_node = MerkleNode::to_hash(Some(left_node), Some(right_node))?;
+            let new_node = MerkleNode::from_nodes(Some(left_node), Some(right_node))?;
             new_level.push(new_node);
         }
         nodes = new_level;
