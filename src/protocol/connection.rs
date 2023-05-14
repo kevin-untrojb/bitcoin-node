@@ -26,7 +26,6 @@ pub fn connect() -> Result<Vec<TcpStream>, NodoBitcoinError> {
             connections.push(connection);
         }
     }
-
     Ok(connections)
 }
 
