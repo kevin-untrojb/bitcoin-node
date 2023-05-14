@@ -1,6 +1,7 @@
 use crate::config;
 use crate::errores::NodoBitcoinError;
 use crate::messages::header::check_header;
+use crate::messages::header::make_header;
 use crate::messages::version::VersionMessage;
 use chrono::Utc;
 use std::io::Read;
@@ -78,6 +79,11 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
 
     if command != "verack" {
         return Err(NodoBitcoinError::ErrorEnHandshake);
+    }
+
+    let verack_msg = make_header("verack".to_string(), &Vec::new())?;
+    if socket.write_all(&verack_msg).is_err() {
+        return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
     }
 
     Ok(socket)

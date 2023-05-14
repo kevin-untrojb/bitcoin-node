@@ -1,5 +1,3 @@
-use bitcoin_hashes::{sha256d, Hash};
-
 use crate::errores::NodoBitcoinError;
 
 use super::header::make_header;
@@ -34,7 +32,7 @@ impl GetHeadersMessage {
         payload.extend_from_slice(&self.start_block_hash);
         payload.extend_from_slice(&self.end_block_hash);
 
-        let header = make_header(true, "getheaders".to_string(), &payload)?;
+        let header = make_header("getheaders".to_string(), &payload)?;
 
         msg.extend_from_slice(&header);
         msg.extend_from_slice(&payload);

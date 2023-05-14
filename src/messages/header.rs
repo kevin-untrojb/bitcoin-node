@@ -18,18 +18,12 @@ fn string_to_bytes(s: String, fixed_size: usize) -> Vec<u8> {
 }
 
 pub fn make_header(
-    testnet: bool,
     command: String,
     payload: &Vec<u8>,
 ) -> Result<Vec<u8>, NodoBitcoinError> {
     let mut result = Vec::new();
-    let magic;
+    let magic = MAGIC_NUMBER_TESTNET; //Obtenerlo de config despues
 
-    if testnet {
-        magic = MAGIC_NUMBER_TESTNET;
-    } else {
-        magic = [0x00, 0x00, 0x00, 0x00];
-    }
 
     let payload_size = payload.len() as u32;
     let hash = sha256d::Hash::hash(&payload);

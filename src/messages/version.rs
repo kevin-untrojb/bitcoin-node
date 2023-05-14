@@ -81,7 +81,7 @@ impl VersionMessage {
         payload.extend_from_slice(&(self.start_height).to_le_bytes());
         payload.extend_from_slice(&(self.relay as u8).to_le_bytes());
 
-        let header = make_header(true, "version".to_string(), &payload)?;
+        let header = make_header("version".to_string(), &payload)?;
 
         msg.extend_from_slice(&header);
         msg.extend_from_slice(&payload);
