@@ -10,6 +10,9 @@ pub enum NodoBitcoinError {
     // serialize - deserialize
     NoSePuedeLeerLosBytes,
     NoSePuedeEscribirLosBytes,
+
+    // merkle_tree
+    NoChildren,
 }
 
 impl Error for NodoBitcoinError {}
@@ -40,6 +43,9 @@ impl fmt::Display for NodoBitcoinError {
                     f,
                     "ERROR: No se puede escribir correctamente la estructura en bytes."
                 )
+            }
+            NodoBitcoinError::NoChildren => {
+                write!(f, "ERROR: No hay TXs para crear el Merkle Tree.")
             }
         }
     }

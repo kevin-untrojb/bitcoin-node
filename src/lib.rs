@@ -1,8 +1,10 @@
 use errores::NodoBitcoinError;
 
+pub mod blockchain;
 pub mod config;
 pub mod errores;
-mod parse_args;
+pub mod merkle_tree;
+pub mod parse_args;
 
 use crate::config::init_config;
 
