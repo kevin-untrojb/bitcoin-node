@@ -34,7 +34,7 @@ pub fn get_headers(
                 println!("0 bytes read");
                 break;
             }
-            let (command, headers) = match check_header(&buffer) {
+            let (command, mut headers) = match check_header(&buffer) {
                 Ok((command, payload_len)) => {
                     let mut headers = vec![0u8; payload_len];
                     if connection.read_exact(&mut headers).is_err() {
@@ -49,13 +49,13 @@ pub fn get_headers(
                 // thread descargar datos
                 
                 let (size_bytes, num_headers) = parse_varint(&headers);
+                headers = headers[size_bytes..].to_vec();
 
                 for i in 0..num_headers {
-                    let start: usize = (i * 80) + size_bytes + i;
-                    let end: usize = start + 80 + i;
-                    let header = &headers[start..end];
+                    let start: usize = i * 80;
+                    let end: usize = start + 80;
 
-                    let block_header = BlockHeader::deserialize(header)?;
+                    let block_header = BlockHeader::deserialize(&headers[start..end])?;
                     node.add_header(block_header);
                 }
                 break; // descarga màs headers
