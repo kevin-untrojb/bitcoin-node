@@ -58,7 +58,7 @@ impl BlockHeader {
         let version = i32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes).unwrap(),
         );
         offset += 4;
 
@@ -73,21 +73,21 @@ impl BlockHeader {
         let time = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes1).unwrap(),
         );
         offset += 4;
 
         let n_bits = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes2).unwrap(),
         );
         offset += 4;
 
         let nonce = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes3).unwrap(),
         );
         let previous_block_hash = _bytes_to_string(&previous_block_hash_bytes)?;
         let merkle_root_hash = _bytes_to_string(&merkle_root_hash_bytes)?;

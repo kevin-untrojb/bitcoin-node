@@ -14,6 +14,9 @@ pub enum NodoBitcoinError {
 
     // serialize - deserialize
     NoSePuedeLeerLosBytes,
+    NoSePuedeLeerLosBytes1,
+    NoSePuedeLeerLosBytes2,
+    NoSePuedeLeerLosBytes3,
     NoSePuedeEscribirLosBytes,
 
     // merkle_tree
@@ -41,6 +44,24 @@ impl fmt::Display for NodoBitcoinError {
                 write!(
                     f,
                     "ERROR: No se puede leer correctamente la estructura en bytes."
+                )
+            }
+            NodoBitcoinError::NoSePuedeLeerLosBytes1 => {
+                write!(
+                    f,
+                    "ERROR: No se puede leer correctamente la estructura en bytes1."
+                )
+            }
+            NodoBitcoinError::NoSePuedeLeerLosBytes2 => {
+                write!(
+                    f,
+                    "ERROR: No se puede leer correctamente la estructura en bytes2."
+                )
+            }
+            NodoBitcoinError::NoSePuedeLeerLosBytes3 => {
+                write!(
+                    f,
+                    "ERROR: No se puede leer correctamente la estructura en bytes3."
                 )
             }
             NodoBitcoinError::NoSePuedeEscribirLosBytes => {

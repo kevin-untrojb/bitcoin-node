@@ -10,22 +10,25 @@ use std::net::IpAddr;
 use std::net::TcpStream;
 use std::net::UdpSocket;
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::time::Duration;
 
 pub fn connect() -> Result<Vec<TcpStream>, NodoBitcoinError> {
     let addresses = get_address();
     let mut connections = Vec::new();
 
     for address in addresses.iter() {
-        if !address.is_ipv6() {
-            println!("Address: {:?}", address);
-            let socket: TcpStream = match TcpStream::connect(address) {
-                Ok(socket) => socket,
-                Err(_) => return Err(NodoBitcoinError::NoSePudoConectar),
-            };
+        println!("Address: {:?}", address);
+        match TcpStream::connect_timeout(address, Duration::from_secs(10)) {
+            Ok(socket) => {
+                let connection: TcpStream = handshake(socket, *address)?;
+                connections.push(connection);
+            },
+            Err(_) => continue,
+        };
 
-            let connection: TcpStream = handshake(socket, *address)?;
-            connections.push(connection);
-        }
+        // let connection: TcpStream = handshake(socket, *address)?;
+        // connections.push(connection);
+
     }
     Ok(connections)
 }

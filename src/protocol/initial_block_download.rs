@@ -34,28 +34,30 @@ pub fn get_headers(
                 println!("0 bytes read");
                 break;
             }
-            let (command, payload_len) = match check_header(&buffer) {
-                Ok((command, payload_len)) => (command, payload_len),
+            let (command, headers) = match check_header(&buffer) {
+                Ok((command, payload_len)) => {
+                    let mut headers = vec![0u8; payload_len];
+                    if connection.read_exact(&mut headers).is_err() {
+                        return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+                    }
+                    (command, headers)
+                },
                 Err(_) => continue,
             };
             println!("{}", command);
             if command == "headers" {
                 // thread descargar datos
-                println!("HEADERS");
-                /*let mut headers = vec![0u8; payload_len];
-                if connection.read_exact(&mut headers).is_err() {
-                    return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
-                }
+                
                 let (size_bytes, num_headers) = parse_varint(&headers);
 
                 for i in 0..num_headers {
-                    let start: usize = (i * 80) + size_bytes;
-                    let end: usize = start + 80;
+                    let start: usize = (i * 80) + size_bytes + i;
+                    let end: usize = start + 80 + i;
                     let header = &headers[start..end];
 
                     let block_header = BlockHeader::deserialize(header)?;
                     node.add_header(block_header);
-                }*/
+                }
                 break; // descarga màs headers
             }
             println!("{:?} bytes read", bytes_read);
