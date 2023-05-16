@@ -1,7 +1,7 @@
 use crate::config;
 use crate::errores::NodoBitcoinError;
-use crate::messages::header::check_header;
-use crate::messages::header::make_header;
+use crate::messages::messages_header::check_header;
+use crate::messages::messages_header::make_header;
 use crate::messages::version::VersionMessage;
 use chrono::Utc;
 use std::io::Read;

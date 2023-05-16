@@ -1,4 +1,4 @@
-use super::{header::BlockHeader, transaction};
+use super::{blockheader::BlockHeader, transaction};
 use transaction::_Transaction;
 /// A struct representing a Bitcoin Serialized Block
 /// ### Bitcoin Core References

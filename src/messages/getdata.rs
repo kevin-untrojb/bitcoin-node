@@ -34,6 +34,5 @@ impl GetDataMessage {
 
         msg.extend_from_slice(&header);
         msg.extend_from_slice(&payload);
-
     }
 }

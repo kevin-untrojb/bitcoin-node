@@ -20,7 +20,7 @@ const HEADER_SIZE: usize = 80;
 #[derive(Debug, PartialEq)]
 pub struct BlockHeader {
     id: usize,
-    version: i32,
+    version: u32,
     previous_block_hash: [u8; 32],
     merkle_root_hash: [u8; 32],
     time: u32,
@@ -29,7 +29,7 @@ pub struct BlockHeader {
 }
 
 impl BlockHeader {
-    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
 
         bytes
@@ -61,7 +61,7 @@ impl BlockHeader {
         let id = 1;
         let mut offset = 0;
 
-        let version = i32::from_le_bytes(
+        let version = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
                 .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes).unwrap(),
@@ -115,72 +115,74 @@ fn _bytes_to_string(bytes: &[u8]) -> Result<String, NodoBitcoinError> {
     Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn test_serialize() {
-//         let block_header = BlockHeader {
-//             id: 0,
-//             version: 1,
-//             previous_block_hash: String::from("12345678901234567890123456789012"),
-//             merkle_root_hash: String::from("12345678901234567890123456789012"),
-//             time: 123456789,
-//             n_bits: 123456789,
-//             nonce: 123456789,
-//         };
+    #[test]
+    fn test_serialize() {
+        let block_header = BlockHeader {
+            id: 0,
+            version: 1,
+            previous_block_hash: [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5],
+            merkle_root_hash: [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5],
+            time: 123456789,
+            n_bits: 123456789,
+            nonce: 123456789,
+        };
 
-//         let result_serialized = block_header._serialize();
-//         assert!(result_serialized.is_ok());
+        let result_serialized = block_header.serialize();
+        assert!(result_serialized.is_ok());
 
-//         let serialized = result_serialized.unwrap();
+        let serialized = result_serialized.unwrap();
 
-//         assert_eq!(serialized.len(), 80);
-//         assert_eq!(serialized[0..4], [1, 0, 0, 0]);
-//         assert_eq!(
-//             &serialized[4..36],
-//             "12345678901234567890123456789012".as_bytes()
-//         );
-//         assert_eq!(
-//             &serialized[36..68],
-//             "12345678901234567890123456789012".as_bytes()
-//         );
-//         assert_eq!(serialized[68..72], [21, 205, 91, 7]);
-//         assert_eq!(serialized[72..76], [21, 205, 91, 7]);
-//         assert_eq!(serialized[76..80], [21, 205, 91, 7]);
-//     }
+        assert_eq!(serialized.len(), 80);
+        assert_eq!(serialized[0..4], [1, 0, 0, 0]);
+        assert_eq!(
+            &serialized[4..36],
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5]
+        );
+        assert_eq!(
+            &serialized[36..68],
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5]
+        );
+        assert_eq!(serialized[68..72], [21, 205, 91, 7]);
+        assert_eq!(serialized[72..76], [21, 205, 91, 7]);
+        assert_eq!(serialized[76..80], [21, 205, 91, 7]);
+    }
 
-//     #[test]
-//     fn test_deserialize() {
-//         let block_bytes = [
-//             //version
-//             1, 0, 0, 0, // previous block
-//             49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
-//             51, 52, 53, 54, 55, 56, 57, 48, 49, 50, //merkle root
-//             49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
-//             51, 52, 53, 54, 55, 56, 57, 48, 49, 50, //time
-//             21, 205, 91, 7, // n bites
-//             21, 205, 91, 7, //nonce
-//             21, 205, 91, 7,
-//         ];
+    #[test]
+    fn test_deserialize() {
+        let block_bytes = [
+            //version
+            1, 0, 0, 0, // previous block
+            49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
+            51, 52, 53, 54, 55, 56, 57, 48, 49, 50, //merkle root
+            49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
+            51, 52, 53, 54, 55, 56, 57, 48, 49, 50, //time
+            21, 205, 91, 7, // n bites
+            21, 205, 91, 7, //nonce
+            21, 205, 91, 7,
+        ];
 
-//         let result_block_header = BlockHeader::deserialize(&block_bytes);
-//         assert!(result_block_header.is_ok());
+        let result_block_header = BlockHeader::deserialize(&block_bytes);
+        assert!(result_block_header.is_ok());
 
-//         let block_header = result_block_header.unwrap();
+        let block_header = result_block_header.unwrap();
 
-//         assert_eq!(block_header.version, 1);
-//         assert_eq!(
-//             block_header.previous_block_hash,
-//             String::from("12345678901234567890123456789012")
-//         );
-//         assert_eq!(
-//             block_header.merkle_root_hash,
-//             String::from("12345678901234567890123456789012")
-//         );
-//         assert_eq!(block_header.time, 123456789);
-//         assert_eq!(block_header.n_bits, 123456789);
-//         assert_eq!(block_header.nonce, 123456789);
-//     }
-// }
+        assert_eq!(block_header.version, 1);
+        assert_eq!(
+            block_header.previous_block_hash,
+            [49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
+            51, 52, 53, 54, 55, 56, 57, 48, 49, 50]
+        );
+        assert_eq!(
+            block_header.merkle_root_hash,
+            [49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
+            51, 52, 53, 54, 55, 56, 57, 48, 49, 50]
+        );
+        assert_eq!(block_header.time, 123456789);
+        assert_eq!(block_header.n_bits, 123456789);
+        assert_eq!(block_header.nonce, 123456789);
+    }
+}

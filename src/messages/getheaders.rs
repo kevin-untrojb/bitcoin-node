@@ -1,6 +1,6 @@
 use crate::errores::NodoBitcoinError;
 
-use super::header::make_header;
+use super::messages_header::make_header;
 
 pub struct GetHeadersMessage {
     version: u32,

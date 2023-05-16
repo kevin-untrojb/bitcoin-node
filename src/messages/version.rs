@@ -1,4 +1,4 @@
-use crate::{errores::NodoBitcoinError, messages::header::make_header};
+use crate::{errores::NodoBitcoinError, messages::messages_header::make_header};
 pub struct VersionMessage {
     version: u32,
     services: u64,
