@@ -9,6 +9,7 @@ use transaction::_Transaction;
 /// * `id` - The unique identifier of the transaction.
 /// * `header` - The header of the block, which contains metadata such as the block's version, hash, and timestamp.
 /// * `txns` - The transactions included in the block, represented as a vector of `Transaction` structs.
+#[derive(Clone)]
 pub struct SerializedBlock {
     id: usize,
     header: BlockHeader,

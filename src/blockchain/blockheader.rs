@@ -17,7 +17,7 @@ const HEADER_SIZE: usize = 80;
 /// * `time` - The Unix timestamp of the block's creation.
 /// * `n_bits` - The compressed target difficulty of the block in compact format.
 /// * `nonce` - A random number used in the mining process to try and find a valid block hash.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct BlockHeader {
     id: usize,
     version: u32,
@@ -57,14 +57,15 @@ impl BlockHeader {
         if block_bytes.len() != HEADER_SIZE {
             return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
         }
-        
+
         let id = 1;
         let mut offset = 0;
 
         let version = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes).unwrap(),
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)
+                .unwrap(),
         );
         offset += 4;
 
@@ -79,21 +80,24 @@ impl BlockHeader {
         let time = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes1).unwrap(),
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes1)
+                .unwrap(),
         );
         offset += 4;
 
         let n_bits = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes2).unwrap(),
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes2)
+                .unwrap(),
         );
         offset += 4;
 
         let nonce = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes3).unwrap(),
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes3)
+                .unwrap(),
         );
 
         Ok(BlockHeader {
@@ -124,8 +128,14 @@ mod tests {
         let block_header = BlockHeader {
             id: 0,
             version: 1,
-            previous_block_hash: [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5],
-            merkle_root_hash: [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5],
+            previous_block_hash: [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1,
+                2, 3, 4, 5,
+            ],
+            merkle_root_hash: [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1,
+                2, 3, 4, 5,
+            ],
             time: 123456789,
             n_bits: 123456789,
             nonce: 123456789,
@@ -140,11 +150,17 @@ mod tests {
         assert_eq!(serialized[0..4], [1, 0, 0, 0]);
         assert_eq!(
             &serialized[4..36],
-            [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5]
+            [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1,
+                2, 3, 4, 5
+            ]
         );
         assert_eq!(
             &serialized[36..68],
-            [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5]
+            [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1,
+                2, 3, 4, 5
+            ]
         );
         assert_eq!(serialized[68..72], [21, 205, 91, 7]);
         assert_eq!(serialized[72..76], [21, 205, 91, 7]);
@@ -173,13 +189,17 @@ mod tests {
         assert_eq!(block_header.version, 1);
         assert_eq!(
             block_header.previous_block_hash,
-            [49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
-            51, 52, 53, 54, 55, 56, 57, 48, 49, 50]
+            [
+                49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49,
+                50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50
+            ]
         );
         assert_eq!(
             block_header.merkle_root_hash,
-            [49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50,
-            51, 52, 53, 54, 55, 56, 57, 48, 49, 50]
+            [
+                49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49,
+                50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50
+            ]
         );
         assert_eq!(block_header.time, 123456789);
         assert_eq!(block_header.n_bits, 123456789);

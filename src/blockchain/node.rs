@@ -1,5 +1,6 @@
 use super::{block::SerializedBlock, blockheader::BlockHeader};
 
+#[derive(Clone)]
 pub struct Node {
     headers: Vec<BlockHeader>,
     blocks: Vec<SerializedBlock>,
@@ -17,7 +18,15 @@ impl Node {
         let _ = &(self.headers).push(header);
     }
 
-    pub fn get_last_header(&self) -> &BlockHeader{
+    pub fn add_block(&mut self, block: SerializedBlock) {
+        let _ = &(self.blocks).push(block);
+    }
+
+    pub fn get_last_header(&self) -> &BlockHeader {
         self.headers.last().unwrap()
+    }
+
+    pub fn get_headers(&self) -> Vec<BlockHeader> {
+        self.headers.clone()
     }
 }

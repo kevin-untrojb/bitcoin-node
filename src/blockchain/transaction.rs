@@ -9,6 +9,7 @@
 /// * input - The vector of input transactions for the transaction.
 /// * output - The vector of output transactions for the transaction.
 /// * lock_time - The lock time for the transaction.
+#[derive(Clone)]
 pub struct _Transaction {
     id: usize,
     version: i32,
@@ -26,6 +27,7 @@ pub struct _Transaction {
 /// * script_bytes - The number of bytes in the signature script.
 /// * signature_script - The signature script for the input.
 /// * sequence - The sequence number for the input.
+#[derive(Clone)]
 struct _TxIn {
     id: usize,
     previous_output: _Outpoint,
@@ -41,6 +43,7 @@ struct _TxIn {
 /// * id - The unique identifier of the outpoint.
 /// * hash - The transaction hash of the previous transaction.
 /// * index - The index of the output in the previous transaction.
+#[derive(Clone)]
 struct _Outpoint {
     id: usize,
     hash: String,
@@ -54,6 +57,7 @@ struct _Outpoint {
 /// * id - The unique identifier of the output transaction.
 /// * value - The value of the output in satoshis.
 /// * pk_script - The public key script for the output.
+#[derive(Clone)]
 struct _TxOut {
     id: usize,
     value: f64,
