@@ -6,6 +6,7 @@ pub enum NodoBitcoinError {
     NoExisteArchivo,
     NoExisteClave,
     ConfigLock,
+    NoSePuedeLeerValorDeArchivoConfig,
 
     // conexion
     NoSePudoConectar,
@@ -39,6 +40,9 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::NoExisteClave => {
                 write!(f, "ERROR: No existe la clave.")
+            }
+            NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig => {
+                write!(f, "ERROR: No se puede leer valor desde el archivo config")
             }
             NodoBitcoinError::NoSePuedeLeerLosBytes => {
                 write!(
