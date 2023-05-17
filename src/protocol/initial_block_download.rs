@@ -1,6 +1,7 @@
 use bitcoin_hashes::{sha256d, Hash};
 
 use crate::blockchain::node::Node;
+use crate::config;
 use crate::errores::NodoBitcoinError;
 use crate::messages::getdata::{GetDataMessage, Inventory};
 use crate::messages::getheaders::GetHeadersMessage;
@@ -11,12 +12,16 @@ use std::net::TcpStream;
 use std::{println, thread};
 
 pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), NodoBitcoinError> {
+    let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
+        Ok(res) => res,
+        Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig)
+    };
     let start_block = [
         0x00, 0x00, 0x00, 0x00, 0x09, 0x33, 0xea, 0x01, 0xad, 0x0e, 0xe9, 0x84, 0x20, 0x97, 0x79,
         0xba, 0xae, 0xc3, 0xce, 0xd9, 0x0f, 0xa3, 0xf4, 0x08, 0x71, 0x95, 0x26, 0xf8, 0xd7, 0x7f,
         0x49, 0x43,
     ];
-    let get_headers = GetHeadersMessage::new(70015, 1, start_block, [0; 32]);
+    let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
     let mut get_headers_message = GetHeadersMessage::serialize(&get_headers)?;
     //let mut threads = vec![];
 
@@ -103,7 +108,7 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
                 //}));
 
                 let get_headers = GetHeadersMessage::new(
-                    70015,
+                    version,
                     1,
                     *sha256d::Hash::hash(&node.get_last_header().serialize()?).as_byte_array(),
                     [0; 32],

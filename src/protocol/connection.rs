@@ -31,9 +31,13 @@ pub fn connect() -> Result<Vec<TcpStream>, NodoBitcoinError> {
 
 fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, NodoBitcoinError> {
     let timestamp = Utc::now().timestamp() as u64;
+    let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
+        Ok(res) => res,
+        Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig)
+    };
 
-    let version = VersionMessage::new(
-        70015,
+    let version_message = VersionMessage::new(
+        version,
         0,
         timestamp,
         0,
@@ -48,7 +52,7 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
         0,
         true,
     );
-    let mensaje = version.serialize()?;
+    let mensaje = version_message.serialize()?;
     if socket.write_all(&mensaje).is_err() {
         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
     }
