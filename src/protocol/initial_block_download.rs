@@ -8,7 +8,7 @@ use crate::messages::headers::deserealize;
 use crate::messages::messages_header::check_header;
 use std::io::{Read, Write};
 use std::net::TcpStream;
-use std::{thread, println};
+use std::{println, thread};
 
 pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), NodoBitcoinError> {
     let start_block = [
@@ -58,51 +58,48 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
                 let mut thread_buffer = buffer.clone();*/
 
                 //threads.push(thread::spawn(move || {
-                    for header in node.get_headers() {
-                        let hash_header = match header.serialize() {
-                            Ok(serialized_header) => serialized_header,
-                            Err(_) => continue,
-                        };
+                for header in node.get_headers() {
+                    let hash_header = match header.serialize() {
+                        Ok(serialized_header) => serialized_header,
+                        Err(_) => continue,
+                    };
 
-                        let get_data = GetDataMessage::new(
-                            1,
-                            *sha256d::Hash::hash(&hash_header).as_byte_array(),
-                        );
-                        let get_data_message = match GetDataMessage::serialize(&get_data) {
-                            Ok(res) => res,
-                            Err(_) => continue,
-                        };
+                    let get_data =
+                        GetDataMessage::new(1, *sha256d::Hash::hash(&hash_header).as_byte_array());
+                    let get_data_message = match GetDataMessage::serialize(&get_data) {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    };
 
-                        if connection.write(&get_data_message).is_err() {
-                            // throw/catch error
-                        }
-
-                        match connection.read(&mut buffer) {
-                            Ok(bytes_read) => {
-                                if bytes_read == 0 {
-                                    println!("0 bytes read");
-                                    break;
-                                }
-                                println!("{} bytes read getData", buffer.len());
-
-                            }
-                            Err(_) => continue,
-                        }
-
-                        let (command, getData) = match check_header(&buffer) {
-                            Ok((command, payload_len)) => {
-                                let mut headers = vec![0u8; payload_len];
-                                if connection.read_exact(&mut headers).is_err() {
-                                    // throw/catch error
-                                }
-                                (command, headers)
-                            }
-                            Err(_) => continue,
-                        };
-
-                        println!("{:?}", command);
-                        // Agregar bloque a nodo
+                    if connection.write(&get_data_message).is_err() {
+                        // throw/catch error
                     }
+
+                    match connection.read(&mut buffer) {
+                        Ok(bytes_read) => {
+                            if bytes_read == 0 {
+                                println!("0 bytes read");
+                                break;
+                            }
+                            println!("{} bytes read getData", buffer.len());
+                        }
+                        Err(_) => continue,
+                    }
+
+                    let (command, getData) = match check_header(&buffer) {
+                        Ok((command, payload_len)) => {
+                            let mut headers = vec![0u8; payload_len];
+                            if connection.read_exact(&mut headers).is_err() {
+                                // throw/catch error
+                            }
+                            (command, headers)
+                        }
+                        Err(_) => continue,
+                    };
+
+                    println!("{:?}", command);
+                    // Agregar bloque a nodo
+                }
                 //}));
 
                 let get_headers = GetHeadersMessage::new(

@@ -1,21 +1,23 @@
-use crate::{blockchain::{node::Node, blockheader::BlockHeader}, errores::NodoBitcoinError};
+use crate::{
+    blockchain::{blockheader::BlockHeader, node::Node},
+    errores::NodoBitcoinError,
+};
 
-pub fn deserealize(node: &mut Node, mut headers: Vec<u8> ) -> Result<(), NodoBitcoinError>{
+pub fn deserealize(node: &mut Node, mut headers: Vec<u8>) -> Result<(), NodoBitcoinError> {
     let (size_bytes, num_headers) = parse_varint(&headers);
     headers = headers[size_bytes..].to_vec();
 
     for i in 0..num_headers {
-        let mut start: usize = i * 80; 
+        let mut start: usize = i * 80;
         let mut end: usize = start + 80;
         if i != 0 {
-            start += 1*i;
-            end += 1*i;
+            start += 1 * i;
+            end += 1 * i;
         }
 
         let block_header = BlockHeader::deserialize(&headers[start..end])?;
         let _ = node.add_header(block_header);
     }
-
     Ok(())
 }
 

@@ -22,7 +22,7 @@ pub fn connect() -> Result<Vec<TcpStream>, NodoBitcoinError> {
             Ok(socket) => {
                 let connection: TcpStream = handshake(socket, *address)?;
                 connections.push(connection);
-            },
+            }
             Err(_) => continue,
         };
     }
