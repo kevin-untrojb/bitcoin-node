@@ -26,7 +26,6 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
     ];
     let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
     let mut get_headers_message = GetHeadersMessage::serialize(&get_headers)?;
-    let mut threads = vec![];
 
     for mut connection in connections {
         if connection.write(&get_headers_message).is_err() {
@@ -58,19 +57,19 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
 
             if command == "headers" {
                 let blockheaders = deserealize(headers)?;
-                
+                node.add_headers(&blockheaders);
                 let n_threads:usize = match (config::get_valor("CANTIDAD_THREADS".to_string())?).parse::<usize>() {
                     Ok(res) => res,
                     Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig)
                 };
                 let n_blockheaders_thread = blockheaders.len() as usize/n_threads;
                 let blocks = Arc::new(Mutex::new(vec![]));
-
+                let mut threads = vec![];
+                
                 for i in 0..n_threads {
                     let start: usize = i * n_blockheaders_thread;
                     let end:usize = start + n_blockheaders_thread;
-                    let mut block_headers_thread = vec![];
-                    block_headers_thread.clone_from_slice(&blockheaders[start..end]);
+                    let block_headers_thread = blockheaders[start..end].to_vec();
 
                     let shared_blocks = blocks.clone();
 
@@ -78,8 +77,7 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
                         Ok(res) => res,
                         Err(_) => continue,
                     };
-                    let mut thread_buffer = buffer.clone();
-            
+                    
                     threads.push(thread::spawn(move || {
 
                         for header in block_headers_thread {
@@ -98,7 +96,7 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
                             if thread_connection.write(&get_data_message).is_err() {
                                 // throw/catch error
                             }
-        
+                            let mut thread_buffer= [0u8; 24];
                             match thread_connection.read(&mut thread_buffer) {
                                 Ok(bytes_read) => {
                                     if bytes_read == 0 {
@@ -118,7 +116,10 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
                                     }
                                     (command, response_get_data)
                                 }
-                                Err(_) => continue,
+                                Err(_) => {
+                                    println!("error");
+                                    continue;
+                                },
                             };
         
                             println!("{:?}", command);
@@ -126,6 +127,7 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
                             if command == "block"{
                                 let mut cloned = shared_blocks.lock().unwrap();
                                 cloned.push(SerializedBlock::new(header));
+                                println!("cloned: {}", cloned.len());
                                 drop(cloned);
                                 // deserealize response_get_data
                                 /*
@@ -136,6 +138,10 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
                             }
                         }
                     }));
+                }
+
+                for thread in threads {
+                    let _ = thread.join();
                 }
 
                 let get_headers = GetHeadersMessage::new(

@@ -47,6 +47,7 @@ pub fn check_header(header: &[u8]) -> Result<(String, usize), NodoBitcoinError> 
     let magic_num = &header[offset..offset + 4];
 
     if magic_num != MAGIC_NUMBER_TESTNET {
+        println!("magic number error");
         return Err(NodoBitcoinError::MagicNumberIncorrecto);
     }
 
