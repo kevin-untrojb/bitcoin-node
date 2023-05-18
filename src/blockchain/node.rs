@@ -14,8 +14,9 @@ impl Node {
         }
     }
 
-    pub fn add_header(&mut self, header: BlockHeader) {
-        let _ = &(self.headers).push(header);
+    pub fn add_headers(&mut self, headers: Vec<BlockHeader>) {
+        //let _ = &(self.headers).append(headers);
+
     }
 
     pub fn add_block(&mut self, block: SerializedBlock) {

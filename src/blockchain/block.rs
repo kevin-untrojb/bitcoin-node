@@ -13,5 +13,14 @@ use transaction::_Transaction;
 pub struct SerializedBlock {
     id: usize,
     header: BlockHeader,
-    txns: Vec<_Transaction>,
+    //txns: Vec<_Transaction>,
+}
+
+impl SerializedBlock {
+    pub fn new(header: BlockHeader) -> SerializedBlock {
+        SerializedBlock {
+            id: 1,
+            header
+        }
+    }
 }

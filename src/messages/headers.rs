@@ -3,10 +3,10 @@ use crate::{
     errores::NodoBitcoinError,
 };
 
-pub fn deserealize(node: &mut Node, mut headers: Vec<u8>) -> Result<(), NodoBitcoinError> {
+pub fn deserealize(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoinError> {
     let (size_bytes, num_headers) = parse_varint(&headers);
     headers = headers[size_bytes..].to_vec();
-
+    let mut block_headers = Vec::new();
     for i in 0..num_headers {
         let mut start: usize = i * 80;
         let mut end: usize = start + 80;
@@ -16,9 +16,9 @@ pub fn deserealize(node: &mut Node, mut headers: Vec<u8>) -> Result<(), NodoBitc
         }
 
         let block_header = BlockHeader::deserialize(&headers[start..end])?;
-        let _ = node.add_header(block_header);
+        block_headers.push(block_header);
     }
-    Ok(())
+    Ok(block_headers)
 }
 
 fn parse_varint(bytes: &[u8]) -> (usize, usize) {
