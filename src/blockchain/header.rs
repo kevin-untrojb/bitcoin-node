@@ -1,6 +1,7 @@
 use std::io::Write;
 
 use crate::errores::NodoBitcoinError;
+use crate::common::utils_bytes_conversion::bytes_to_string;
 
 /// A struct representing a Bitcoin Header
 /// ### Bitcoin Core References
@@ -89,8 +90,8 @@ impl BlockHeader {
                 .try_into()
                 .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
         );
-        let previous_block_hash = _bytes_to_string(&previous_block_hash_bytes)?;
-        let merkle_root_hash = _bytes_to_string(&merkle_root_hash_bytes)?;
+        let previous_block_hash = bytes_to_string(&previous_block_hash_bytes)?;
+        let merkle_root_hash = bytes_to_string(&merkle_root_hash_bytes)?;
 
         Ok(BlockHeader {
             id,
@@ -102,13 +103,6 @@ impl BlockHeader {
             nonce,
         })
     }
-}
-
-fn _bytes_to_string(bytes: &[u8]) -> Result<String, NodoBitcoinError> {
-    if let Ok(string) = String::from_utf8(bytes.to_vec()) {
-        return Ok(string);
-    }
-    Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
 }
 
 #[cfg(test)]
