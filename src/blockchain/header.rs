@@ -9,7 +9,6 @@ use crate::common::utils_bytes_conversion::bytes_to_string;
 ///
 /// # Fields
 ///
-/// * `id` - The unique identifier of the transaction.
 /// * `version` - The version number of the transaction.
 /// * `previous_block_hash` - The hash of the previous block in the chain.
 /// * `merkle_root_hash` - The Merkle root hash of the transactions in the block.
@@ -18,13 +17,12 @@ use crate::common::utils_bytes_conversion::bytes_to_string;
 /// * `nonce` - A random number used in the mining process to try and find a valid block hash.
 #[derive(Debug, PartialEq)]
 pub struct BlockHeader {
-    id: usize,
-    version: i32,
-    previous_block_hash: String,
-    merkle_root_hash: String,
-    time: u32,
-    n_bits: u32,
-    nonce: u32,
+    pub version: i32,
+    pub previous_block_hash: String,
+    pub merkle_root_hash: String,
+    pub time: u32,
+    pub n_bits: u32,
+    pub nonce: u32,
 }
 
 impl BlockHeader {
@@ -53,7 +51,6 @@ impl BlockHeader {
     }
 
     pub fn deserialize(block_bytes: &[u8]) -> Result<BlockHeader, NodoBitcoinError> {
-        let id = 1;
         let mut offset = 0;
 
         let version = i32::from_le_bytes(
@@ -94,7 +91,6 @@ impl BlockHeader {
         let merkle_root_hash = bytes_to_string(&merkle_root_hash_bytes)?;
 
         Ok(BlockHeader {
-            id,
             version,
             previous_block_hash,
             merkle_root_hash,
@@ -112,7 +108,6 @@ mod tests {
     #[test]
     fn test_serialize() {
         let block_header = BlockHeader {
-            id: 0,
             version: 1,
             previous_block_hash: String::from("12345678901234567890123456789012"),
             merkle_root_hash: String::from("12345678901234567890123456789012"),
