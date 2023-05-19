@@ -1,4 +1,4 @@
-use super::header;
+use super::blockheader;
 use crate::errores::NodoBitcoinError;
 use std::io::Write;
 

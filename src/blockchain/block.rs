@@ -1,4 +1,4 @@
-use super::{header::BlockHeader, transaction};
+use super::{blockheader::BlockHeader, transaction};
 use transaction::_Transaction;
 use crate::errores::NodoBitcoinError;
 

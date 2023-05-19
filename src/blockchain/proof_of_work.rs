@@ -2,7 +2,7 @@ use bitcoin_hashes::{sha256d, Hash};
 
 use crate::errores::NodoBitcoinError;
 
-use super::header::BlockHeader;
+use super::blockheader::BlockHeader;
 
 fn _pow_validation(header: &BlockHeader) -> Result<bool, NodoBitcoinError> {
     let target_difficulty = _calculate_target(header.n_bits);
@@ -34,7 +34,7 @@ fn _is_valid_pow(data: &[u8], target_difficulty: u32) -> Result<bool, NodoBitcoi
 
 #[cfg(test)]
 mod tests {
-    use crate::blockchain::{header::BlockHeader, proof_of_work::_pow_validation};
+    use crate::blockchain::{blockheader::BlockHeader, proof_of_work::_pow_validation};
 
     fn blockheader_genesis() -> [u8; 80] {
         [

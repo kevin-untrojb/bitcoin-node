@@ -1,4 +1,4 @@
-use super::{block::SerializedBlock, header::BlockHeader};
+use super::{block::SerializedBlock, blockheader::BlockHeader};
 
 pub struct Node {
     headers: Vec<BlockHeader>,
