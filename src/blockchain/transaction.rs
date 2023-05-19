@@ -14,7 +14,7 @@ use std::io::Write;
 /// * lock_time - The lock time for the transaction.
 pub struct _Transaction {
     version: i32,
-    input: Vec<_TxIn>,
+    input: Vec<TxIn>,
     output: Vec<TxOut>,
     lock_time: u64,
 }
@@ -27,11 +27,45 @@ pub struct _Transaction {
 /// * script_bytes - The number of bytes in the signature script.
 /// * signature_script - The signature script for the input.
 /// * sequence - The sequence number for the input.
-struct _TxIn {
+struct TxIn {
     previous_output: Outpoint,
     script_bytes: usize,
     signature_script: String,
     sequence: u32,
+}
+
+impl TxIn {
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+        let mut bytes = Vec::new();
+        bytes.write_all(&(self.previous_output.serialize()?)?).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes.write_all(&(self.script_bytes as u32).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes.write_all(self.signature_script.as_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes.write_all(&(self.sequence).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        Ok(bytes)
+    }
+
+    pub fn deserialize(block_bytes: &[u8]) -> Result<TxIn, NodoBitcoinError> {
+        let mut offset = 0;
+
+        let previous_output = Outpoint::deserialize(&block_bytes[offset..])?;
+        offset += previous_output.size() as usize;
+
+        let script_bytes = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        offset += 4;
+
+        let signature_script = String::from_utf8_lossy(&block_bytes[offset..offset + script_bytes as usize]).into_owned();
+        offset += script_bytes as usize;
+
+        let sequence = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        offset += 4;
+
+        Ok(TxIn {
+            previous_output,
+            script_bytes: script_bytes as usize,
+            signature_script,
+            sequence,
+        })
+    }
 }
 
 /// A struct representing an outpoint from a previous transaction
