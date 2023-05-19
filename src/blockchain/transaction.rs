@@ -12,6 +12,7 @@ use std::io::Write;
 /// * input - The vector of input transactions for the transaction.
 /// * output - The vector of output transactions for the transaction.
 /// * lock_time - The lock time for the transaction.
+#[derive(Clone)]
 pub struct _Transaction {
     version: i32,
     input: Vec<_TxIn>,
@@ -27,6 +28,7 @@ pub struct _Transaction {
 /// * script_bytes - The number of bytes in the signature script.
 /// * signature_script - The signature script for the input.
 /// * sequence - The sequence number for the input.
+#[derive(Clone)]
 struct _TxIn {
     previous_output: Outpoint,
     script_bytes: usize,
@@ -40,7 +42,7 @@ struct _TxIn {
 ///
 /// * hash - The transaction hash of the previous transaction.
 /// * index - The index of the output in the previous transaction.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 struct Outpoint {
     hash: [u8; 32],
     index: u32,
@@ -79,6 +81,7 @@ impl Outpoint {
 ///
 /// * value - The value of the output in satoshis.
 /// * pk_script - The public key script for the output.
+#[derive(Clone)]
 struct TxOut {
     value: u64,
     pk_script: Vec<u8>,
