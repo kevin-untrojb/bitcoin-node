@@ -1,5 +1,4 @@
 use std::io::Write;
-
 use crate::errores::NodoBitcoinError;
 
 const HEADER_SIZE: usize = 80;
@@ -10,7 +9,6 @@ const HEADER_SIZE: usize = 80;
 ///
 /// # Fields
 ///
-/// * `id` - The unique identifier of the transaction.
 /// * `version` - The version number of the transaction.
 /// * `previous_block_hash` - The hash of the previous block in the chain.
 /// * `merkle_root_hash` - The Merkle root hash of the transactions in the block.
@@ -19,13 +17,12 @@ const HEADER_SIZE: usize = 80;
 /// * `nonce` - A random number used in the mining process to try and find a valid block hash.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct BlockHeader {
-    id: usize,
-    version: u32,
-    previous_block_hash: [u8; 32],
-    merkle_root_hash: [u8; 32],
-    time: u32,
-    n_bits: u32,
-    nonce: u32,
+    pub version: u32,
+    pub previous_block_hash: [u8; 32],
+    pub merkle_root_hash: [u8; 32],
+    pub time: u32,
+    pub n_bits: u32,
+    pub nonce: u32,
 }
 
 impl BlockHeader {
@@ -101,7 +98,6 @@ impl BlockHeader {
         );
 
         Ok(BlockHeader {
-            id,
             version,
             previous_block_hash,
             merkle_root_hash,
@@ -112,13 +108,6 @@ impl BlockHeader {
     }
 }
 
-fn _bytes_to_string(bytes: &[u8]) -> Result<String, NodoBitcoinError> {
-    if let Ok(string) = String::from_utf8(bytes.to_vec()) {
-        return Ok(string);
-    }
-    Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -126,7 +115,6 @@ mod tests {
     #[test]
     fn test_serialize() {
         let block_header = BlockHeader {
-            id: 0,
             version: 1,
             previous_block_hash: [
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1,

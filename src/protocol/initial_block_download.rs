@@ -124,7 +124,7 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
         
                             if command == "block"{
                                 let mut cloned = shared_blocks.lock().unwrap();
-                                cloned.push(SerializedBlock::new(header));
+                                cloned.push(SerializedBlock::deserialize(&[0;32]));
                                 println!("cloned: {}", cloned.len());
                                 drop(cloned);
                                 // deserealize response_get_data
