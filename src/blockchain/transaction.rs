@@ -28,7 +28,7 @@ pub struct _Transaction {
 /// * signature_script - The signature script for the input.
 /// * sequence - The sequence number for the input.
 struct _TxIn {
-    previous_output: _Outpoint,
+    previous_output: Outpoint,
     script_bytes: usize,
     signature_script: String,
     sequence: u32,
@@ -40,9 +40,37 @@ struct _TxIn {
 ///
 /// * hash - The transaction hash of the previous transaction.
 /// * index - The index of the output in the previous transaction.
-struct _Outpoint {
-    hash: String,
+#[derive(Debug, PartialEq)]
+struct Outpoint {
+    hash: [u8; 32],
     index: u32,
+}
+impl Outpoint {
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+        let mut bytes = Vec::new();
+        bytes.write_all(&self.hash).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes.write_all(&(self.index).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        Ok(bytes)
+    }
+
+    pub fn deserialize(block_bytes: &[u8]) -> Result<Outpoint, NodoBitcoinError> {
+        let mut offset = 0;
+
+        let mut hash = [0u8; 32];
+        hash.copy_from_slice(&block_bytes[offset..offset + 32]);
+        offset += 32;
+
+        let index = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        offset += 4;
+
+        Ok(Outpoint {
+            hash,
+            index,
+        })
+    }
+    pub fn size(&self) ->u32{
+        self.index
+    }
 }
 
 /// A struct representing an output transaction for a Bitcoin transaction
@@ -91,7 +119,52 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_serialize_TxOut() {
+    fn test_serialize_outpoint() {
+        let outpoint = Outpoint {
+            hash: [1u8; 32],
+            index: 123,
+        };
+
+        let expected_bytes = vec![
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // hash
+            123, 0, 0, 0, // index
+        ];
+
+        let serialized = outpoint.serialize().unwrap();
+
+        assert_eq!(serialized, expected_bytes);
+    }
+
+    #[test]
+    fn test_deserialize_outpoint() {
+        let bytes = vec![
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, // hash
+            255, 255, 255, 255, // index
+        ];
+
+        let expected_outpoint = Outpoint {
+            hash: [2u8; 32],
+            index: 4294967295,
+        };
+
+        let deserialized = Outpoint::deserialize(&bytes).unwrap();
+
+        assert_eq!(deserialized, expected_outpoint);
+    }
+
+    #[test]
+    fn test_size_outpoint() {
+        let outpoint = Outpoint {
+            hash: [3u8; 32],
+            index: 456,
+        };
+
+        let size = outpoint.size();
+
+        assert_eq!(size, 456);
+    }
+    #[test]
+    fn test_serialize_tx_out() {
         let txout = TxOut {
             value: 123,
             pk_script: vec![1, 2, 3, 4, 5],
@@ -103,7 +176,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_TxOut() {
+    fn test_deserialize_tx_out() {
         let serialized = vec![
             123, 0, 0, 0, 0, 0, 0, 0, // Valor
             5, 0, 0, 0, //  pk_script
