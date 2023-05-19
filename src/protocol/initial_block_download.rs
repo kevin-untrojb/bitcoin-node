@@ -1,16 +1,17 @@
 use bitcoin_hashes::{sha256d, Hash};
-use crate::blockchain::block::SerializedBlock;
+use crate::blockchain::block::{SerializedBlock};
 use crate::blockchain::node::Node;
+use crate::common::utils_bytes_conversion::obtener_timestamp_dia;
 use crate::config;
 use crate::errores::NodoBitcoinError;
 use crate::messages::getdata::{GetDataMessage};
 use crate::messages::getheaders::GetHeadersMessage;
-use crate::messages::headers::deserealize;
+use crate::messages::headers::{deserealize};
 use crate::messages::messages_header::check_header;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
-use std::{println, thread, vec};
+use std::{println, thread, vec, cmp};
 
 pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), NodoBitcoinError> {
     let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
@@ -55,19 +56,24 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
 
             if command == "headers" {
                 let blockheaders = deserealize(headers)?;
-                node.add_headers(&blockheaders);
-                let n_threads:usize = match (config::get_valor("CANTIDAD_THREADS".to_string())?).parse::<usize>() {
+                let fecha_inicial = config::get_valor("DIA_INICIAL".to_string())?;
+                let timestamp_ini = obtener_timestamp_dia(fecha_inicial);
+                let last_header = blockheaders[blockheaders.len() - 1]; 
+                let headers_filtrados: Vec<_> = blockheaders.into_iter().filter(|header| header.time >= timestamp_ini).collect();
+
+                let n_threads_max:usize = match (config::get_valor("CANTIDAD_THREADS".to_string())?).parse::<usize>() {
                     Ok(res) => res,
                     Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig)
                 };
-                let n_blockheaders_thread = blockheaders.len() as usize/n_threads;
+                let n_threads = cmp::min(n_threads_max, headers_filtrados.len());
+                let n_blockheaders_thread = (headers_filtrados.len() as f64 / n_threads as f64).ceil() as usize;
                 let blocks = Arc::new(Mutex::new(vec![]));
                 let mut threads = vec![];
                 
                 for i in 0..n_threads {
                     let start: usize = i * n_blockheaders_thread;
                     let end:usize = start + n_blockheaders_thread;
-                    let block_headers_thread = blockheaders[start..end].to_vec();
+                    let block_headers_thread = headers_filtrados[start..cmp::min(end, headers_filtrados.len())].to_vec();
 
                     let shared_blocks = blocks.clone();
 
@@ -94,45 +100,42 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
                             if thread_connection.write(&get_data_message).is_err() {
                                 // throw/catch error
                             }
-                            let mut thread_buffer= [0u8; 24];
-                            match thread_connection.read(&mut thread_buffer) {
-                                Ok(bytes_read) => {
-                                    if bytes_read == 0 {
-                                        println!("0 bytes read");
-                                        break;
+
+                            loop {
+                                let mut thread_buffer= [0u8; 24];
+                                match thread_connection.read(&mut thread_buffer) {
+                                    Ok(bytes_read) => {
+                                        if bytes_read == 0 {
+                                            println!("0 bytes read");
+                                            break;
+                                        }
+                                        println!("{} bytes read getData", thread_buffer.len());
                                     }
-                                    println!("{} bytes read getData", thread_buffer.len());
+                                    Err(_) => continue,
                                 }
-                                Err(_) => continue,
-                            }
-        
-                            let (command, response_get_data) = match check_header(&thread_buffer) {
-                                Ok((command, payload_len)) => {
-                                    let mut response_get_data = vec![0u8; payload_len];
-                                    if thread_connection.read_exact(&mut response_get_data).is_err() {
-                                        // throw/catch error
+            
+                                let (command, response_get_data) = match check_header(&thread_buffer) {
+                                    Ok((command, payload_len)) => {
+                                        let mut response_get_data = vec![0u8; payload_len];
+                                        if thread_connection.read_exact(&mut response_get_data).is_err() {
+                                            // throw/catch error
+                                        }
+                                        (command, response_get_data)
                                     }
-                                    (command, response_get_data)
+                                    Err(_) => {
+                                        continue;
+                                    },
+                                };
+            
+                                println!("{:?}", command);
+            
+                                if command == "block"{
+                                    let mut cloned = shared_blocks.lock().unwrap();
+                                    cloned.push(SerializedBlock::deserialize(&response_get_data));
+                                    println!("cloned: {}", cloned.len());
+                                    drop(cloned);
+                                    break;
                                 }
-                                Err(_) => {
-                                    println!("error");
-                                    continue;
-                                },
-                            };
-        
-                            println!("{:?}", command);
-        
-                            if command == "block"{
-                                let mut cloned = shared_blocks.lock().unwrap();
-                                cloned.push(SerializedBlock::deserialize(&[0;32]));
-                                println!("cloned: {}", cloned.len());
-                                drop(cloned);
-                                // deserealize response_get_data
-                                /*
-                                    lock al vector clonado
-                                    agregar bloque al vector clonado
-                                    drop vector clonado
-                                 */
                             }
                         }
                     }));
@@ -145,7 +148,7 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
                 let get_headers = GetHeadersMessage::new(
                     version,
                     1,
-                    *sha256d::Hash::hash(&node.get_last_header().serialize()?).as_byte_array(),
+                    *sha256d::Hash::hash(&last_header.serialize()?).as_byte_array(),
                     [0; 32],
                 );
                 get_headers_message = GetHeadersMessage::serialize(&get_headers)?;

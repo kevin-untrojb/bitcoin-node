@@ -18,9 +18,8 @@ pub struct SerializedBlock {
 
 impl SerializedBlock {
     pub fn deserialize(block_bytes: &[u8]) -> Result<SerializedBlock,NodoBitcoinError> {
-        let mut offset = 0;
+        let offset = 0;
         let header = BlockHeader::deserialize(&block_bytes[offset..offset + 80])?;
-        offset += 80;
         Ok(SerializedBlock{
             header,
             txns: vec!()
