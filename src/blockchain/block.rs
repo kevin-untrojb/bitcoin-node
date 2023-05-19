@@ -1,4 +1,4 @@
-use super::{header::BlockHeader, transaction};
+use super::{blockheader::BlockHeader, transaction};
 use transaction::_Transaction;
 use crate::errores::NodoBitcoinError;
 
@@ -10,6 +10,7 @@ use crate::errores::NodoBitcoinError;
 ///
 /// * `header` - The header of the block, which contains metadata such as the block's version, hash, and timestamp.
 /// * `txns` - The transactions included in the block, represented as a vector of `Transaction` structs.
+#[derive(Clone)]
 pub struct SerializedBlock {
     pub header: BlockHeader,
     pub txns: Vec<_Transaction>,
@@ -51,8 +52,14 @@ mod tests {
         ];
         let header = BlockHeader {
             version: 1,
-            previous_block_hash: String::from("12345678901234567890123456789012"),
-            merkle_root_hash: String::from("12345678901234567890123456789012"),
+            previous_block_hash: [
+                49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49,
+                50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50
+            ],
+            merkle_root_hash: [
+                49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49,
+                50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50
+            ],
             time: 123456789,
             n_bits: 123456789,
             nonce: 123456789,
