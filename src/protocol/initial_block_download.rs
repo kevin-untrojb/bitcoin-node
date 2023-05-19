@@ -1,11 +1,9 @@
 use bitcoin_hashes::{sha256d, Hash};
-
 use crate::blockchain::block::SerializedBlock;
-use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::node::Node;
 use crate::config;
 use crate::errores::NodoBitcoinError;
-use crate::messages::getdata::{GetDataMessage, Inventory};
+use crate::messages::getdata::{GetDataMessage};
 use crate::messages::getheaders::GetHeadersMessage;
 use crate::messages::headers::deserealize;
 use crate::messages::messages_header::check_header;
@@ -27,7 +25,7 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
     let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
     let mut get_headers_message = GetHeadersMessage::serialize(&get_headers)?;
 
-    for mut connection in connections {
+    for mut connection in &connections {
         if connection.write(&get_headers_message).is_err() {
             return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
         }
@@ -73,7 +71,7 @@ pub fn get_headers(connections: Vec<TcpStream>, node: &mut Node) -> Result<(), N
 
                     let shared_blocks = blocks.clone();
 
-                    let mut thread_connection = match connection.try_clone() {
+                    let mut thread_connection = match connections[i].try_clone() {
                         Ok(res) => res,
                         Err(_) => continue,
                     };

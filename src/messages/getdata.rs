@@ -1,5 +1,5 @@
 use super::messages_header::make_header;
-use crate::{blockchain::blockheader::BlockHeader, errores::NodoBitcoinError};
+use crate::{errores::NodoBitcoinError};
 
 const MSG_BLOCK: u32 = 2;
 
