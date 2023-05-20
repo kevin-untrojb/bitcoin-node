@@ -12,12 +12,12 @@ use std::io::Write;
 /// * input - The vector of input transactions for the transaction.
 /// * output - The vector of output transactions for the transaction.
 /// * lock_time - The lock time for the transaction.
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
-    version: u32,
-    input: Vec<TxIn>,
-    output: Vec<TxOut>,
-    lock_time: u64,
+    pub version: u32,
+    pub input: Vec<TxIn>,
+    pub output: Vec<TxOut>,
+    pub lock_time: u64,
 }
 
 impl Transaction {
@@ -74,7 +74,6 @@ impl Transaction {
     pub fn size(&self) -> usize{
         let input_size = self.input.iter().map(|tx_in| tx_in.size()).sum::<usize>();
         let output_size = self.output.iter().map(|tx_out| tx_out.size()).sum::<usize>();
-
         20 + input_size + output_size
     }
 }
@@ -88,7 +87,7 @@ impl Transaction {
 /// * signature_script - The signature script for the input.
 /// * sequence - The sequence number for the input.
 #[derive(Debug, PartialEq, Clone)]
-struct TxIn {
+pub struct TxIn {
     pub previous_output: Outpoint,
     pub script_bytes: u32,
     pub signature_script: Vec<u8>,
@@ -141,9 +140,9 @@ impl TxIn {
 /// * hash - The transaction hash of the previous transaction.
 /// * index - The index of the output in the previous transaction.
 #[derive(Debug, PartialEq, Clone)]
-struct Outpoint {
-    hash: [u8; 32],
-    index: u32,
+pub struct Outpoint {
+    pub hash: [u8; 32],
+    pub index: u32,
 }
 impl Outpoint {
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
@@ -180,7 +179,7 @@ impl Outpoint {
 /// * value - The value of the output in satoshis.
 /// * pk_script - The public key script for the output.
 #[derive(Debug, PartialEq, Clone)]
-struct TxOut {
+pub struct TxOut {
     pub value: u64,
     pub pk_len: u32,
     pub pk_script: Vec<u8>,
