@@ -71,6 +71,12 @@ impl Transaction {
             lock_time,
         })
     }
+    pub fn size(&self) -> usize{
+        let input_size = self.input.iter().map(|tx_in| tx_in.size()).sum::<usize>();
+        let output_size = self.output.iter().map(|tx_out| tx_out.size()).sum::<usize>();
+
+        20 + input_size + output_size
+    }
 }
 
 /// A struct representing an input transaction for a Bitcoin transaction
@@ -267,11 +273,8 @@ mod tests {
             0, 0, 0, 0, 0, 0, 0, 0,  // lock_time
         ];
 
-        // Serializar la transacción
         let serialized = transaction.serialize().unwrap();
 
-        // Verificar la longitud del resultado serializado
-        //assert_eq!(serialized.len(), expected_bytes.len());
         assert_eq!(serialized, expected_bytes);
     }
 
@@ -369,7 +372,55 @@ mod tests {
         assert_eq!(deserialized.output, output);
         assert_eq!(deserialized.lock_time, lock_time);
     }
+    #[test]
+    fn test_transaction_size() {
+        let version = 1;
+        let input = vec![
+            TxIn {
+                previous_output: Outpoint {
+                    hash: [1u8; 32],
+                    index: 123,
+                },
+                script_bytes:4,
+                signature_script: vec![128, 0, 0, 0],
+                sequence:255,
+            }
+        ];
+        let output = vec![
+            TxOut {
+                value: 123,
+                pk_len:5,
+                pk_script: vec![1, 2, 3, 4, 5],
+            }
+        ];
+        let lock_time = 0;
 
+        let transaction = Transaction {
+            version,
+            input,
+            output,
+            lock_time,
+        };
+        let expected_bytes = vec![
+            1, 0, 0, 0,  // version
+            1, 0, 0, 0,  // number_tx_in
+            // Datos de input
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // hash
+            123, 0, 0, 0,
+            4, 0, 0, 0,
+            128, 0, 0, 0,
+            255, 0, 0, 0,
+            // Datos de número de output y output
+            1, 0, 0, 0,  // number_tx_out
+            // Datos de output
+            123, 0, 0, 0, 0, 0, 0, 0, // Valor
+            5, 0, 0, 0, //  pk_len
+            1, 2, 3, 4, 5, // pk_script
+            // Datos de lock_time
+            0, 0, 0, 0, 0, 0, 0, 0,  // lock_time
+        ];
+        assert_eq!(transaction.size(), expected_bytes.len());
+    }
     #[test]
     fn test_serialize_tx_in() {
         let previous_output = Outpoint {
