@@ -14,7 +14,9 @@ use std::{println, thread, vec, cmp};
 
 use super::admin_connections::AdminConnections;
 
-pub fn get_headers(admin_connections: &mut AdminConnections, node: &mut Node) -> Result<(), NodoBitcoinError> {
+pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> Result<(), NodoBitcoinError> {
+    let admin_connections_mutex = Arc::new(Mutex::new(admin_connections));
+
     let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
         Ok(res) => res,
         Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig)
@@ -27,7 +29,16 @@ pub fn get_headers(admin_connections: &mut AdminConnections, node: &mut Node) ->
     let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
     let mut get_headers_message = GetHeadersMessage::serialize(&get_headers)?;
 
-    let connection = admin_connections.find_free_connection()?;
+    let mut binding = admin_connections_mutex.lock().unwrap();
+    let (mut connection, mut id_connection) = AdminConnections::find_free_connection(&binding).unwrap();
+
+    /*let (mut connection, mut id_connection) = match admin_connections_mutex.lock(){
+        Ok(mut admin) => {
+            let (found, id_connection) = admin.find_free_connection().unwrap();
+            (found, id_connection)
+        },
+        Err(_) => return Err(NodoBitcoinError::NoSeEncuentraConexionLibre),
+    };*/
 
     if connection.tcp.write(&get_headers_message).is_err() {
         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
@@ -39,7 +50,8 @@ pub fn get_headers(admin_connections: &mut AdminConnections, node: &mut Node) ->
         match connection.tcp.read(&mut buffer) {
             Ok(bytes_read) => {
                 if bytes_read == 0 {
-                    connection = admin_connections.change_connection(connection)?;
+                    let mut binding = admin_connections_mutex.lock().unwrap();
+                    let (mut connection, mut id_connection) = AdminConnections::change_connection(&binding, id_connection).unwrap();
                     break;
                 }
             }
@@ -71,6 +83,7 @@ pub fn get_headers(admin_connections: &mut AdminConnections, node: &mut Node) ->
             let n_blockheaders_thread = (headers_filtrados.len() as f64 / n_threads as f64).ceil() as usize;
             let blocks = Arc::new(Mutex::new(vec![]));
             let mut threads = vec![];
+
             
             for i in 0..n_threads {
 
@@ -80,12 +93,12 @@ pub fn get_headers(admin_connections: &mut AdminConnections, node: &mut Node) ->
 
                 let shared_blocks = blocks.clone();
 
-                /*let thread_connection = match admin_connections.find_free_connection(){
-                    Ok(res) => res,
-                    Err(_) => return Err(NodoBitcoinError::NoSeEncuentraConexionLibre),
-                };*/
+                let admin_connections_mutex_thread = admin_connections_mutex.clone();
                 
                 threads.push(thread::spawn(move || {
+
+                    let mut binding = admin_connections_mutex_thread.lock().unwrap();
+                    let (mut thread_connection, mut thread_id_connection) = AdminConnections::find_free_connection(&binding).unwrap();
 
                     for header in block_headers_thread {
                         let hash_header = match header.serialize() {
@@ -110,6 +123,14 @@ pub fn get_headers(admin_connections: &mut AdminConnections, node: &mut Node) ->
                                 Ok(bytes_read) => {
                                     if bytes_read == 0 {
                                         println!("0 bytes read");
+                                        /*let thread_connection = match admin_connections_mutex_thread.lock(){
+                                            Ok(mut admin) => {
+                                                thread_connection = admin.change_connection(thread_connection).unwrap();
+                                                drop(admin_connections_mutex_thread);
+                                                thread_connection
+                                            },
+                                            Err(_) => return,
+                                        };*/
                                         break;
                                     }
                                     println!("{} bytes read getData", thread_buffer.len());

@@ -19,10 +19,9 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
-        let mut admin_connections = AdminConnections::new();
-        let connections = connect(&mut admin_connections)?;
+        let admin_connections = connect()?;
         let mut node = Node::new();
-        get_headers(&mut admin_connections, &mut node)?;
+        get_headers(admin_connections, &mut node)?;
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);

@@ -14,7 +14,8 @@ use std::time::Duration;
 
 use super::admin_connections::AdminConnections;
 
-pub fn connect(admin_connections: &mut AdminConnections) -> Result<(), NodoBitcoinError> {
+pub fn connect() -> Result<AdminConnections, NodoBitcoinError> {
+    let mut admin_connections = AdminConnections::new();
     let addresses = get_address();
     let mut id: i32 = 0;
     for address in addresses.iter() {
@@ -28,7 +29,7 @@ pub fn connect(admin_connections: &mut AdminConnections) -> Result<(), NodoBitco
             Err(_) => continue,
         };
     }
-    Ok(())
+    Ok(admin_connections)
 }
 
 fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, NodoBitcoinError> {
