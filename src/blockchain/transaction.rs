@@ -49,8 +49,8 @@ impl TxIn {
     pub fn deserialize(block_bytes: &[u8]) -> Result<TxIn, NodoBitcoinError> {
         let mut offset = 0;
 
-        let previous_output = Outpoint::deserialize(&block_bytes[offset..])?;
-        offset += previous_output.size() as usize;
+        let previous_output = Outpoint::deserialize(&block_bytes[offset..offset+36])?;
+        offset += 36;
 
         let script_bytes = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
         offset += 4;
@@ -156,6 +156,51 @@ impl TxOut {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_serialize_tx_in() {
+        let previous_output = Outpoint {
+            hash: [1; 32],
+            index: 123,
+        };
+        let script_bytes = 4;
+        let signature_script = vec![128, 0, 0, 0];
+        let sequence = 255;
+
+        let tx_in = TxIn {
+            previous_output,
+            script_bytes,
+            signature_script: signature_script.clone(),
+            sequence,
+        };
+
+        let serialized = tx_in.serialize().unwrap();
+
+        assert_eq!(serialized.len(), 48);
+        assert_eq!(serialized[0..32], [1; 32]);
+        assert_eq!(u32::from_le_bytes(serialized[32..36].try_into().unwrap()), 123);
+        assert_eq!(u32::from_le_bytes(serialized[36..40].try_into().unwrap()), 4);
+        assert_eq!(serialized[40..44], [128, 0, 0, 0]);
+        assert_eq!(u32::from_le_bytes(serialized[44..48].try_into().unwrap()), 255);
+    }
+
+    #[test]
+    fn test_deserialize_tx_in() {
+        let bytes: [u8; 48] = [
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // hash
+            123, 0, 0, 0,
+            4, 0, 0, 0, 128, 0, 0, 0,
+            255, 0, 0, 0
+        ];
+
+        let tx_in = TxIn::deserialize(&bytes).unwrap();
+
+        assert_eq!(tx_in.previous_output.hash, [1u8; 32]);
+        assert_eq!(tx_in.previous_output.index, 123);
+        assert_eq!(tx_in.script_bytes, 4);
+        assert_eq!(tx_in.signature_script, vec![128, 0, 0, 0]);
+        assert_eq!(tx_in.sequence, 255);
+    }
 
     #[test]
     fn test_serialize_outpoint() {
