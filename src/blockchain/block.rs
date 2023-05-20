@@ -1,5 +1,5 @@
 use super::{blockheader::BlockHeader, transaction};
-use transaction::_Transaction;
+use transaction::Transaction;
 use crate::errores::NodoBitcoinError;
 
 /// A struct representing a Bitcoin Serialized Block
@@ -13,7 +13,7 @@ use crate::errores::NodoBitcoinError;
 #[derive(Clone)]
 pub struct SerializedBlock {
     pub header: BlockHeader,
-    pub txns: Vec<_Transaction>,
+    pub txns: Vec<Transaction>,
 }
 
 impl SerializedBlock {
