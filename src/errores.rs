@@ -12,6 +12,7 @@ pub enum NodoBitcoinError {
     NoSePudoConectar,
     MagicNumberIncorrecto,
     ErrorEnHandshake,
+    NoSeEncuentraConexionLibre,
 
     // serialize - deserialize
     NoSePuedeLeerLosBytes,
@@ -65,6 +66,9 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::NoChildren => {
                 write!(f, "ERROR: No hay TXs para crear el Merkle Tree.")
+            }
+            NodoBitcoinError::NoSeEncuentraConexionLibre => {
+                write!(f, "ERROR: No se encuentra conexion disponible.")
             }
         }
     }

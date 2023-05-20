@@ -12,21 +12,23 @@ use std::net::UdpSocket;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::Duration;
 
-pub fn connect() -> Result<Vec<TcpStream>, NodoBitcoinError> {
-    let addresses = get_address();
-    let mut connections = Vec::new();
+use super::admin_connections::AdminConnections;
 
+pub fn connect(admin_connections: &mut AdminConnections) -> Result<(), NodoBitcoinError> {
+    let addresses = get_address();
+    let mut id: i32 = 0;
     for address in addresses.iter() {
         println!("Address: {:?}", address);
         match TcpStream::connect_timeout(address, Duration::from_secs(10)) {
             Ok(socket) => {
                 let connection: TcpStream = handshake(socket, *address)?;
-                connections.push(connection);
+                admin_connections.add(connection, id)?;
+                id += 1;
             }
             Err(_) => continue,
         };
     }
-    Ok(connections)
+    Ok(())
 }
 
 fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, NodoBitcoinError> {
