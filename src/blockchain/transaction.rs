@@ -32,16 +32,16 @@ pub struct _Transaction {
 struct TxIn {
     previous_output: Outpoint,
     script_bytes: usize,
-    signature_script: String,
+    signature_script: Vec<u8>,
     sequence: u32,
 }
 
 impl TxIn {
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
-        bytes.write_all(&(self.previous_output.serialize()?)?).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes.write_all(&(self.previous_output.serialize()?)).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         bytes.write_all(&(self.script_bytes as u32).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(self.signature_script.as_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes.write_all(&self.signature_script).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         bytes.write_all(&(self.sequence).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         Ok(bytes)
     }
@@ -55,8 +55,10 @@ impl TxIn {
         let script_bytes = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
         offset += 4;
 
-        let signature_script = String::from_utf8_lossy(&block_bytes[offset..offset + script_bytes as usize]).into_owned();
-        offset += script_bytes as usize;
+        let size = script_bytes as usize;
+        let mut signature_script = vec![0u8; size];
+        signature_script.copy_from_slice(&block_bytes[offset..offset + size]);
+        offset += size;
 
         let sequence = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
         offset += 4;
