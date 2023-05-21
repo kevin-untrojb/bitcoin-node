@@ -12,7 +12,7 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use std::{println, thread, vec, cmp};
 
-use super::admin_connections::{AdminConnections, self};
+use super::admin_connections::{AdminConnections};
 
 pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> Result<(), NodoBitcoinError> {
     let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
@@ -86,7 +86,8 @@ pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> 
                 threads.push(thread::spawn(move || {
 
                     let mut admin_thread = admin_connections_mutex_thread.lock().unwrap();
-                    let (thread_connection, thread_id_connection) = admin_thread.find_free_connection().unwrap();
+                    let (mut thread_connection, mut thread_id_connection) = admin_thread.find_free_connection().unwrap();
+                    let connection = thread_connection.clone();
 
                     for header in block_headers_thread {
                         let hash_header = match header.serialize() {
@@ -100,25 +101,24 @@ pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> 
                             Ok(res) => res,
                             Err(_) => continue,
                         };
-    
-                        if thread_connection.tcp.lock().unwrap().write(&get_data_message).is_err() {
+   
+                        if connection.tcp.lock().unwrap().write(&get_data_message).is_err() {
                             // throw/catch error
                         }
 
                         loop {
                             let mut thread_buffer= [0u8; 24];
-                            match thread_connection.tcp.lock().unwrap().read(&mut thread_buffer) {
+                            match connection.tcp.lock().unwrap().read(&mut thread_buffer) {
                                 Ok(bytes_read) => {
                                     if bytes_read == 0 {
                                         println!("0 bytes read");
-                                        /*let thread_connection = match admin_connections_mutex_thread.lock(){
+                                        let (thread_connection, thread_id_connection) = match admin_connections_mutex_thread.lock(){
                                             Ok(mut admin) => {
-                                                thread_connection = admin.change_connection(thread_connection).unwrap();
-                                                drop(admin_connections_mutex_thread);
-                                                thread_connection
+                                                (thread_connection, thread_id_connection) = admin.change_connection(thread_id_connection).unwrap();
+                                                (thread_connection.clone(), thread_id_connection)
                                             },
                                             Err(_) => return,
-                                        };*/
+                                        };
                                         break;
                                     }
                                     println!("{} bytes read getData", thread_buffer.len());
