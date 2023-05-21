@@ -1,4 +1,4 @@
-use crate::blockchain::header::BlockHeader;
+use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::node::Node;
 use crate::errores::NodoBitcoinError;
 use crate::messages::getheaders::GetHeadersMessage;
