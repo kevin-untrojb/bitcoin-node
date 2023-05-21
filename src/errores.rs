@@ -15,6 +15,7 @@ pub enum NodoBitcoinError {
     // serialize - deserialize
     NoSePuedeLeerLosBytes,
     NoSePuedeEscribirLosBytes,
+    ValorFueraDeRango,
 
     // merkle_tree
     NoChildren,
@@ -51,6 +52,9 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::NoSePudoConectar => {
                 write!(f, "ERROR: No se pudo conectar al servidor.")
+            }
+            NodoBitcoinError::ValorFueraDeRango => {
+                write!(f, "ERROR: No se puede parsear el valor ya que está fuera de rango.")
             }
 
             NodoBitcoinError::MagicNumberIncorrecto => {
