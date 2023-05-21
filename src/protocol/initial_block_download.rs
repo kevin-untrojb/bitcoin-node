@@ -1,7 +1,7 @@
 use bitcoin_hashes::{sha256d, Hash};
 use crate::blockchain::block::{SerializedBlock};
 use crate::blockchain::node::Node;
-use crate::common::utils_bytes_conversion::obtener_timestamp_dia;
+use crate::common::utils_timestamp::obtener_timestamp_dia;
 use crate::config;
 use crate::errores::NodoBitcoinError;
 use crate::messages::getdata::{GetDataMessage};

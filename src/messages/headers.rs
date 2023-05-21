@@ -1,6 +1,6 @@
 use crate::{
     blockchain::{blockheader::BlockHeader, file::escribir_archivo},
-    errores::NodoBitcoinError,
+    errores::NodoBitcoinError, common::utils_bytes::parse_varint,
 };
 
 pub fn deserealize(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoinError> {
@@ -21,22 +21,4 @@ pub fn deserealize(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoin
     }
     
     Ok(block_headers)
-}
-
-fn parse_varint(bytes: &[u8]) -> (usize, usize) {
-    let prefix = bytes[0];
-    match prefix {
-        0xfd => (3, u16::from_le_bytes([bytes[1], bytes[2]]) as usize),
-        0xfe => (
-            5,
-            u32::from_le_bytes([bytes[1], bytes[2], bytes[3], bytes[4]]) as usize,
-        ),
-        0xff => (
-            9,
-            u64::from_le_bytes([
-                bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8],
-            ]) as usize,
-        ),
-        _ => (1, u64::from(prefix) as usize),
-    }
 }
