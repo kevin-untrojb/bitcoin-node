@@ -61,8 +61,7 @@ impl BlockHeader {
         let version = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)
-                .unwrap(),
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?
         );
         offset += 4;
 
@@ -77,24 +76,21 @@ impl BlockHeader {
         let time = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)
-                .unwrap(),
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?
         );
         offset += 4;
 
         let n_bits = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)
-                .unwrap(),
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?
         );
         offset += 4;
 
         let nonce = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)
-                .unwrap(),
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?
         );
 
         Ok(BlockHeader {

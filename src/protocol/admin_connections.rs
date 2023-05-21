@@ -3,6 +3,7 @@ use std::{net::TcpStream, collections::HashMap, sync::{Mutex, Arc}};
 use crate::errores::NodoBitcoinError;
 #[derive(Clone)]
 pub struct Connection{
+    pub id: i32,
     pub tcp: Arc<Mutex<TcpStream>>,
     free: bool
 }
@@ -17,7 +18,7 @@ impl AdminConnections {
     }
 
     pub fn add(&mut self, tcp: TcpStream, id: i32) -> Result<(), NodoBitcoinError> {
-        let _ = &(self.connections).insert(id, Connection {tcp: Arc::new(Mutex::new(tcp)), free: true});
+        let _ = &(self.connections).insert(id, Connection {id, tcp: Arc::new(Mutex::new(tcp)), free: true});
         Ok(())
     }
 

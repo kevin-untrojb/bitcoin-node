@@ -17,6 +17,9 @@ pub enum NodoBitcoinError {
     // serialize - deserialize
     NoSePuedeLeerLosBytes,
     NoSePuedeEscribirLosBytes,
+    NoSePuedeLeerLosBytesHeaderVersionMessage,
+    NoSePuedeLeerLosBytesVersionMessage,
+    NoSePuedeLeerLosBytesVerackMessage,
 
     // merkle_tree
     NoChildren,
@@ -69,6 +72,15 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::NoSeEncuentraConexionLibre => {
                 write!(f, "ERROR: No se encuentra conexion disponible.")
+            }
+            NodoBitcoinError::NoSePuedeLeerLosBytesHeaderVersionMessage => {
+                write!(f, "ERROR: No se puede leer correctamente el header del version message.")
+            }
+            NodoBitcoinError::NoSePuedeLeerLosBytesVersionMessage => {
+                write!(f, "ERROR: No se puede leer correctamente el version message.")
+            }
+            NodoBitcoinError::NoSePuedeLeerLosBytesVerackMessage => {
+                write!(f, "ERROR: No se puede leer correctamente el verack message.")
             }
         }
     }

@@ -3,6 +3,7 @@ use crate::errores::NodoBitcoinError;
 use crate::messages::messages_header::check_header;
 use crate::messages::messages_header::make_header;
 use crate::messages::version::VersionMessage;
+use crate::protocol::connection;
 use chrono::Utc;
 use std::io::Read;
 use std::io::Write;
@@ -22,9 +23,13 @@ pub fn connect() -> Result<AdminConnections, NodoBitcoinError> {
         println!("Address: {:?}", address);
         match TcpStream::connect_timeout(address, Duration::from_secs(10)) {
             Ok(socket) => {
-                let connection: TcpStream = handshake(socket, *address)?;
-                admin_connections.add(connection, id)?;
-                id += 1;
+                match handshake(socket, *address) {
+                    Ok(connection) => {
+                        admin_connections.add(connection, id)?;
+                        id += 1;
+                    },
+                    Err(_) => continue,
+                };
             }
             Err(_) => continue,
         };
@@ -47,7 +52,7 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
         address.ip().to_string(),
         address.port(),
         0,
-        "181.165.131.147".to_string(),
+        "192.168.0.66".to_string(),
         18333,
         0,
         0,
@@ -62,7 +67,7 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
 
     let mut header = [0u8; 24];
     if socket.read_exact(&mut header).is_err() {
-        return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+        return Err(NodoBitcoinError::NoSePuedeLeerLosBytesHeaderVersionMessage);
     }
 
     let (command, payload_len) = check_header(&header)?;
@@ -73,12 +78,12 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
 
     let mut payload = vec![0u8; payload_len];
     if socket.read_exact(&mut payload).is_err() {
-        return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+        return Err(NodoBitcoinError::NoSePuedeLeerLosBytesVersionMessage);
     }
 
     let mut verack_resp = vec![0u8; 24];
     if socket.read_exact(&mut verack_resp).is_err() {
-        return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+        return Err(NodoBitcoinError::NoSePuedeLeerLosBytesVerackMessage);
     }
 
     let (command, _payload_len) = check_header(&verack_resp)?;
@@ -104,11 +109,9 @@ pub fn get_address() -> Vec<SocketAddr> {
 
     if let Ok(lookup) = seedhost.to_socket_addrs() {
         for host in lookup {
-            //return Ok(host);
             seeds.push(host);
         }
     }
-    //Err(NodoBitcoinError::NoSeEncontroURL)
     seeds
 }
 
