@@ -1,4 +1,5 @@
 use crate::blockchain::block::SerializedBlock;
+use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::node::Node;
 use crate::common::utils_timestamp::obtener_timestamp_dia;
 use crate::config;
