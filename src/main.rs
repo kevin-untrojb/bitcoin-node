@@ -19,7 +19,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
-        let admin_connections = connect()?;
+        let mut admin_connections = connect()?;
         let mut node = Node::new();
         get_headers(admin_connections, &mut node)?;
 

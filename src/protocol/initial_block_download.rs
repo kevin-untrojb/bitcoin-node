@@ -12,11 +12,9 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use std::{println, thread, vec, cmp};
 
-use super::admin_connections::AdminConnections;
+use super::admin_connections::{AdminConnections, self};
 
 pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> Result<(), NodoBitcoinError> {
-    let admin_connections_mutex = Arc::new(Mutex::new(admin_connections));
-
     let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
         Ok(res) => res,
         Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig)
@@ -29,29 +27,19 @@ pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> 
     let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
     let mut get_headers_message = GetHeadersMessage::serialize(&get_headers)?;
 
-    let mut binding = admin_connections_mutex.lock().unwrap();
-    let (mut connection, mut id_connection) = AdminConnections::find_free_connection(&binding).unwrap();
+    let (connection, id) = admin_connections.find_free_connection()?;
 
-    /*let (mut connection, mut id_connection) = match admin_connections_mutex.lock(){
-        Ok(mut admin) => {
-            let (found, id_connection) = admin.find_free_connection().unwrap();
-            (found, id_connection)
-        },
-        Err(_) => return Err(NodoBitcoinError::NoSeEncuentraConexionLibre),
-    };*/
-
-    if connection.tcp.write(&get_headers_message).is_err() {
+    if connection.tcp.lock().unwrap().write(&get_headers_message).is_err() {
         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
     }
 
     loop {
 
         let mut buffer = [0u8; 24];
-        match connection.tcp.read(&mut buffer) {
+        match connection.tcp.lock().unwrap().read(&mut buffer) {
             Ok(bytes_read) => {
                 if bytes_read == 0 {
-                    let mut binding = admin_connections_mutex.lock().unwrap();
-                    let (mut connection, mut id_connection) = AdminConnections::change_connection(&binding, id_connection).unwrap();
+                    let (connection, id) = admin_connections.change_connection(id)?;
                     break;
                 }
             }
@@ -60,7 +48,7 @@ pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> 
         let (command, headers) = match check_header(&buffer) {
             Ok((command, payload_len)) => {
                 let mut headers = vec![0u8; payload_len];
-                if connection.tcp.read_exact(&mut headers).is_err() {
+                if connection.tcp.lock().unwrap().read_exact(&mut headers).is_err() {
                     return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
                 }
                 (command, headers)
@@ -83,7 +71,6 @@ pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> 
             let n_blockheaders_thread = (headers_filtrados.len() as f64 / n_threads as f64).ceil() as usize;
             let blocks = Arc::new(Mutex::new(vec![]));
             let mut threads = vec![];
-
             
             for i in 0..n_threads {
 
@@ -93,12 +80,13 @@ pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> 
 
                 let shared_blocks = blocks.clone();
 
+                let admin_connections_mutex = Arc::new(Mutex::new(admin_connections.clone()));
                 let admin_connections_mutex_thread = admin_connections_mutex.clone();
                 
                 threads.push(thread::spawn(move || {
 
-                    let mut binding = admin_connections_mutex_thread.lock().unwrap();
-                    let (mut thread_connection, mut thread_id_connection) = AdminConnections::find_free_connection(&binding).unwrap();
+                    let mut admin_thread = admin_connections_mutex_thread.lock().unwrap();
+                    let (thread_connection, thread_id_connection) = admin_thread.find_free_connection().unwrap();
 
                     for header in block_headers_thread {
                         let hash_header = match header.serialize() {
@@ -113,13 +101,13 @@ pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> 
                             Err(_) => continue,
                         };
     
-                        if thread_connection.tcp.write(&get_data_message).is_err() {
+                        if thread_connection.tcp.lock().unwrap().write(&get_data_message).is_err() {
                             // throw/catch error
                         }
 
                         loop {
                             let mut thread_buffer= [0u8; 24];
-                            match thread_connection.tcp.read(&mut thread_buffer) {
+                            match thread_connection.tcp.lock().unwrap().read(&mut thread_buffer) {
                                 Ok(bytes_read) => {
                                     if bytes_read == 0 {
                                         println!("0 bytes read");
@@ -141,7 +129,7 @@ pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> 
                             let (command, response_get_data) = match check_header(&thread_buffer) {
                                 Ok((command, payload_len)) => {
                                     let mut response_get_data = vec![0u8; payload_len];
-                                    if thread_connection.tcp.read_exact(&mut response_get_data).is_err() {
+                                    if thread_connection.tcp.lock().unwrap().read_exact(&mut response_get_data).is_err() {
                                         // throw/catch error
                                     }
                                     (command, response_get_data)
@@ -177,7 +165,7 @@ pub fn get_headers(mut admin_connections: AdminConnections, node: &mut Node) -> 
             );
             get_headers_message = GetHeadersMessage::serialize(&get_headers)?;
 
-            if connection.tcp.write(&get_headers_message).is_err() {
+            if connection.tcp.lock().unwrap().write(&get_headers_message).is_err() {
                 return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
             }
         }
