@@ -16,6 +16,12 @@ pub struct AdminConnections {
     connections: HashMap<i32, Connection>,
 }
 
+impl Default for AdminConnections {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AdminConnections {
     pub fn new() -> AdminConnections {
         AdminConnections {
@@ -39,13 +45,13 @@ impl AdminConnections {
         match self
             .connections
             .iter_mut()
-            .find(|(_id, connection)| connection.free == true)
+            .find(|(_id, connection)| connection.free)
         {
             Some((id, mut connection)) => {
                 connection.free = false;
                 Ok((connection.clone(), *id))
             }
-            None => return Err(NodoBitcoinError::NoSeEncuentraConexionLibre),
+            None => Err(NodoBitcoinError::NoSeEncuentraConexionLibre),
         }
     }
 
@@ -55,7 +61,7 @@ impl AdminConnections {
     ) -> Result<(Connection, i32), NodoBitcoinError> {
         let free_connection = self.find_free_connection();
         match self.connections.get_mut(&old_connection_id) {
-            Some(mut res) => (*res).free = false,
+            Some(mut res) => res.free = false,
             None => todo!(),
         };
         free_connection

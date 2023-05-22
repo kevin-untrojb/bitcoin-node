@@ -9,6 +9,12 @@ const NUM_BYTES: usize = 32;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Uint256([u8; NUM_BYTES]);
 
+impl Default for Uint256 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Uint256 {
     pub fn new() -> Uint256 {
         Uint256([0; NUM_BYTES])
@@ -71,10 +77,12 @@ impl Uint256 {
 impl PartialOrd for Uint256 {
     fn partial_cmp(&self, other: &Uint256) -> Option<Ordering> {
         for i in 0..NUM_BYTES {
-            if self.0[i] > other.0[i] {
-                return Some(Ordering::Greater);
-            } else if self.0[i] < other.0[i] {
-                return Some(Ordering::Less);
+            match self.0[i] > other.0[i] {
+                true => return Some(Ordering::Greater),
+                false => match self.0[i] < other.0[i] {
+                    true => return Some(Ordering::Less),
+                    false => continue,
+                },
             }
         }
         Some(Ordering::Equal)
@@ -136,11 +144,10 @@ impl Mul<Uint256> for Uint256 {
             }
             partial_sum.push(iteration_sum); // 1 por cada byte del multiplicando
         }
-        let result = partial_sum
-            .into_iter()
-            .fold(Uint256::new(), |acc, x| acc.add(x));
 
-        result
+        partial_sum
+            .into_iter()
+            .fold(Uint256::new(), |acc, x| acc.add(x))
     }
 }
 

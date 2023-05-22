@@ -25,9 +25,7 @@ fn _calculate_target(blockheader: &BlockHeader) -> Uint256 {
     let value256 = Uint256::_from_u32(256);
 
     let potencia = value256._pow(exp - 3);
-
-    let target = coeff_256 * potencia;
-    target
+    coeff_256 * potencia
 }
 
 // fn _calculate_dificulty(bits: u32) -> Uint256 {
@@ -37,8 +35,8 @@ fn _calculate_target(blockheader: &BlockHeader) -> Uint256 {
 // }
 
 fn _calculate_hash(data: &[u8]) -> [u8; 32] {
-    let hash = sha256d::Hash::hash(&data);
-    hash.as_byte_array().clone()
+    let hash = sha256d::Hash::hash(data);
+    *hash.as_byte_array()
 }
 
 fn _calculate_proof(data: &[u8]) -> Uint256 {

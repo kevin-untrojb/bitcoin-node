@@ -167,7 +167,7 @@ impl TxIn {
         })
     }
     pub fn size(&self) -> usize {
-        (40 + self.script_bytes_amount + self.signature_script.len()) as usize
+        40 + self.script_bytes_amount + self.signature_script.len()
     }
 }
 
@@ -253,8 +253,8 @@ impl TxOut {
         let (pk_len_bytes, pk_len) = utils_bytes::parse_varint(&block_bytes[offset..]);
         offset += pk_len_bytes;
 
-        let mut pk_script = vec![0u8; pk_len as usize];
-        pk_script.copy_from_slice(&block_bytes[offset..offset + pk_len as usize]);
+        let mut pk_script = vec![0u8; pk_len];
+        pk_script.copy_from_slice(&block_bytes[offset..offset + pk_len]);
         Ok(TxOut {
             value,
             pk_len,
@@ -263,6 +263,6 @@ impl TxOut {
         })
     }
     pub fn size(&self) -> usize {
-        (8 + self.pk_len_bytes + self.pk_script.len() as usize) as usize
+        8 + self.pk_len_bytes + self.pk_script.len()
     }
 }

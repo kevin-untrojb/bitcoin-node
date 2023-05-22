@@ -6,6 +6,12 @@ pub struct Node {
     _blocks: Vec<SerializedBlock>,
 }
 
+impl Default for Node {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Node {
     pub fn new() -> Node {
         Node {
@@ -14,7 +20,7 @@ impl Node {
         }
     }
 
-    pub fn _add_headers(&mut self, headers: &Vec<BlockHeader>) {
+    pub fn _add_headers(&mut self, headers: &[BlockHeader]) {
         let _ = &(self._headers).extend_from_slice(headers);
     }
 

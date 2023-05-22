@@ -10,8 +10,8 @@ pub fn escribir_archivo(datos: &[u8]) -> Result<(), NodoBitcoinError> {
     };
 
     // Escribe los bytes en el archivo
-    match archivo.write_all(datos) {
-        Ok(_) => return Ok(()),
-        Err(_) => return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes),
-    };
+    archivo
+        .write_all(datos)
+        .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+    Ok(())
 }
