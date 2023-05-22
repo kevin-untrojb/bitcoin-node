@@ -30,7 +30,7 @@ impl MerkleRoot {
             .collect();
 
         if nodes.len() == 1 {
-            return nodes.first().cloned().ok_or(NodoBitcoinError::NoChildren);
+            return nodes.first().cloned().ok_or(NodoBitcoinError::_NoChildren);
         }
 
         while nodes.len() > 1 {
@@ -47,7 +47,7 @@ impl MerkleRoot {
             }
             nodes = new_level;
         }
-        nodes.first().cloned().ok_or(NodoBitcoinError::NoChildren)
+        nodes.first().cloned().ok_or(NodoBitcoinError::_NoChildren)
     }
 }
 
@@ -99,7 +99,7 @@ mod tests {
         assert!(merkle_root_result.is_err());
 
         let merkle_root_error = merkle_root_result.unwrap_err();
-        assert_eq!(merkle_root_error, NodoBitcoinError::NoChildren);
+        assert_eq!(merkle_root_error, NodoBitcoinError::_NoChildren);
     }
 
     #[test]

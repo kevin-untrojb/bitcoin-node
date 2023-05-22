@@ -1,5 +1,4 @@
 use crate::blockchain::block::SerializedBlock;
-use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::node::Node;
 use crate::common::utils_timestamp::obtener_timestamp_dia;
 use crate::config;
@@ -11,15 +10,13 @@ use crate::messages::messages_header::check_header;
 use bitcoin_hashes::{sha256d, Hash};
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
-use std::thread::sleep;
-use std::time::Duration;
 use std::{cmp, println, thread, vec};
 
 use super::admin_connections::AdminConnections;
 
 pub fn get_headers(
     mut admin_connections: AdminConnections,
-    node: &mut Node,
+    _node: &mut Node,
 ) -> Result<(), NodoBitcoinError> {
     let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
         Ok(res) => res,
@@ -62,7 +59,7 @@ pub fn get_headers(
             }
             Err(_) => continue,
         }
-        let mut valid_command: bool = false;
+        let valid_command: bool;
         let (_command, headers) = match check_header(&buffer) {
             Ok((command, payload_len)) => {
                 let mut headers = vec![0u8; payload_len];
@@ -79,7 +76,7 @@ pub fn get_headers(
                 (command, headers)
             }
             Err(NodoBitcoinError::MagicNumberIncorrecto) => {
-                let (connection, id) = admin_connections.change_connection(id)?;
+                let (connection, _id) = admin_connections.change_connection(id)?;
                 if connection
                     .tcp
                     .lock()
@@ -201,7 +198,7 @@ pub fn get_headers(
                                 continue;
                             }
 
-                            let mut valid_command: bool = false;
+                            let valid_command: bool;
                             let (_command, response_get_data) = match check_header(&thread_buffer) {
                                 Ok((command, payload_len)) => {
                                     let mut response_get_data = vec![0u8; payload_len];

@@ -21,23 +21,6 @@ pub fn parse_varint(bytes: &[u8]) -> (usize, usize) {
         _ => (1, u64::from(prefix) as usize),
     }
 }
-pub fn parse_varint2(bytes: &[u8]) -> (usize, usize) {
-    let prefix = bytes[0];
-    match prefix {
-        PREFIX_FD => (3, u16::from_le_bytes([bytes[2], bytes[1]]) as usize),
-        PREFIX_FE => (
-            5,
-            u32::from_le_bytes([bytes[4], bytes[3], bytes[2], bytes[1]]) as usize,
-        ),
-        PREFIX_FF => (
-            9,
-            u64::from_le_bytes([
-                bytes[8], bytes[7], bytes[6], bytes[5], bytes[4], bytes[3], bytes[2], bytes[1],
-            ]) as usize,
-        ),
-        _ => (1, u64::from(prefix) as usize),
-    }
-}
 
 pub fn from_amount_bytes_to_prefix(nbytes: usize)-> u8{
     match nbytes{
@@ -57,14 +40,27 @@ pub fn build_varint_bytes(prefix: u8, value: usize) -> Result<Vec<u8>, NodoBitco
         }
         PREFIX_FE => {
             let value_bytes = (value as u32).to_le_bytes();
-            let bytes = vec![0xfe, value_bytes[0], value_bytes[1], value_bytes[2], value_bytes[3]];
+            let bytes = vec![
+                0xfe,
+                value_bytes[0],
+                value_bytes[1],
+                value_bytes[2],
+                value_bytes[3],
+            ];
             Ok(bytes)
         }
         PREFIX_FF => {
             let value_bytes = (value as u64).to_le_bytes();
             let bytes = vec![
-                0xff, value_bytes[0], value_bytes[1], value_bytes[2], value_bytes[3], value_bytes[4],
-                value_bytes[5], value_bytes[6], value_bytes[7]
+                0xff,
+                value_bytes[0],
+                value_bytes[1],
+                value_bytes[2],
+                value_bytes[3],
+                value_bytes[4],
+                value_bytes[5],
+                value_bytes[6],
+                value_bytes[7],
             ];
             Ok(bytes)
         }
@@ -74,7 +70,7 @@ pub fn build_varint_bytes(prefix: u8, value: usize) -> Result<Vec<u8>, NodoBitco
                 let bytes = vec![value_byte];
                 Ok(bytes)
             } else {
-                Err(NodoBitcoinError::ValorFueraDeRango)
+                Err(NodoBitcoinError::_ValorFueraDeRango)
             }
         }
     }
@@ -98,9 +94,7 @@ mod tests {
         assert_eq!(value2, 0x78563412);
 
         // Test case 3: Prefix = 0xff (8 bytes)
-        let bytes3: [u8; 9] = [
-            0xff, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
-        ];
+        let bytes3: [u8; 9] = [0xff, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef];
         let (size3, value3) = parse_varint(&bytes3);
         assert_eq!(size3, 9);
         assert_eq!(value3, 0xefcdab8967452301);
@@ -124,9 +118,7 @@ mod tests {
 
         // Prefix: 0xff, Value: 1234567890123456789
         let value_ff = 1234567890123456789;
-        let expected_bytes_ff = vec![
-            0xff, 0x15, 0x81, 0xe9, 0x7d, 0xf4, 0x10, 0x22, 0x11
-        ];
+        let expected_bytes_ff = vec![0xff, 0x15, 0x81, 0xe9, 0x7d, 0xf4, 0x10, 0x22, 0x11];
 
         // Prefix: Default (0x01), Value: 42
         let prefix_default = 0x01;
@@ -152,7 +144,10 @@ mod tests {
 
         let result_large = build_varint_bytes(prefix_large, value_large);
         assert!(result_large.is_err());
-        assert_eq!(result_large.unwrap_err(), NodoBitcoinError::ValorFueraDeRango);
+        assert_eq!(
+            result_large.unwrap_err(),
+            NodoBitcoinError::_ValorFueraDeRango
+        );
     }
 
     #[test]
