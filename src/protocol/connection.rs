@@ -19,11 +19,11 @@ pub fn connect() -> Result<AdminConnections, NodoBitcoinError> {
     let addresses = get_address();
     let mut id: i32 = 0;
     for address in addresses.iter() {
-        println!("Address: {:?}", address);
         match TcpStream::connect_timeout(address, Duration::from_secs(10)) {
             Ok(socket) => {
                 match handshake(socket, *address) {
                     Ok(connection) => {
+                        println!("Conexion establecida: {:?}", address);
                         admin_connections.add(connection, id)?;
                         id += 1;
                     }

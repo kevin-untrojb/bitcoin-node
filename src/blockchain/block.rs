@@ -1,10 +1,7 @@
 use super::{blockheader::BlockHeader, transaction};
-use transaction::Transaction;
-use transaction::TxIn;
-use transaction::TxOut;
-use transaction::Outpoint;
 use crate::common::utils_bytes;
 use crate::errores::NodoBitcoinError;
+use transaction::Transaction;
 
 /// A struct representing a Bitcoin Serialized Block
 /// ### Bitcoin Core References
@@ -21,22 +18,19 @@ pub struct SerializedBlock {
 }
 
 impl SerializedBlock {
-    pub fn deserialize(block_bytes: &[u8]) -> Result<SerializedBlock,NodoBitcoinError> {
+    pub fn deserialize(block_bytes: &[u8]) -> Result<SerializedBlock, NodoBitcoinError> {
         let mut offset = 0;
         let header = BlockHeader::deserialize(&block_bytes[offset..offset + 80])?;
         offset += 80;
-        let (size_bytes, txn_count) =utils_bytes::parse_varint(&block_bytes[offset..]);
+        let (size_bytes, txn_count) = utils_bytes::parse_varint(&block_bytes[offset..]);
         offset += size_bytes;
-        
+
         let mut txns = Vec::new();
         for num in 0..txn_count {
             let trn = Transaction::deserialize(&block_bytes[offset..])?;
             offset += trn.size();
             txns.push(trn);
         }
-        Ok(SerializedBlock{
-            header,
-            txns
-        })
+        Ok(SerializedBlock { header, txns })
     }
 }

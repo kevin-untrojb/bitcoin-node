@@ -22,12 +22,12 @@ pub fn parse_varint(bytes: &[u8]) -> (usize, usize) {
     }
 }
 
-pub fn from_amount_bytes_to_prefix(nbytes: usize)-> u8{
-    match nbytes{
+pub fn from_amount_bytes_to_prefix(nbytes: usize) -> u8 {
+    match nbytes {
         3 => PREFIX_FD,
         5 => PREFIX_FE,
         9 => PREFIX_FF,
-        _ => 1
+        _ => 1,
     }
 }
 

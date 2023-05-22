@@ -43,17 +43,10 @@ pub fn get_headers(
     }
 
     loop {
-        // Revisar si ya completamos descarga para salir del loop
-
         let mut buffer = [0u8; 24];
         match connection.tcp.lock().unwrap().read(&mut buffer) {
             Ok(bytes_read) => {
                 if bytes_read == 0 {
-                    /*let (connection, id) = admin_connections.change_connection(id)?;
-                    if connection.tcp.lock().unwrap().write(&get_headers_message).is_err() {
-                        return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
-                    }
-                    continue*/
                     break;
                 }
             }
@@ -113,7 +106,10 @@ pub fn get_headers(
             let mut threads = vec![];
 
             let admin_connections_mutex = Arc::new(Mutex::new(admin_connections.clone()));
-            println!("N HEADERS FILTRADOS {:?}", headers_filtrados.len());
+            println!(
+                "Descarga de headers. Total obtenidos: {:?}",
+                headers_filtrados.len()
+            );
 
             for i in 0..n_threads {
                 let start: usize = i * n_blockheaders_thread;
@@ -123,11 +119,19 @@ pub fn get_headers(
                 let shared_blocks = blocks.clone();
                 let admin_connections_mutex_thread = admin_connections_mutex.clone();
                 threads.push(thread::spawn(move || {
-                    let mut admin_thread = admin_connections_mutex_thread.lock().unwrap();
-                    let (mut thread_connection, mut thread_id_connection) =
-                        admin_thread.find_free_connection().unwrap();
-                    drop(admin_thread);
-                    let mut cloned_connection = thread_connection.clone();
+                    let (mut cloned_connection, mut thread_id_connection) =
+                        match admin_connections_mutex_thread.lock() {
+                            Ok(mut admin) => {
+                                let (thread_connection, thread_id_connection) =
+                                    match admin.find_free_connection() {
+                                        Ok((connection, id)) => (connection, id),
+                                        Err(_) => return,
+                                    };
+                                drop(admin);
+                                (thread_connection.clone(), thread_id_connection)
+                            }
+                            Err(_) => return,
+                        };
 
                     for header in block_headers_thread {
                         let hash_header = match header.serialize() {
@@ -151,7 +155,6 @@ pub fn get_headers(
                             .write(&get_data_message)
                             .is_err()
                         {
-                            // throw/catch error
                             return;
                         }
 
@@ -165,7 +168,6 @@ pub fn get_headers(
                                 .read(&mut thread_buffer)
                             {
                                 Ok(bytes_read) => {
-                                    //println!("{} bytes read getData", thread_buffer.len());
                                     if bytes_read == 0 {
                                         change_connection = true;
                                     }
@@ -177,9 +179,12 @@ pub fn get_headers(
                                 (cloned_connection, thread_id_connection) =
                                     match admin_connections_mutex_thread.lock() {
                                         Ok(mut admin) => {
-                                            (thread_connection, thread_id_connection) = admin
-                                                .change_connection(thread_id_connection)
-                                                .unwrap();
+                                            let (thread_connection, thread_id_connection) =
+                                                match admin.change_connection(thread_id_connection)
+                                                {
+                                                    Ok((connection, id)) => (connection, id),
+                                                    Err(_) => continue,
+                                                };
                                             drop(admin);
                                             (thread_connection.clone(), thread_id_connection)
                                         }
@@ -192,7 +197,6 @@ pub fn get_headers(
                                     .write(&get_data_message)
                                     .is_err()
                                 {
-                                    // throw/catch error
                                     return;
                                 }
                                 continue;
@@ -209,10 +213,8 @@ pub fn get_headers(
                                         .read_exact(&mut response_get_data)
                                         .is_err()
                                     {
-                                        // throw/catch error
                                         return;
                                     }
-                                    //println!("{:?}", command);
                                     valid_command = command == "block";
                                     (command, response_get_data)
                                 }
@@ -220,9 +222,13 @@ pub fn get_headers(
                                     (cloned_connection, thread_id_connection) =
                                         match admin_connections_mutex_thread.lock() {
                                             Ok(mut admin) => {
-                                                (thread_connection, thread_id_connection) = admin
-                                                    .change_connection(thread_id_connection)
-                                                    .unwrap();
+                                                let (thread_connection, thread_id_connection) =
+                                                    match admin
+                                                        .change_connection(thread_id_connection)
+                                                    {
+                                                        Ok((connection, id)) => (connection, id),
+                                                        Err(_) => continue,
+                                                    };
                                                 drop(admin);
                                                 (thread_connection.clone(), thread_id_connection)
                                             }
@@ -235,7 +241,6 @@ pub fn get_headers(
                                         .write(&get_data_message)
                                         .is_err()
                                     {
-                                        // throw/catch error
                                         return;
                                     }
                                     continue;
@@ -248,7 +253,7 @@ pub fn get_headers(
                             if valid_command {
                                 let mut cloned = shared_blocks.lock().unwrap();
                                 cloned.push(SerializedBlock::deserialize(&response_get_data));
-                                println!("cloned: {}", cloned.len());
+                                println!("Bloque #{} descargado", cloned.len());
                                 drop(cloned);
                                 break;
                             }
