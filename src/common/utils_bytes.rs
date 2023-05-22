@@ -21,6 +21,33 @@ pub fn parse_varint(bytes: &[u8]) -> (usize, usize) {
         _ => (1, u64::from(prefix) as usize),
     }
 }
+pub fn parse_varint2(bytes: &[u8]) -> (usize, usize) {
+    let prefix = bytes[0];
+    match prefix {
+        PREFIX_FD => (3, u16::from_le_bytes([bytes[2], bytes[1]]) as usize),
+        PREFIX_FE => (
+            5,
+            u32::from_le_bytes([bytes[4], bytes[3], bytes[2], bytes[1]]) as usize,
+        ),
+        PREFIX_FF => (
+            9,
+            u64::from_le_bytes([
+                bytes[8], bytes[7], bytes[6], bytes[5], bytes[4], bytes[3], bytes[2], bytes[1],
+            ]) as usize,
+        ),
+        _ => (1, u64::from(prefix) as usize),
+    }
+}
+
+pub fn from_amount_bytes_to_prefix(nbytes: usize)-> u8{
+    match nbytes{
+        3 => PREFIX_FD,
+        5 => PREFIX_FE,
+        9 => PREFIX_FF,
+        _ => 1
+    }
+}
+
 pub fn build_varint_bytes(prefix: u8, value: usize) -> Result<Vec<u8>, NodoBitcoinError> {
     match prefix {
         PREFIX_FD => {
@@ -126,5 +153,13 @@ mod tests {
         let result_large = build_varint_bytes(prefix_large, value_large);
         assert!(result_large.is_err());
         assert_eq!(result_large.unwrap_err(), NodoBitcoinError::ValorFueraDeRango);
+    }
+
+    #[test]
+    fn test_from_amount_bytes_to_prefix() {
+        assert_eq!(from_amount_bytes_to_prefix(3), PREFIX_FD);
+        assert_eq!(from_amount_bytes_to_prefix(5), PREFIX_FE);
+        assert_eq!(from_amount_bytes_to_prefix(9), PREFIX_FF);
+        assert_eq!(from_amount_bytes_to_prefix(2), 1);
     }
 }
