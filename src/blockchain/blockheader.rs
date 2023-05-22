@@ -1,5 +1,7 @@
-use crate::NodoBitcoinError;
+use crate::errores::NodoBitcoinError;
 use std::io::Write;
+
+const HEADER_SIZE: usize = 80;
 
 /// A struct representing a Bitcoin Header
 /// ### Bitcoin Core References
@@ -7,36 +9,34 @@ use std::io::Write;
 ///
 /// # Fields
 ///
-/// * `id` - The unique identifier of the transaction.
 /// * `version` - The version number of the transaction.
 /// * `previous_block_hash` - The hash of the previous block in the chain.
 /// * `merkle_root_hash` - The Merkle root hash of the transactions in the block.
 /// * `time` - The Unix timestamp of the block's creation.
 /// * `n_bits` - The compressed target difficulty of the block in compact format.
 /// * `nonce` - A random number used in the mining process to try and find a valid block hash.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct BlockHeader {
-    id: usize,
-    version: i32,
-    previous_block_hash: String,
-    merkle_root_hash: String,
-    time: u32,
-    n_bits: u32,
-    nonce: u32,
+    pub version: u32,
+    pub previous_block_hash: [u8; 32],
+    pub merkle_root_hash: [u8; 32],
+    pub time: u32,
+    pub n_bits: u32,
+    pub nonce: u32,
 }
 
 impl BlockHeader {
-    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
 
         bytes
             .write_all(&(self.version).to_le_bytes())
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         bytes
-            .write_all(self.previous_block_hash.as_bytes())
+            .write_all(&self.previous_block_hash)
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         bytes
-            .write_all(self.merkle_root_hash.as_bytes())
+            .write_all(&self.merkle_root_hash)
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         bytes
             .write_all(&(self.time).to_le_bytes())
@@ -50,23 +50,26 @@ impl BlockHeader {
         Ok(bytes)
     }
 
-    pub fn _deserialize(block_bytes: &[u8]) -> Result<BlockHeader, NodoBitcoinError> {
-        let id = 1;
+    pub fn deserialize(block_bytes: &[u8]) -> Result<BlockHeader, NodoBitcoinError> {
+        if block_bytes.len() != HEADER_SIZE {
+            return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+        }
+
         let mut offset = 0;
 
-        let version = i32::from_le_bytes(
+        let version = u32::from_le_bytes(
             block_bytes[offset..offset + 4]
                 .try_into()
                 .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
         );
         offset += 4;
 
-        let mut previous_block_hash_bytes = [0u8; 32];
-        previous_block_hash_bytes.copy_from_slice(&block_bytes[offset..offset + 32]);
+        let mut previous_block_hash = [0u8; 32];
+        previous_block_hash.copy_from_slice(&block_bytes[offset..offset + 32]);
         offset += 32;
 
-        let mut merkle_root_hash_bytes = [0u8; 32];
-        merkle_root_hash_bytes.copy_from_slice(&block_bytes[offset..offset + 32]);
+        let mut merkle_root_hash = [0u8; 32];
+        merkle_root_hash.copy_from_slice(&block_bytes[offset..offset + 32]);
         offset += 32;
 
         let time = u32::from_le_bytes(
@@ -88,11 +91,8 @@ impl BlockHeader {
                 .try_into()
                 .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
         );
-        let previous_block_hash = _bytes_to_string(&previous_block_hash_bytes)?;
-        let merkle_root_hash = _bytes_to_string(&merkle_root_hash_bytes)?;
 
         Ok(BlockHeader {
-            id,
             version,
             previous_block_hash,
             merkle_root_hash,
@@ -103,13 +103,6 @@ impl BlockHeader {
     }
 }
 
-fn _bytes_to_string(bytes: &[u8]) -> Result<String, NodoBitcoinError> {
-    if let Ok(string) = String::from_utf8(bytes.to_vec()) {
-        return Ok(string);
-    }
-    Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,16 +110,21 @@ mod tests {
     #[test]
     fn test_serialize() {
         let block_header = BlockHeader {
-            id: 0,
             version: 1,
-            previous_block_hash: String::from("12345678901234567890123456789012"),
-            merkle_root_hash: String::from("12345678901234567890123456789012"),
+            previous_block_hash: [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1,
+                2, 3, 4, 5,
+            ],
+            merkle_root_hash: [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1,
+                2, 3, 4, 5,
+            ],
             time: 123456789,
             n_bits: 123456789,
             nonce: 123456789,
         };
 
-        let result_serialized = block_header._serialize();
+        let result_serialized = block_header.serialize();
         assert!(result_serialized.is_ok());
 
         let serialized = result_serialized.unwrap();
@@ -135,11 +133,17 @@ mod tests {
         assert_eq!(serialized[0..4], [1, 0, 0, 0]);
         assert_eq!(
             &serialized[4..36],
-            "12345678901234567890123456789012".as_bytes()
+            [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1,
+                2, 3, 4, 5
+            ]
         );
         assert_eq!(
             &serialized[36..68],
-            "12345678901234567890123456789012".as_bytes()
+            [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1,
+                2, 3, 4, 5
+            ]
         );
         assert_eq!(serialized[68..72], [21, 205, 91, 7]);
         assert_eq!(serialized[72..76], [21, 205, 91, 7]);
@@ -160,7 +164,7 @@ mod tests {
             21, 205, 91, 7,
         ];
 
-        let result_block_header = BlockHeader::_deserialize(&block_bytes);
+        let result_block_header = BlockHeader::deserialize(&block_bytes);
         assert!(result_block_header.is_ok());
 
         let block_header = result_block_header.unwrap();
@@ -168,11 +172,17 @@ mod tests {
         assert_eq!(block_header.version, 1);
         assert_eq!(
             block_header.previous_block_hash,
-            String::from("12345678901234567890123456789012")
+            [
+                49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49,
+                50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50
+            ]
         );
         assert_eq!(
             block_header.merkle_root_hash,
-            String::from("12345678901234567890123456789012")
+            [
+                49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49,
+                50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50
+            ]
         );
         assert_eq!(block_header.time, 123456789);
         assert_eq!(block_header.n_bits, 123456789);

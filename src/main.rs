@@ -1,18 +1,28 @@
-use std::env;
+mod blockchain;
+mod common;
+mod config;
+mod errores;
+mod messages;
+mod parse_args;
+mod protocol;
 
-use ::los_rustybandidos::inicializar;
-use los_rustybandidos::{config, errores::NodoBitcoinError};
+use std::{env, println};
 
-mod blockchain {
-    pub mod block;
-    pub mod header;
-    pub mod transaction;
-}
+use errores::NodoBitcoinError;
+
+use crate::{
+    blockchain::node::Node,
+    protocol::{connection::connect, initial_block_download::get_headers},
+};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
-        inicializar(args)?;
+        config::inicializar(args)?;
+        let admin_connections = connect()?;
+        let mut node = Node::new();
+        get_headers(admin_connections, &mut node)?;
+
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())
