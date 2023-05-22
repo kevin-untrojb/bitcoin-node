@@ -1,5 +1,4 @@
 use crate::blockchain::block::SerializedBlock;
-use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::node::Node;
 use crate::common::utils_timestamp::obtener_timestamp_dia;
 use crate::config;
@@ -11,8 +10,6 @@ use crate::messages::messages_header::check_header;
 use bitcoin_hashes::{sha256d, Hash};
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
-use std::thread::sleep;
-use std::time::Duration;
 use std::{cmp, println, thread, vec};
 
 use super::admin_connections::AdminConnections;
@@ -126,11 +123,19 @@ pub fn get_headers(
                 let shared_blocks = blocks.clone();
                 let admin_connections_mutex_thread = admin_connections_mutex.clone();
                 threads.push(thread::spawn(move || {
-                    let mut admin_thread = admin_connections_mutex_thread.lock().unwrap();
-                    let (mut thread_connection, mut thread_id_connection) =
-                        admin_thread.find_free_connection().unwrap();
-                    drop(admin_thread);
-                    let mut cloned_connection = thread_connection.clone();
+                    let (mut cloned_connection, mut thread_id_connection) =
+                        match admin_connections_mutex_thread.lock() {
+                            Ok(mut admin) => {
+                                let (thread_connection, thread_id_connection) =
+                                    match admin.find_free_connection() {
+                                        Ok((connection, id)) => (connection, id),
+                                        Err(_) => return,
+                                    };
+                                drop(admin);
+                                (thread_connection.clone(), thread_id_connection)
+                            }
+                            Err(_) => return,
+                        };
 
                     for header in block_headers_thread {
                         let hash_header = match header.serialize() {
@@ -180,9 +185,12 @@ pub fn get_headers(
                                 (cloned_connection, thread_id_connection) =
                                     match admin_connections_mutex_thread.lock() {
                                         Ok(mut admin) => {
-                                            (thread_connection, thread_id_connection) = admin
-                                                .change_connection(thread_id_connection)
-                                                .unwrap();
+                                            let (thread_connection, thread_id_connection) =
+                                                match admin.change_connection(thread_id_connection)
+                                                {
+                                                    Ok((connection, id)) => (connection, id),
+                                                    Err(_) => continue,
+                                                };
                                             drop(admin);
                                             (thread_connection.clone(), thread_id_connection)
                                         }
@@ -223,9 +231,13 @@ pub fn get_headers(
                                     (cloned_connection, thread_id_connection) =
                                         match admin_connections_mutex_thread.lock() {
                                             Ok(mut admin) => {
-                                                (thread_connection, thread_id_connection) = admin
-                                                    .change_connection(thread_id_connection)
-                                                    .unwrap();
+                                                let (thread_connection, thread_id_connection) =
+                                                    match admin
+                                                        .change_connection(thread_id_connection)
+                                                    {
+                                                        Ok((connection, id)) => (connection, id),
+                                                        Err(_) => continue,
+                                                    };
                                                 drop(admin);
                                                 (thread_connection.clone(), thread_id_connection)
                                             }
