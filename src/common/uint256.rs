@@ -1,7 +1,7 @@
 use std::{
     cmp::Ordering,
     fmt,
-    ops::{Add, BitOr, Div, Mul, Rem, Shl, Sub},
+    ops::{Add, BitOr, Mul},
 };
 
 const NUM_BYTES: usize = 32;

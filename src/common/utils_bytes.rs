@@ -21,7 +21,7 @@ pub fn parse_varint(bytes: &[u8]) -> (usize, usize) {
         _ => (1, u64::from(prefix) as usize),
     }
 }
-pub fn build_varint_bytes(prefix: u8, value: usize) -> Result<Vec<u8>, NodoBitcoinError> {
+pub fn _build_varint_bytes(prefix: u8, value: usize) -> Result<Vec<u8>, NodoBitcoinError> {
     match prefix {
         PREFIX_FD => {
             let value_bytes = (value as u16).to_le_bytes();
@@ -120,19 +120,19 @@ mod tests {
         let value_large = usize::max_value();
 
         // Test build_varint_bytes function
-        let result_fd = build_varint_bytes(PREFIX_FD, value_fd).unwrap();
+        let result_fd = _build_varint_bytes(PREFIX_FD, value_fd).unwrap();
         assert_eq!(result_fd, expected_bytes_fd);
 
-        let result_fe = build_varint_bytes(PREFIX_FE, value_fe).unwrap();
+        let result_fe = _build_varint_bytes(PREFIX_FE, value_fe).unwrap();
         assert_eq!(result_fe, expected_bytes_fe);
 
-        let result_ff = build_varint_bytes(PREFIX_FF, value_ff).unwrap();
+        let result_ff = _build_varint_bytes(PREFIX_FF, value_ff).unwrap();
         assert_eq!(result_ff, expected_bytes_ff);
 
-        let result_default = build_varint_bytes(prefix_default, value_default).unwrap();
+        let result_default = _build_varint_bytes(prefix_default, value_default).unwrap();
         assert_eq!(result_default, expected_bytes_default);
 
-        let result_large = build_varint_bytes(prefix_large, value_large);
+        let result_large = _build_varint_bytes(prefix_large, value_large);
         assert!(result_large.is_err());
         assert_eq!(
             result_large.unwrap_err(),
