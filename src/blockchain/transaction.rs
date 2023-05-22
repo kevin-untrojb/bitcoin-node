@@ -21,27 +21,43 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn serialize(&self) -> Result<Vec<u8>,NodoBitcoinError> {
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
-        bytes.write_all(&(self.version).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(&(self.input.len() as u32).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        for tx_in in &self.input{
+        bytes
+            .write_all(&(self.version).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.input.len() as u32).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        for tx_in in &self.input {
             bytes.write_all(&tx_in.serialize()?);
         }
-        bytes.write_all(&(self.output.len() as u32).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.output.len() as u32).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         for tx_out in &self.output {
             bytes.write_all(&tx_out.serialize()?);
         }
-        bytes.write_all(&self.lock_time.to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&self.lock_time.to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         Ok(bytes)
     }
     pub fn deserialize(block_bytes: &[u8]) -> Result<Transaction, NodoBitcoinError> {
         let mut offset = 0;
 
-        let version = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let version = u32::from_le_bytes(
+            block_bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
 
-        let number_tx_in = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let number_tx_in = u32::from_le_bytes(
+            block_bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
 
         let mut input = Vec::new();
@@ -51,7 +67,11 @@ impl Transaction {
             input.push(tx_in);
         }
 
-        let number_tx_out = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let number_tx_out = u32::from_le_bytes(
+            block_bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
 
         let mut output = Vec::new();
@@ -61,7 +81,11 @@ impl Transaction {
             output.push(tx_out);
         }
 
-        let lock_time = u64::from_le_bytes(block_bytes[offset..offset + 8].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let lock_time = u64::from_le_bytes(
+            block_bytes[offset..offset + 8]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 8;
 
         Ok(Transaction {
@@ -71,9 +95,13 @@ impl Transaction {
             lock_time,
         })
     }
-    pub fn size(&self) -> usize{
+    pub fn size(&self) -> usize {
         let input_size = self.input.iter().map(|tx_in| tx_in.size()).sum::<usize>();
-        let output_size = self.output.iter().map(|tx_out| tx_out.size()).sum::<usize>();
+        let output_size = self
+            .output
+            .iter()
+            .map(|tx_out| tx_out.size())
+            .sum::<usize>();
         20 + input_size + output_size
     }
 }
@@ -97,20 +125,32 @@ pub struct TxIn {
 impl TxIn {
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
-        bytes.write_all(&(self.previous_output.serialize()?)).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(&(self.script_bytes as u32).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(&self.signature_script).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(&(self.sequence).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.previous_output.serialize()?))
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.script_bytes as u32).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&self.signature_script)
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.sequence).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         Ok(bytes)
     }
 
     pub fn deserialize(block_bytes: &[u8]) -> Result<TxIn, NodoBitcoinError> {
         let mut offset = 0;
 
-        let previous_output = Outpoint::deserialize(&block_bytes[offset..offset+36])?;
+        let previous_output = Outpoint::deserialize(&block_bytes[offset..offset + 36])?;
         offset += 36;
 
-        let script_bytes = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let script_bytes = u32::from_le_bytes(
+            block_bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
 
         let size = script_bytes as usize;
@@ -118,7 +158,11 @@ impl TxIn {
         signature_script.copy_from_slice(&block_bytes[offset..offset + size]);
         offset += size;
 
-        let sequence = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let sequence = u32::from_le_bytes(
+            block_bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
 
         Ok(TxIn {
@@ -128,7 +172,7 @@ impl TxIn {
             sequence,
         })
     }
-    pub fn size(&self) -> usize{
+    pub fn size(&self) -> usize {
         (44 + self.script_bytes) as usize
     }
 }
@@ -147,8 +191,12 @@ pub struct Outpoint {
 impl Outpoint {
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
-        bytes.write_all(&self.hash).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(&(self.index).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&self.hash)
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.index).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         Ok(bytes)
     }
 
@@ -159,15 +207,16 @@ impl Outpoint {
         hash.copy_from_slice(&block_bytes[offset..offset + 32]);
         offset += 32;
 
-        let index = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let index = u32::from_le_bytes(
+            block_bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
 
-        Ok(Outpoint {
-            hash,
-            index,
-        })
+        Ok(Outpoint { hash, index })
     }
-    pub fn size(&self) ->u32{
+    pub fn size(&self) -> u32 {
         self.index
     }
 }
@@ -188,19 +237,33 @@ pub struct TxOut {
 impl TxOut {
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
-        bytes.write_all(&(self.value).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(&(self.pk_script.len() as u32).to_le_bytes()).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(&self.pk_script).map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.value).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&(self.pk_script.len() as u32).to_le_bytes())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        bytes
+            .write_all(&self.pk_script)
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         Ok(bytes)
     }
 
     pub fn deserialize(block_bytes: &[u8]) -> Result<TxOut, NodoBitcoinError> {
         let mut offset = 0;
 
-        let value = u64::from_le_bytes(block_bytes[offset..offset + 8].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let value = u64::from_le_bytes(
+            block_bytes[offset..offset + 8]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 8;
 
-        let pk_len = u32::from_le_bytes(block_bytes[offset..offset + 4].try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?);
+        let pk_len = u32::from_le_bytes(
+            block_bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
 
         let mut pk_script = vec![0u8; pk_len as usize];
@@ -212,12 +275,10 @@ impl TxOut {
             pk_script,
         })
     }
-    pub fn size(&self) -> usize{
+    pub fn size(&self) -> usize {
         (12 + self.pk_len) as usize
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -226,24 +287,20 @@ mod tests {
     #[test]
     fn test_serialize_transaction() {
         let version = 1;
-        let input = vec![
-            TxIn {
-                previous_output: Outpoint {
-                    hash: [1u8; 32],
-                    index: 123,
-                },
-                script_bytes:4,
-                signature_script: vec![128, 0, 0, 0],
-                sequence:255,
-            }
-        ];
-        let output = vec![
-            TxOut {
-                value: 123,
-                pk_len:5,
-                pk_script: vec![1, 2, 3, 4, 5],
-            }
-        ];
+        let input = vec![TxIn {
+            previous_output: Outpoint {
+                hash: [1u8; 32],
+                index: 123,
+            },
+            script_bytes: 4,
+            signature_script: vec![128, 0, 0, 0],
+            sequence: 255,
+        }];
+        let output = vec![TxOut {
+            value: 123,
+            pk_len: 5,
+            pk_script: vec![1, 2, 3, 4, 5],
+        }];
         let lock_time = 0;
 
         let transaction = Transaction {
@@ -254,22 +311,20 @@ mod tests {
         };
 
         let expected_bytes = vec![
-            1, 0, 0, 0,  // version
-            1, 0, 0, 0,  // number_tx_in
+            1, 0, 0, 0, // version
+            1, 0, 0, 0, // number_tx_in
             // Datos de input
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // hash
-            123, 0, 0, 0,
-            4, 0, 0, 0,
-            128, 0, 0, 0,
-            255, 0, 0, 0,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, // hash
+            123, 0, 0, 0, 4, 0, 0, 0, 128, 0, 0, 0, 255, 0, 0, 0,
             // Datos de número de output y output
-            1, 0, 0, 0,  // number_tx_out
+            1, 0, 0, 0, // number_tx_out
             // Datos de output
             123, 0, 0, 0, 0, 0, 0, 0, // Valor
             5, 0, 0, 0, //  pk_len
             1, 2, 3, 4, 5, // pk_script
             // Datos de lock_time
-            0, 0, 0, 0, 0, 0, 0, 0,  // lock_time
+            0, 0, 0, 0, 0, 0, 0, 0, // lock_time
         ];
 
         let serialized = transaction.serialize().unwrap();
@@ -280,42 +335,45 @@ mod tests {
     #[test]
     fn test_deserialize_transaction() {
         let block_bytes = vec![
-            1, 0, 0, 0,  // version
-            1, 0, 0, 0,  // number_tx_in
+            1, 0, 0, 0, // version
+            1, 0, 0, 0, // number_tx_in
             // Datos de input
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // hash
-            123, 0, 0, 0,
-            4, 0, 0, 0,
-            128, 0, 0, 0,
-            255, 0, 0, 0,
-            1, 0, 0, 0,  // number_tx_out
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, // hash
+            123, 0, 0, 0, 4, 0, 0, 0, 128, 0, 0, 0, 255, 0, 0, 0, 1, 0, 0, 0, // number_tx_out
             // Datos de output
             123, 0, 0, 0, 0, 0, 0, 0, // Valor
             5, 0, 0, 0, //  pk_len
             1, 2, 3, 4, 5, // pk_script
             // Datos de lock_time
-            0, 0, 0, 0, 0, 0, 0, 0,  // lock_time
+            0, 0, 0, 0, 0, 0, 0, 0, // lock_time
         ];
 
         let transaction = Transaction::deserialize(&block_bytes).unwrap();
 
         assert_eq!(transaction.version, 1);
         assert_eq!(transaction.input.len(), 1);
-        assert_eq!(transaction.input[0], TxIn {
-            previous_output: Outpoint {
-                hash: [1u8; 32],
-                index: 123,
-            },
-            script_bytes:4,
-            signature_script: vec![128, 0, 0, 0],
-            sequence:255,
-        });
+        assert_eq!(
+            transaction.input[0],
+            TxIn {
+                previous_output: Outpoint {
+                    hash: [1u8; 32],
+                    index: 123,
+                },
+                script_bytes: 4,
+                signature_script: vec![128, 0, 0, 0],
+                sequence: 255,
+            }
+        );
         assert_eq!(transaction.output.len(), 1);
-        assert_eq!(transaction.output[0], TxOut {
-            value: 123,
-            pk_len:5,
-            pk_script: vec![1, 2, 3, 4, 5],
-        });
+        assert_eq!(
+            transaction.output[0],
+            TxOut {
+                value: 123,
+                pk_len: 5,
+                pk_script: vec![1, 2, 3, 4, 5],
+            }
+        );
         assert_eq!(transaction.lock_time, 0);
     }
 
@@ -346,7 +404,9 @@ mod tests {
             TxOut {
                 value: 1000,
                 pk_len: 20,
-                pk_script: vec![16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+                pk_script: vec![
+                    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+                ],
             },
             TxOut {
                 value: 2000,
@@ -374,24 +434,20 @@ mod tests {
     #[test]
     fn test_transaction_size() {
         let version = 1;
-        let input = vec![
-            TxIn {
-                previous_output: Outpoint {
-                    hash: [1u8; 32],
-                    index: 123,
-                },
-                script_bytes:4,
-                signature_script: vec![128, 0, 0, 0],
-                sequence:255,
-            }
-        ];
-        let output = vec![
-            TxOut {
-                value: 123,
-                pk_len:5,
-                pk_script: vec![1, 2, 3, 4, 5],
-            }
-        ];
+        let input = vec![TxIn {
+            previous_output: Outpoint {
+                hash: [1u8; 32],
+                index: 123,
+            },
+            script_bytes: 4,
+            signature_script: vec![128, 0, 0, 0],
+            sequence: 255,
+        }];
+        let output = vec![TxOut {
+            value: 123,
+            pk_len: 5,
+            pk_script: vec![1, 2, 3, 4, 5],
+        }];
         let lock_time = 0;
 
         let transaction = Transaction {
@@ -401,22 +457,20 @@ mod tests {
             lock_time,
         };
         let expected_bytes = vec![
-            1, 0, 0, 0,  // version
-            1, 0, 0, 0,  // number_tx_in
+            1, 0, 0, 0, // version
+            1, 0, 0, 0, // number_tx_in
             // Datos de input
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // hash
-            123, 0, 0, 0,
-            4, 0, 0, 0,
-            128, 0, 0, 0,
-            255, 0, 0, 0,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, // hash
+            123, 0, 0, 0, 4, 0, 0, 0, 128, 0, 0, 0, 255, 0, 0, 0,
             // Datos de número de output y output
-            1, 0, 0, 0,  // number_tx_out
+            1, 0, 0, 0, // number_tx_out
             // Datos de output
             123, 0, 0, 0, 0, 0, 0, 0, // Valor
             5, 0, 0, 0, //  pk_len
             1, 2, 3, 4, 5, // pk_script
             // Datos de lock_time
-            0, 0, 0, 0, 0, 0, 0, 0,  // lock_time
+            0, 0, 0, 0, 0, 0, 0, 0, // lock_time
         ];
         assert_eq!(transaction.size(), expected_bytes.len());
     }
@@ -441,19 +495,27 @@ mod tests {
 
         assert_eq!(serialized.len(), 48);
         assert_eq!(serialized[0..32], [1; 32]);
-        assert_eq!(u32::from_le_bytes(serialized[32..36].try_into().unwrap()), 123);
-        assert_eq!(u32::from_le_bytes(serialized[36..40].try_into().unwrap()), 4);
+        assert_eq!(
+            u32::from_le_bytes(serialized[32..36].try_into().unwrap()),
+            123
+        );
+        assert_eq!(
+            u32::from_le_bytes(serialized[36..40].try_into().unwrap()),
+            4
+        );
         assert_eq!(serialized[40..44], [128, 0, 0, 0]);
-        assert_eq!(u32::from_le_bytes(serialized[44..48].try_into().unwrap()), 255);
+        assert_eq!(
+            u32::from_le_bytes(serialized[44..48].try_into().unwrap()),
+            255
+        );
     }
 
     #[test]
     fn test_deserialize_tx_in() {
         let bytes: [u8; 48] = [
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // hash
-            123, 0, 0, 0,
-            4, 0, 0, 0, 128, 0, 0, 0,
-            255, 0, 0, 0
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, // hash
+            123, 0, 0, 0, 4, 0, 0, 0, 128, 0, 0, 0, 255, 0, 0, 0,
         ];
 
         let tx_in = TxIn::deserialize(&bytes).unwrap();
@@ -473,7 +535,8 @@ mod tests {
         };
 
         let expected_bytes = vec![
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // hash
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, // hash
             123, 0, 0, 0, // index
         ];
 
@@ -485,7 +548,8 @@ mod tests {
     #[test]
     fn test_deserialize_outpoint() {
         let bytes = vec![
-            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, // hash
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2, // hash
             255, 255, 255, 255, // index
         ];
 
@@ -514,13 +578,16 @@ mod tests {
     fn test_serialize_tx_out() {
         let txout = TxOut {
             value: 123,
-            pk_len:5,
+            pk_len: 5,
             pk_script: vec![1, 2, 3, 4, 5],
         };
 
         let serialized = txout.serialize().unwrap();
 
-        assert_eq!(serialized, vec![123, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 1, 2, 3, 4, 5]);
+        assert_eq!(
+            serialized,
+            vec![123, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 1, 2, 3, 4, 5]
+        );
     }
 
     #[test]
@@ -536,6 +603,4 @@ mod tests {
         assert_eq!(txout.value, 123);
         assert_eq!(txout.pk_script, vec![1, 2, 3, 4, 5]);
     }
-
 }
-

@@ -1,10 +1,10 @@
 mod blockchain;
+mod common;
 mod config;
 mod errores;
 mod messages;
 mod parse_args;
 mod protocol;
-mod common;
 
 use std::{env, println};
 
@@ -12,7 +12,10 @@ use errores::NodoBitcoinError;
 
 use crate::{
     blockchain::node::Node,
-    protocol::{connection::connect, initial_block_download::get_headers, admin_connections::AdminConnections},
+    protocol::{
+        admin_connections::AdminConnections, connection::connect,
+        initial_block_download::get_headers,
+    },
 };
 
 fn main() {

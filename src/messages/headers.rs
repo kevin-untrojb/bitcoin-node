@@ -1,6 +1,7 @@
 use crate::{
     blockchain::{blockheader::BlockHeader, file::escribir_archivo},
-    errores::NodoBitcoinError, common::utils_bytes::parse_varint,
+    common::utils_bytes::parse_varint,
+    errores::NodoBitcoinError,
 };
 
 pub fn deserealize(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoinError> {
@@ -19,6 +20,6 @@ pub fn deserealize(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoin
         escribir_archivo(&headers[start..end])?;
         block_headers.push(block_header);
     }
-    
+
     Ok(block_headers)
 }

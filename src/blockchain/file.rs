@@ -1,4 +1,7 @@
-use std::{fs::{File, OpenOptions}, io::Write};
+use std::{
+    fs::{File, OpenOptions},
+    io::Write,
+};
 
 use crate::{config, errores::NodoBitcoinError};
 

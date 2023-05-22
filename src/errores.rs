@@ -62,7 +62,10 @@ impl fmt::Display for NodoBitcoinError {
                 write!(f, "ERROR: No se pudo conectar al servidor.")
             }
             NodoBitcoinError::ValorFueraDeRango => {
-                write!(f, "ERROR: No se puede parsear el valor ya que está fuera de rango.")
+                write!(
+                    f,
+                    "ERROR: No se puede parsear el valor ya que está fuera de rango."
+                )
             }
 
             NodoBitcoinError::MagicNumberIncorrecto => {
@@ -78,13 +81,22 @@ impl fmt::Display for NodoBitcoinError {
                 write!(f, "ERROR: No se encuentra conexion disponible.")
             }
             NodoBitcoinError::NoSePuedeLeerLosBytesHeaderVersionMessage => {
-                write!(f, "ERROR: No se puede leer correctamente el header del version message.")
+                write!(
+                    f,
+                    "ERROR: No se puede leer correctamente el header del version message."
+                )
             }
             NodoBitcoinError::NoSePuedeLeerLosBytesVersionMessage => {
-                write!(f, "ERROR: No se puede leer correctamente el version message.")
+                write!(
+                    f,
+                    "ERROR: No se puede leer correctamente el version message."
+                )
             }
             NodoBitcoinError::NoSePuedeLeerLosBytesVerackMessage => {
-                write!(f, "ERROR: No se puede leer correctamente el verack message.")
+                write!(
+                    f,
+                    "ERROR: No se puede leer correctamente el verack message."
+                )
             }
         }
     }

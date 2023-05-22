@@ -27,7 +27,7 @@ pub fn connect() -> Result<AdminConnections, NodoBitcoinError> {
                     Ok(connection) => {
                         admin_connections.add(connection, id)?;
                         id += 1;
-                    },
+                    }
                     Err(_) => continue,
                 };
             }
@@ -41,7 +41,7 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
     let timestamp = Utc::now().timestamp() as u64;
     let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
         Ok(res) => res,
-        Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig)
+        Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig),
     };
 
     let version_message = VersionMessage::new(
