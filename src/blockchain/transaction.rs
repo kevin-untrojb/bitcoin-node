@@ -1,4 +1,3 @@
-use super::blockheader;
 use crate::common::utils_bytes;
 use crate::errores::NodoBitcoinError;
 use std::io::Write;
@@ -24,7 +23,7 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
         bytes
             .write_all(&(self.version).to_le_bytes())
@@ -33,13 +32,17 @@ impl Transaction {
             .write_all(&(self.input.len() as u32).to_le_bytes())
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         for tx_in in &self.input {
-            bytes.write_all(&tx_in.serialize()?);
+            bytes
+                .write_all(&tx_in._serialize()?)
+                .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         }
         bytes
             .write_all(&(self.output.len() as u32).to_le_bytes())
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         for tx_out in &self.output {
-            bytes.write_all(&tx_out.serialize()?);
+            bytes
+                .write_all(&tx_out._serialize()?)
+                .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         }
         bytes
             .write_all(&self.lock_time.to_le_bytes())
@@ -58,7 +61,7 @@ impl Transaction {
         offset += tx_in_count;
 
         let mut input = Vec::new();
-        for v in 0..tx_in_amount {
+        for _v in 0..tx_in_amount {
             let tx_in = TxIn::deserialize(&block_bytes[offset..])?;
             offset += tx_in.size();
             input.push(tx_in);
@@ -68,7 +71,7 @@ impl Transaction {
         offset += tx_out_count;
 
         let mut output = Vec::new();
-        for v in 0..tx_out_amount {
+        for _v in 0..tx_out_amount {
             let tx_out = TxOut::deserialize(&block_bytes[offset..])?;
             offset += tx_out.size();
             output.push(tx_out);
@@ -79,7 +82,7 @@ impl Transaction {
                 .try_into()
                 .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
         );
-        offset += 4;
+        //offset += 4;
         Ok(Transaction {
             version,
             input,
@@ -118,10 +121,10 @@ pub struct TxIn {
 }
 
 impl TxIn {
-    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
         bytes
-            .write_all(&(self.previous_output.serialize()?))
+            .write_all(&(self.previous_output._serialize()?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         bytes
             .write_all(&(self.script_bytes as u32).to_le_bytes())
@@ -153,7 +156,7 @@ impl TxIn {
                 .try_into()
                 .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
         );
-        offset += 4;
+        //offset += 4;
 
         Ok(TxIn {
             previous_output,
@@ -180,7 +183,7 @@ pub struct Outpoint {
     pub index: u32,
 }
 impl Outpoint {
-    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
         bytes
             .write_all(&self.hash)
@@ -203,7 +206,7 @@ impl Outpoint {
                 .try_into()
                 .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
         );
-        offset += 4;
+        //offset += 4;
 
         Ok(Outpoint { hash, index })
     }
@@ -224,13 +227,15 @@ pub struct TxOut {
 }
 
 impl TxOut {
-    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
-        let n_bytes_prefix = utils_bytes::from_amount_bytes_to_prefix(self.pk_len_bytes);
+        let n_bytes_prefix = utils_bytes::_from_amount_bytes_to_prefix(self.pk_len_bytes);
         bytes
             .write_all(&(self.value).to_le_bytes())
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        bytes.write_all(&(utils_bytes::build_varint_bytes(n_bytes_prefix, self.pk_script.len())?));
+        bytes
+            .write_all(&(utils_bytes::_build_varint_bytes(n_bytes_prefix, self.pk_script.len())?))
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         bytes
             .write_all(&self.pk_script)
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;

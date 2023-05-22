@@ -55,7 +55,6 @@ impl BlockHeader {
             return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
         }
 
-        let id = 1;
         let mut offset = 0;
 
         let version = u32::from_le_bytes(
