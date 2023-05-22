@@ -39,7 +39,7 @@ impl AdminConnections {
         match self
             .connections
             .iter_mut()
-            .find(|(id, connection)| connection.free == true)
+            .find(|(_id, connection)| connection.free == true)
         {
             Some((id, mut connection)) => {
                 connection.free = false;

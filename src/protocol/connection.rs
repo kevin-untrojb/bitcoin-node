@@ -3,7 +3,6 @@ use crate::errores::NodoBitcoinError;
 use crate::messages::messages_header::check_header;
 use crate::messages::messages_header::make_header;
 use crate::messages::version::VersionMessage;
-use crate::protocol::connection;
 use chrono::Utc;
 use std::io::Read;
 use std::io::Write;

@@ -9,7 +9,7 @@ pub enum NodoBitcoinError {
     NoSePuedeLeerValorDeArchivoConfig,
 
     // conexion
-    NoSePudoConectar,
+    _NoSePudoConectar,
     MagicNumberIncorrecto,
     ErrorEnHandshake,
     NoSeEncuentraConexionLibre,
@@ -20,10 +20,10 @@ pub enum NodoBitcoinError {
     NoSePuedeLeerLosBytesHeaderVersionMessage,
     NoSePuedeLeerLosBytesVersionMessage,
     NoSePuedeLeerLosBytesVerackMessage,
-    ValorFueraDeRango,
+    _ValorFueraDeRango,
 
     // merkle_tree
-    NoChildren,
+    _NoChildren,
 }
 
 impl Error for NodoBitcoinError {}
@@ -58,10 +58,10 @@ impl fmt::Display for NodoBitcoinError {
                     "ERROR: No se puede escribir correctamente la estructura en bytes."
                 )
             }
-            NodoBitcoinError::NoSePudoConectar => {
+            NodoBitcoinError::_NoSePudoConectar => {
                 write!(f, "ERROR: No se pudo conectar al servidor.")
             }
-            NodoBitcoinError::ValorFueraDeRango => {
+            NodoBitcoinError::_ValorFueraDeRango => {
                 write!(
                     f,
                     "ERROR: No se puede parsear el valor ya que está fuera de rango."
@@ -74,7 +74,7 @@ impl fmt::Display for NodoBitcoinError {
             NodoBitcoinError::ErrorEnHandshake => {
                 write!(f, "ERROR: Hubo un error en el handshake.")
             }
-            NodoBitcoinError::NoChildren => {
+            NodoBitcoinError::_NoChildren => {
                 write!(f, "ERROR: No hay TXs para crear el Merkle Tree.")
             }
             NodoBitcoinError::NoSeEncuentraConexionLibre => {

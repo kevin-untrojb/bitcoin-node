@@ -12,17 +12,14 @@ use errores::NodoBitcoinError;
 
 use crate::{
     blockchain::node::Node,
-    protocol::{
-        admin_connections::AdminConnections, connection::connect,
-        initial_block_download::get_headers,
-    },
+    protocol::{connection::connect, initial_block_download::get_headers},
 };
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
-        let mut admin_connections = connect()?;
+        let admin_connections = connect()?;
         let mut node = Node::new();
         get_headers(admin_connections, &mut node)?;
 
