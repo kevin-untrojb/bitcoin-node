@@ -17,8 +17,8 @@ impl GetHeadersMessage {
         end_block: [u8; 32],
     ) -> GetHeadersMessage {
         GetHeadersMessage {
-            version: version,
-            num_hashes: num_hashes,
+            version,
+            num_hashes,
             start_block_hash: start_block,
             end_block_hash: end_block,
         }

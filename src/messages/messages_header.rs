@@ -22,7 +22,7 @@ pub fn make_header(command: String, payload: &Vec<u8>) -> Result<Vec<u8>, NodoBi
     let magic = MAGIC_NUMBER_TESTNET; //Obtenerlo de config despues
 
     let payload_size = payload.len() as u32;
-    let hash = sha256d::Hash::hash(&payload);
+    let hash = sha256d::Hash::hash(payload);
     let checksum = &hash[..4];
 
     result

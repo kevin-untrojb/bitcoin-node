@@ -26,7 +26,7 @@ impl SerializedBlock {
         offset += size_bytes;
 
         let mut txns = Vec::new();
-        for num in 0..txn_count {
+        for _num in 0..txn_count {
             let trn = Transaction::deserialize(&block_bytes[offset..])?;
             offset += trn.size();
             txns.push(trn);

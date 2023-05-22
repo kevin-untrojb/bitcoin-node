@@ -43,20 +43,20 @@ impl VersionMessage {
         relay: bool,
     ) -> VersionMessage {
         VersionMessage {
-            version: version,
-            services: services,
-            timestamp: timestamp,
-            addr_recv_services: addr_recv_services,
-            addr_recv_ip: addr_recv_ip,
-            addr_recv_port: addr_recv_port,
-            addr_trans_services: addr_trans_services,
-            addr_trans_ip: addr_trans_ip,
-            addr_trans_port: addr_trans_port,
-            nonce: nonce,
-            user_agent_bytes: user_agent_bytes,
-            user_agent: user_agent,
-            start_height: start_height,
-            relay: relay,
+            version,
+            services,
+            timestamp,
+            addr_recv_services,
+            addr_recv_ip,
+            addr_recv_port,
+            addr_trans_services,
+            addr_trans_ip,
+            addr_trans_port,
+            nonce,
+            user_agent_bytes,
+            user_agent,
+            start_height,
+            relay,
         }
     }
 
@@ -76,7 +76,7 @@ impl VersionMessage {
         payload.extend_from_slice(&(self.nonce).to_le_bytes());
         payload.extend_from_slice(&(self.user_agent_bytes).to_le_bytes());
         if self.user_agent_bytes != 0 {
-            payload.extend_from_slice(&(self.user_agent).as_bytes());
+            payload.extend_from_slice(self.user_agent.as_bytes());
         }
         payload.extend_from_slice(&(self.start_height).to_le_bytes());
         payload.extend_from_slice(&(self.relay as u8).to_le_bytes());

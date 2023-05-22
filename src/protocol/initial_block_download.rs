@@ -128,7 +128,7 @@ pub fn get_headers(
                                         Err(_) => return,
                                     };
                                 drop(admin);
-                                (thread_connection.clone(), thread_id_connection)
+                                (thread_connection, thread_id_connection)
                             }
                             Err(_) => return,
                         };

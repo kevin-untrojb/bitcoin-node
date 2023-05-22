@@ -12,8 +12,8 @@ pub fn deserealize(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoin
         let mut start: usize = i * 80;
         let mut end: usize = start + 80;
         if i != 0 {
-            start += 1 * i;
-            end += 1 * i;
+            start += i;
+            end += i;
         }
 
         let block_header = BlockHeader::deserialize(&headers[start..end])?;
