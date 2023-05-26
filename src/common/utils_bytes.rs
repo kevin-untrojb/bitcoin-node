@@ -129,7 +129,7 @@ mod tests {
         let prefix_large = 0x03;
         let value_large = usize::max_value();
 
-        // Test build_varint_bytes function
+        // Test _build_varint_bytes function
         let result_fd = _build_varint_bytes(PREFIX_FD, value_fd).unwrap();
         assert_eq!(result_fd, expected_bytes_fd);
 
@@ -151,7 +151,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_amount_bytes_to_prefix() {
+    fn testfrom_amount_bytes_to_prefix() {
         assert_eq!(_from_amount_bytes_to_prefix(3), PREFIX_FD);
         assert_eq!(_from_amount_bytes_to_prefix(5), PREFIX_FE);
         assert_eq!(_from_amount_bytes_to_prefix(9), PREFIX_FF);

@@ -14,6 +14,7 @@ use std::io::Write;
 /// * input - The vector of input transactions for the transaction.
 /// * output - The vector of output transactions for the transaction.
 /// * lock_time - The lock time for the transaction.
+#[warn(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
     pub version: u32,
@@ -25,6 +26,7 @@ pub struct Transaction {
 }
 
 impl Transaction {
+    #[warn(dead_code)]
     pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
         bytes
@@ -222,7 +224,6 @@ impl Outpoint {
                 .try_into()
                 .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
         );
-        //offset += 4;
 
         Ok(Outpoint { hash, index })
     }
@@ -283,25 +284,378 @@ impl TxOut {
     }
 }
 
-#[test]
-fn test_serialize() {
-    let bytes = [
-        1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 14, 4, 134, 231, 73, 77, 1, 81, 6, 47, 80, 50, 83,
-        72, 47, 255, 255, 255, 255, 1, 0, 242, 5, 42, 1, 0, 0, 0, 35, 33, 3, 246, 217, 255, 76, 18,
-        149, 148, 69, 202, 85, 73, 200, 17, 104, 59, 249, 200, 142, 99, 123, 34, 45, 210, 224, 49,
-        17, 84, 196, 200, 92, 244, 35, 172, 0, 0, 0, 0,
-    ];
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let tx = Transaction::deserialize(&bytes);
-    assert!(tx.is_ok());
+    #[test]
+    fn test_serialize_transaction() {
+        let version = 1;
+        let input = vec![
+            TxIn {
+                previous_output:Outpoint {
+                    hash: [0; 32],
+                    index: 4294967295,
+                },
+                script_bytes:31,
+                script_bytes_amount:1,
+                signature_script: vec![4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
+                                       101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47 ],
+                sequence:4294967295,
+            }
+        ];
+        let output = vec![ TxOut {
+            value: 5000000000,
+            pk_len:35,
+            pk_len_bytes: 1,
+            pk_script:vec![33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
+                           108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
+                           84, 81,172],
+        }];
+        let lock_time = 0;
 
-    let tx = tx.unwrap();
-    let serialized = tx._serialize();
-    assert!(serialized.is_ok());
+        let transaction = Transaction {
+            version,
+            input,
+            output,
+            lock_time,
+            tx_in_count:1,
+            tx_out_count:1
+        };
 
-    let serialized = serialized.unwrap();
-    println!("{:?}", serialized);
+        let expected_bytes = vec![
+            //
+            1, 0, 0, 0, //version
+            1, // n-tin
+            // trin
+            0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //hash
+            255, 255, 255, 255, //index
+            31, // script bytes
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
+            101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47, // script
+            255, 255, 255, 255, // sequene
+            1, // n-trout
+            0, 242, 5, 42, 1, 0, 0, 0, // value
+            35, //pk_len
+            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
+            108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
+            84, 81, // trout pk
+            172, 0, 0, 0, 0 ];// lock time
 
-    assert_eq!(serialized, bytes);
+        let serialized = transaction._serialize().unwrap();
+
+        assert_eq!(serialized, expected_bytes);
+    }
+
+    #[test]
+    fn test_deserialize_transaction() {
+        let block_bytes:Vec<u8> = vec![
+            //
+            1, 0, 0, 0, //version
+            1, // n-tin
+            // trin
+            0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //hash
+            255, 255, 255, 255, //index
+            31, // script bytes
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
+            101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47, // script
+            255, 255, 255, 255, // sequene
+            1, // n-trout
+            0, 242, 5, 42, 1, 0, 0, 0, // value
+            35, //pk_len
+            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
+            108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
+            84, 81, 172, // trout pk
+            0, 0, 0, 0 ];// lock time
+
+        let transaction = Transaction::deserialize(&block_bytes).unwrap();
+
+        assert_eq!(transaction.version, 1);
+        assert_eq!(transaction.input.len(), 1);
+        assert_eq!(transaction.input[0], TxIn {
+            previous_output:Outpoint {
+                hash: [0; 32],
+                index: 4294967295,
+            },
+            script_bytes:31,
+            script_bytes_amount:1,
+            signature_script: vec![4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
+                                   101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47 ],
+            sequence:4294967295,
+        });
+        assert_eq!(transaction.output.len(), 1);
+        assert_eq!(transaction.output[0], TxOut {
+            value: 5000000000,
+            pk_len:35,
+            pk_len_bytes: 1,
+            pk_script:vec![33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
+                           108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
+                           84, 81,172],
+        });
+        assert_eq!(transaction.lock_time, 0);
+    }
+
+    #[test]
+    fn test_serialize_and_deserialize_transaction() {
+        let bytes = [
+            1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 14, 4, 134, 231, 73, 77, 1, 81, 6, 47, 80, 50, 83,
+            72, 47, 255, 255, 255, 255, 1, 0, 242, 5, 42, 1, 0, 0, 0, 35, 33, 3, 246, 217, 255, 76, 18,
+            149, 148, 69, 202, 85, 73, 200, 17, 104, 59, 249, 200, 142, 99, 123, 34, 45, 210, 224, 49,
+            17, 84, 196, 200, 92, 244, 35, 172, 0, 0, 0, 0,
+        ];
+
+        let tx = Transaction::deserialize(&bytes);
+        assert!(tx.is_ok());
+
+        let tx = tx.unwrap();
+        let serialized = tx._serialize();
+        assert!(serialized.is_ok());
+
+        let serialized = serialized.unwrap();
+
+        assert_eq!(serialized, bytes);
+    }
+
+
+    #[test]
+    fn test_transaction_size() {
+        let version = 1;
+
+
+        let input =vec![TxIn {
+            previous_output:Outpoint {
+                hash: [0; 32],
+                index: 4294967295,
+            },
+            script_bytes:31,
+            script_bytes_amount:1,
+            signature_script: vec![4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
+                                   101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47 ],
+            sequence:4294967295,
+        }];
+        let output = vec![ TxOut {
+            value: 5000000000,
+            pk_len:35,
+            pk_len_bytes: 1,
+            pk_script:vec![33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
+                           108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
+                           84, 81,172],
+        }];
+        let lock_time = 0;
+
+        let transaction = Transaction {
+            version,
+            input,
+            output,
+            lock_time,
+            tx_in_count:1,
+            tx_out_count:1
+        };
+
+        let expected_bytes = vec![
+            1, 0, 0, 0, //version
+            1, // n-tin
+            // trin
+            0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //hash
+            255, 255, 255, 255, //index
+            31, // script bytes
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
+            101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47, // script
+            255, 255, 255, 255, // sequene
+            1, // n-trout
+            0, 242, 5, 42, 1, 0, 0, 0, // value
+            35, //pk_len
+            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
+            108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
+            84, 81, // trout pk
+            172, 0, 0, 0, 0 ];// lock time
+
+        assert_eq!(transaction.size(), expected_bytes.len());
+    }
+
+
+    #[test]
+    fn test_serialize_tx_in() {
+        let expected_bytes= vec![
+            0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //hash
+            255, 255, 255, 255, //index
+            31, // script bytes
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
+            101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47, // script
+            255, 255, 255, 255, // sequene
+        ];
+        let previous_output = Outpoint {
+            hash: [0; 32],
+            index: 4294967295,
+        };
+        let script_bytes = 31;
+        let signature_script = vec![4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
+                                    101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47 ];
+        let sequence = 4294967295;
+
+        let tx_in = TxIn {
+            previous_output,
+            script_bytes,
+            script_bytes_amount:1,
+            signature_script: signature_script.clone(),
+            sequence,
+        };
+
+        let serialized = tx_in._serialize().unwrap();
+
+        assert_eq!(serialized.len(), expected_bytes.len());
+        assert_eq!(serialized, expected_bytes);
+    }
+
+    #[test]
+    fn test_deserialize_tx_in() {
+        let bytes= vec![
+            0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //hash
+            255, 255, 255, 255, //index
+            31, // script bytes
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
+            101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47, // script
+            255, 255, 255, 255, // sequene
+        ];
+
+        let tx_in = TxIn::deserialize(&bytes).unwrap();
+
+        assert_eq!(tx_in.previous_output.hash, [0u8; 32]);
+        assert_eq!(tx_in.previous_output.index, 4294967295);
+        assert_eq!(tx_in.script_bytes, 31);
+        assert_eq!(tx_in.signature_script, vec![4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
+                                                101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47]);
+        assert_eq!(tx_in.sequence, 4294967295);
+    }
+
+    #[test]
+    fn test_size_tx_in() {
+        let previous_output = Outpoint {
+            hash: [0; 32],
+            index: 0,
+        };
+        let script_bytes = 10;
+        let signature_script = vec![1, 2, 3, 4, 5];
+        let sequence = 100;
+        let script_bytes_amount = 1;
+
+        let tx_in = TxIn {
+            previous_output,
+            script_bytes,
+            signature_script: signature_script.clone(),
+            sequence,
+            script_bytes_amount,
+        };
+
+        let expected_size = 40 + script_bytes_amount + signature_script.len();
+        let actual_size = tx_in.size();
+
+        assert_eq!(expected_size, actual_size);
+    }
+
+
+    #[test]
+    fn test_serialize_outpoint() {
+        let outpoint = Outpoint {
+            hash: [1u8; 32],
+            index: 123,
+        };
+
+        let expected_bytes = vec![
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // hash
+            123, 0, 0, 0, // index
+        ];
+
+        let serialized = outpoint._serialize().unwrap();
+
+        assert_eq!(serialized, expected_bytes);
+    }
+
+    #[test]
+    fn test_deserialize_outpoint() {
+        let bytes = vec![
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, // hash
+            255, 255, 255, 255, // index
+        ];
+
+        let expected_outpoint = Outpoint {
+            hash: [2u8; 32],
+            index: 4294967295,
+        };
+
+        let deserialized = Outpoint::deserialize(&bytes).unwrap();
+
+        assert_eq!(deserialized, expected_outpoint);
+    }
+
+
+    #[test]
+    fn test_serialize_tx_out() {
+        let expected_bytes = vec![
+            0, 242, 5, 42, 1, 0, 0, 0, // value
+            35, //pk_len
+            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
+            108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
+            84, 81, 172 // trout pk
+        ];
+
+        let txout = TxOut {
+            value: 5000000000,
+            pk_len:1,
+            pk_len_bytes: 35,
+            pk_script:vec![33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
+                           108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
+                           84, 81,172],
+        };
+
+        let bytes = txout._serialize().unwrap();
+
+        assert_eq!(bytes, expected_bytes);
+    }
+
+    #[test]
+    fn test_deserialize_tx_out() {
+        let bytes = vec![
+            0, 242, 5, 42, 1, 0, 0, 0, // value
+            35, //pk_len
+            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
+            108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
+            84, 81,172 // trout pk
+        ];
+
+        let txout = TxOut::deserialize(&bytes).unwrap();
+        assert_eq!(txout.value, 5000000000);
+        assert_eq!(txout.pk_script, vec![33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
+                                         108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
+                                         84, 81,172]);
+    }
+
+    #[test]
+    fn test_size() {
+        let value = 1000;
+        let pk_len = 20;
+        let pk_script = vec![1, 2, 3, 4, 5];
+        let pk_len_bytes = 1;
+
+        let tx_out = TxOut {
+            value,
+            pk_len,
+            pk_script,
+            pk_len_bytes,
+        };
+
+        let expected_size = 8 + pk_len_bytes + 5;
+        let actual_size = tx_out.size();
+
+        assert_eq!(expected_size, actual_size);
+    }
+
 }
+
+
