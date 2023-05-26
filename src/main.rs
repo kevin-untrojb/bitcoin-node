@@ -2,6 +2,7 @@ mod blockchain;
 mod common;
 mod config;
 mod errores;
+mod merkle_tree;
 mod messages;
 mod parse_args;
 mod protocol;

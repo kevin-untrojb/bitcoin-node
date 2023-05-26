@@ -1,6 +1,7 @@
 use super::{blockheader::BlockHeader, transaction};
 use crate::common::utils_bytes;
 use crate::errores::NodoBitcoinError;
+use crate::merkle_tree::merkle_root::_MerkleRoot;
 use transaction::Transaction;
 
 /// A struct representing a Bitcoin Serialized Block
@@ -32,5 +33,16 @@ impl SerializedBlock {
             txns.push(trn);
         }
         Ok(SerializedBlock { header, txns })
+    }
+
+    pub fn _is_valid_merkle(&self) -> bool {
+        let current_merkle = self.header.merkle_root_hash;
+        let local_merkle = match _MerkleRoot::_from_block(self) {
+            Ok(calculated_merkle) => calculated_merkle,
+            Err(_) => return false,
+        };
+        let binding = local_merkle._root_hash();
+        let local_merkle_hash = binding.as_slice();
+        current_merkle == local_merkle_hash
     }
 }
