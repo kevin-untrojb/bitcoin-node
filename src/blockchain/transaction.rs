@@ -1,5 +1,7 @@
+use crate::common::uint256::Uint256;
 use crate::common::utils_bytes;
 use crate::errores::NodoBitcoinError;
+use bitcoin_hashes::{sha256d, Hash};
 use std::io::Write;
 
 /// A struct representing a Bitcoin transaction
@@ -100,6 +102,12 @@ impl Transaction {
             .map(|tx_out| tx_out.size())
             .sum::<usize>();
         8 + input_size + output_size + self.tx_in_count + self.tx_out_count
+    }
+    pub fn _txid(&self) -> Result<Uint256, NodoBitcoinError> {
+        let bytes = self._serialize()?;
+        let hash = sha256d::Hash::hash(&bytes);
+        let u256 = Uint256::_from_be_bytes(*hash.as_byte_array());
+        Ok(u256)
     }
 }
 
