@@ -20,15 +20,17 @@ Slides:  https://docs.google.com/presentation/d/1IIWP1ySUBLSOf8tgvPSMC4lSymeUIUK
 Sigue los siguientes pasos para instalar la versión dev del GTK:
 
 * Instalar la biblioteca GTK 3. En Ubuntu debes ejecutar:  
-` sudo apt-get install libgtk-3-dev `
+` sudo apt install libgtk-3-dev `
+* Instalar la aplicación Glado, para modificar visualmente la GUI del GTK. En Ubuntu debes ejecutar:  
+` sudo apt install glade `
 * Para incluir la referencia en el proyecto, en caso de que no exista en el Cargo.toml, en la terminal de la carpeta del proyecto:  
-`cargo add gtk`  
+` cargo add gtk `  
 * Para ejecutar la aplicación:  
-`cargo run --bin {application_name}`  
+` cargo run --bin {application_name} `  
 * En caso de que al ejecutar la aplicación, muestre un error de :  
     - version `GLIBCXX_3.4.29' not found  
 
     Debe limpiar la variable GTK_PATH desde la consola del IDE  
-    `unset GTK_PATH`  
+    ` unset GTK_PATH `  
 
 ... y magia!  
