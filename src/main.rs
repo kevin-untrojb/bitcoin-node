@@ -6,7 +6,7 @@ mod messages;
 mod parse_args;
 mod protocol;
 
-use std::{env, println};
+use std::{env, println, thread};
 
 use errores::NodoBitcoinError;
 use gtk::{
@@ -46,13 +46,16 @@ fn main() {
             .build();
 
         let button = Button::builder()
-            .label("Click me!")
+            .label("Descargar Blockchain")
             .halign(Align::Center)
             .valign(Align::Center)
             .build();
 
         button.connect_clicked(|_| {
-            println!("Clicked!");
+            thread::spawn(move || {
+                println!("Descargando!");
+                download_blockchain();
+            });
         });
 
         window.set_child(Some(&button));
@@ -62,7 +65,7 @@ fn main() {
     app.run();
 }
 
-fn old_main() {
+fn download_blockchain() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
