@@ -40,7 +40,7 @@ fn main() {
     app.connect_activate(move |app| {
         let window = ApplicationWindow::builder()
             .application(app)
-            .default_width(420)
+            .default_width(460)
             .default_height(200)
             .title(&title)
             .build();
