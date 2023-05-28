@@ -9,21 +9,21 @@ pub struct MerkleNode {
 }
 
 impl MerkleNode {
-    pub fn from_nodes(
+    pub fn _from_nodes(
         left_node: Option<MerkleNode>,
         right_node: Option<MerkleNode>,
     ) -> Result<MerkleNode, NodoBitcoinError> {
         if left_node.is_none() && right_node.is_none() {
             return Err(NodoBitcoinError::_NoChildren);
         }
-        let hash = Self::hash(left_node.clone(), right_node.clone());
+        let hash = Self::_hash(left_node.clone(), right_node.clone());
         let left = left_node.map(Box::new);
         let right = right_node.map(Box::new);
         let node = MerkleNode { left, right, hash };
         Ok(node)
     }
 
-    fn hash(left: Option<MerkleNode>, right: Option<MerkleNode>) -> Vec<u8> {
+    fn _hash(left: Option<MerkleNode>, right: Option<MerkleNode>) -> Vec<u8> {
         let one_none = left.is_none() || right.is_none();
         let left_hash = match left {
             Some(left) => left.hash,
@@ -47,7 +47,7 @@ fn test_error() {
     let left_node: Option<MerkleNode> = None;
     let right_node: Option<MerkleNode> = None;
 
-    let result_error = MerkleNode::from_nodes(left_node, right_node);
+    let result_error = MerkleNode::_from_nodes(left_node, right_node);
     assert!(result_error.is_err());
     assert!(matches!(result_error, Err(NodoBitcoinError::_NoChildren)));
 }
@@ -63,7 +63,7 @@ fn test_one_node() {
 
     let right_node: Option<MerkleNode> = None;
 
-    let result_one_node = MerkleNode::from_nodes(left_node, right_node);
+    let result_one_node = MerkleNode::_from_nodes(left_node, right_node);
     assert!(result_one_node.is_ok());
 
     let node = result_one_node.unwrap();
@@ -86,7 +86,7 @@ fn test_two_nodes() {
         hash: hash_right.clone(),
     });
 
-    let result_one_node = MerkleNode::from_nodes(left_node, right_node);
+    let result_one_node = MerkleNode::_from_nodes(left_node, right_node);
     assert!(result_one_node.is_ok());
 
     let node = result_one_node.unwrap();
@@ -110,7 +110,7 @@ fn test_hash() {
         hash: hash_right.clone(),
     });
 
-    let hash = MerkleNode::hash(left_node, right_node);
+    let hash = MerkleNode::_hash(left_node, right_node);
 
     let calculation_hash = sha256d::Hash::hash(&[hash_left, hash_right].concat());
     assert_eq!(hash, calculation_hash.as_byte_array().clone().to_vec());

@@ -1,3 +1,5 @@
+use std::vec;
+
 use crate::{
     blockchain::{block::SerializedBlock, transaction::Transaction},
     common::uint256::Uint256,
@@ -6,32 +8,39 @@ use crate::{
 
 use super::merkle_node::MerkleNode;
 
-pub struct MerkleRoot {
+pub struct _MerkleRoot {
     pub root: Option<Box<MerkleNode>>,
 }
 
-impl MerkleRoot {
-    pub fn from_block(block: &SerializedBlock) -> Result<MerkleRoot, NodoBitcoinError> {
+impl _MerkleRoot {
+    pub fn _from_block(block: &SerializedBlock) -> Result<_MerkleRoot, NodoBitcoinError> {
         let txs = &block.txns;
-        Self::from_txs(&txs)
+        Self::_from_txs(&txs)
     }
 
-    pub fn from_txs(transactions: &Vec<Transaction>) -> Result<MerkleRoot, NodoBitcoinError> {
+    pub fn _from_txs(transactions: &Vec<Transaction>) -> Result<_MerkleRoot, NodoBitcoinError> {
         let transactions_ids = transactions
             .iter()
             .map(|tx| tx._txid())
             .collect::<Result<Vec<Uint256>, NodoBitcoinError>>()?;
-        Self::from_ids(&transactions_ids)
+        Self::_from_ids(&transactions_ids)
     }
 
-    pub fn from_ids(transactions_ids: &Vec<Uint256>) -> Result<MerkleRoot, NodoBitcoinError> {
+    pub fn _from_ids(transactions_ids: &Vec<Uint256>) -> Result<_MerkleRoot, NodoBitcoinError> {
         let mut root = None;
         if !transactions_ids.is_empty() {
             let ids = transactions_ids.clone();
             let node = Self::_build_merkle_tree(&ids)?;
             root = Some(Box::new(node));
         }
-        Ok(MerkleRoot { root })
+        Ok(_MerkleRoot { root })
+    }
+
+    pub fn _root_hash(&self) -> Vec<u8> {
+        match &self.root {
+            Some(node) => node.hash.clone(),
+            None => vec![0; 32],
+        }
     }
 
     // https://developer.bitcoin.org/reference/block_chain.html#merkle-trees
@@ -58,7 +67,7 @@ impl MerkleRoot {
                 } else {
                     nodes[i].clone()
                 };
-                let new_node = MerkleNode::from_nodes(Some(left_node), Some(right_node))?;
+                let new_node = MerkleNode::_from_nodes(Some(left_node), Some(right_node))?;
                 new_level.push(new_node);
             }
             nodes = new_level;
@@ -70,7 +79,7 @@ impl MerkleRoot {
 #[cfg(test)]
 mod tests {
     use crate::{
-        common::uint256::Uint256, errores::NodoBitcoinError, merkle_tree::merkle_root::MerkleRoot,
+        common::uint256::Uint256, errores::NodoBitcoinError, merkle_tree::merkle_root::_MerkleRoot,
     };
     use bitcoin_hashes::{sha256d, Hash};
 
@@ -87,7 +96,7 @@ mod tests {
             Uint256::_from_u32(7),
             Uint256::_from_u32(8),
         ];
-        let merkle_root_result = MerkleRoot::from_ids(&txids);
+        let merkle_root_result = _MerkleRoot::_from_ids(&txids);
         assert!(merkle_root_result.is_ok());
 
         let merkle_root = merkle_root_result.unwrap();
@@ -97,7 +106,7 @@ mod tests {
     #[test]
     fn test_merkle_root_one() {
         let txids = vec![Uint256::_from_u32(1)];
-        let merkle_root_result = MerkleRoot::from_ids(&txids);
+        let merkle_root_result = _MerkleRoot::_from_ids(&txids);
         assert!(merkle_root_result.is_ok());
 
         let merkle_root = merkle_root_result.unwrap();
@@ -112,7 +121,7 @@ mod tests {
     #[test]
     fn test_merkle_root_empty() {
         let txids = vec![];
-        let merkle_root_result = MerkleRoot::from_ids(&txids);
+        let merkle_root_result = _MerkleRoot::_from_ids(&txids);
         assert!(merkle_root_result.is_ok());
 
         let merkle_root = merkle_root_result.unwrap();
@@ -122,7 +131,7 @@ mod tests {
     #[test]
     fn test_build_merkle_root_no_children() {
         let txids = vec![];
-        let merkle_root_result = MerkleRoot::_build_merkle_tree(&txids);
+        let merkle_root_result = _MerkleRoot::_build_merkle_tree(&txids);
         assert!(merkle_root_result.is_err());
 
         let merkle_root_error = merkle_root_result.unwrap_err();
@@ -132,7 +141,7 @@ mod tests {
     #[test]
     fn test_build_merkle_root_one_child() {
         let txids = vec![Uint256::_from_u32(1)];
-        let result_merkle_root = MerkleRoot::_build_merkle_tree(&txids);
+        let result_merkle_root = _MerkleRoot::_build_merkle_tree(&txids);
         assert!(result_merkle_root.is_ok());
 
         let merkle_root = result_merkle_root.unwrap();
@@ -160,7 +169,7 @@ mod tests {
         ];
 
         let txids = vec![Uint256::_from_bytes(bytes1), Uint256::_from_bytes(bytes2)];
-        let result_merkle_root = MerkleRoot::_build_merkle_tree(&txids);
+        let result_merkle_root = _MerkleRoot::_build_merkle_tree(&txids);
         assert!(result_merkle_root.is_ok());
 
         let merkle_root = result_merkle_root.unwrap();
@@ -185,7 +194,7 @@ mod tests {
             Uint256::_from_u32(2),
             Uint256::_from_u32(3),
         ];
-        let result_merkle_root = MerkleRoot::_build_merkle_tree(&txids);
+        let result_merkle_root = _MerkleRoot::_build_merkle_tree(&txids);
         assert!(result_merkle_root.is_ok());
 
         let merkle_root = result_merkle_root.unwrap();
@@ -221,7 +230,7 @@ mod tests {
             Uint256::_from_u32(3),
             Uint256::_from_u32(4),
         ];
-        let result_merkle_root = MerkleRoot::_build_merkle_tree(&txids);
+        let result_merkle_root = _MerkleRoot::_build_merkle_tree(&txids);
         assert!(result_merkle_root.is_ok());
 
         let merkle_root = result_merkle_root.unwrap();
@@ -302,7 +311,7 @@ mod tests {
             Uint256::_from_bytes(bytes4),
             Uint256::_from_bytes(bytes5),
         ];
-        let result_merkle_tree = MerkleRoot::from_ids(&txids);
+        let result_merkle_tree = _MerkleRoot::_from_ids(&txids);
         assert!(result_merkle_tree.is_ok());
 
         let merkle_tree = result_merkle_tree.unwrap();
