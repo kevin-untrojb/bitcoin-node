@@ -4,7 +4,7 @@ use crate::{common::uint256::Uint256, errores::NodoBitcoinError};
 
 use super::blockheader::BlockHeader;
 
-fn _pow_validation(header: &BlockHeader) -> Result<bool, NodoBitcoinError> {
+pub fn _pow_validation(header: &BlockHeader) -> Result<bool, NodoBitcoinError> {
     let target = _calculate_target(header);
     let header_bytes = header.serialize()?;
     _is_valid_pow(&header_bytes, target)

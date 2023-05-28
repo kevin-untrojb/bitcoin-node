@@ -1,6 +1,8 @@
 use crate::errores::NodoBitcoinError;
 use std::io::Write;
 
+use super::proof_of_work;
+
 const HEADER_SIZE: usize = 80;
 
 /// A struct representing a Bitcoin Header
@@ -100,6 +102,14 @@ impl BlockHeader {
             n_bits,
             nonce,
         })
+    }
+
+    pub fn _is_valid_pow(&self) -> bool {
+        let is_valid = match proof_of_work::_pow_validation(self) {
+            Ok(is_valid) => is_valid,
+            Err(_) => false,
+        };
+        is_valid
     }
 }
 
