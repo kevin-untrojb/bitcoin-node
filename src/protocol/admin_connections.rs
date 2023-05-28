@@ -1,16 +1,58 @@
 use std::{
     collections::HashMap,
+    io::{Read, Write},
     net::TcpStream,
     sync::{Arc, Mutex},
 };
 
 use crate::errores::NodoBitcoinError;
+
 #[derive(Clone)]
 pub struct Connection {
     pub id: i32,
     pub tcp: Arc<Mutex<TcpStream>>,
     free: bool,
 }
+impl Connection {
+    pub fn write_message(&self, message: &Vec<u8>) -> Result<(), NodoBitcoinError> {
+        let connection = self.tcp.lock();
+        match connection {
+            Ok(mut connection) => {
+                if connection.write(message).is_err() {
+                    return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
+                }
+                return Ok(());
+            }
+            Err(_) => return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes),
+        }
+    }
+
+    pub fn read_message(&self, buf: &mut [u8]) -> Result<Option<usize>, NodoBitcoinError> {
+        let connection = self.tcp.lock();
+        match connection {
+            Ok(mut connection) => match connection.read(buf) {
+                Ok(bytes_read) => {
+                    return Ok(Some(bytes_read));
+                }
+                Err(_) => return Ok(None),
+            },
+            Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
+        };
+    }
+    pub fn read_exact_message(&self, buf: &mut [u8]) -> Result<(), NodoBitcoinError> {
+        let connection = self.tcp.lock();
+        match connection {
+            Ok(mut connection) => match connection.read_exact(buf) {
+                Ok(()) => {
+                    return Ok(());
+                }
+                Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
+            },
+            Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct AdminConnections {
     connections: HashMap<i32, Connection>,

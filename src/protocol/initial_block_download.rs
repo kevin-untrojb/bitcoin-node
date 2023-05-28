@@ -8,12 +8,19 @@ use crate::messages::getheaders::GetHeadersMessage;
 use crate::messages::headers::deserealize;
 use crate::messages::messages_header::check_header;
 use bitcoin_hashes::{sha256d, Hash};
-use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use std::{cmp, println, thread, vec};
 
 use super::admin_connections::AdminConnections;
 
+pub fn genesis_block() -> [u8; 32] {
+    let start_block: [u8; 32] = [
+        0x00, 0x00, 0x00, 0x00, 0x09, 0x33, 0xea, 0x01, 0xad, 0x0e, 0xe9, 0x84, 0x20, 0x97, 0x79,
+        0xba, 0xae, 0xc3, 0xce, 0xd9, 0x0f, 0xa3, 0xf4, 0x08, 0x71, 0x95, 0x26, 0xf8, 0xd7, 0x7f,
+        0x49, 0x43,
+    ];
+    start_block
+}
 pub fn get_headers(
     mut admin_connections: AdminConnections,
     _node: &mut Node,
@@ -22,63 +29,35 @@ pub fn get_headers(
         Ok(res) => res,
         Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig),
     };
-    let start_block = [
-        0x00, 0x00, 0x00, 0x00, 0x09, 0x33, 0xea, 0x01, 0xad, 0x0e, 0xe9, 0x84, 0x20, 0x97, 0x79,
-        0xba, 0xae, 0xc3, 0xce, 0xd9, 0x0f, 0xa3, 0xf4, 0x08, 0x71, 0x95, 0x26, 0xf8, 0xd7, 0x7f,
-        0x49, 0x43,
-    ];
+    let start_block = genesis_block();
     let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
-    let mut get_headers_message = GetHeadersMessage::serialize(&get_headers)?;
+    let mut get_headers_message = get_headers.serialize()?;
 
     let (connection, id) = admin_connections.find_free_connection()?;
-
-    if connection
-        .tcp
-        .lock()
-        .unwrap()
-        .write(&get_headers_message)
-        .is_err()
-    {
-        return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
-    }
+    connection.write_message(&get_headers_message)?;
 
     loop {
         let mut buffer = [0u8; 24];
-        match connection.tcp.lock().unwrap().read(&mut buffer) {
-            Ok(bytes_read) => {
-                if bytes_read == 0 {
+        let bytes_read_option = connection.read_message(&mut buffer)?;
+        match bytes_read_option {
+            Some(read_bytes) => {
+                if read_bytes == 0 {
                     break;
                 }
             }
-            Err(_) => continue,
+            None => continue,
         }
         let valid_command: bool;
         let (_command, headers) = match check_header(&buffer) {
             Ok((command, payload_len)) => {
                 let mut headers = vec![0u8; payload_len];
-                if connection
-                    .tcp
-                    .lock()
-                    .unwrap()
-                    .read_exact(&mut headers)
-                    .is_err()
-                {
-                    return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
-                }
+                connection.read_exact_message(&mut headers)?;
                 valid_command = command == "headers";
                 (command, headers)
             }
             Err(NodoBitcoinError::MagicNumberIncorrecto) => {
                 let (connection, _id) = admin_connections.change_connection(id)?;
-                if connection
-                    .tcp
-                    .lock()
-                    .unwrap()
-                    .write(&get_headers_message)
-                    .is_err()
-                {
-                    return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
-                }
+                connection.write_message(&get_headers_message)?;
                 continue;
             }
             Err(_) => continue,
@@ -143,38 +122,30 @@ pub fn get_headers(
                             1,
                             *sha256d::Hash::hash(&hash_header).as_byte_array(),
                         );
-                        let get_data_message = match GetDataMessage::serialize(&get_data) {
+                        let get_data_message = match get_data.serialize() {
                             Ok(res) => res,
                             Err(_) => continue,
                         };
-
-                        if cloned_connection
-                            .tcp
-                            .lock()
-                            .unwrap()
-                            .write(&get_data_message)
-                            .is_err()
-                        {
+                        if cloned_connection.write_message(&get_data_message).is_err() {
                             return;
                         }
-
                         loop {
                             let mut change_connection: bool = false;
                             let mut thread_buffer = [0u8; 24];
-                            match cloned_connection
-                                .tcp
-                                .lock()
-                                .unwrap()
-                                .read(&mut thread_buffer)
-                            {
-                                Ok(bytes_read) => {
-                                    if bytes_read == 0 {
-                                        change_connection = true;
-                                    }
-                                }
-                                Err(_) => continue,
-                            }
 
+                            let thread_bytes_read_result =
+                                cloned_connection.read_message(&mut thread_buffer);
+                            match thread_bytes_read_result {
+                                Ok(thread_bytes_read_option) => match thread_bytes_read_option {
+                                    Some(read_bytes) => {
+                                        if read_bytes == 0 {
+                                            change_connection = true;
+                                        }
+                                    }
+                                    None => continue,
+                                },
+                                Err(_) => return,
+                            }
                             if change_connection {
                                 (cloned_connection, thread_id_connection) =
                                     match admin_connections_mutex_thread.lock() {
@@ -190,13 +161,7 @@ pub fn get_headers(
                                         }
                                         Err(_) => return,
                                     };
-                                if cloned_connection
-                                    .tcp
-                                    .lock()
-                                    .unwrap()
-                                    .write(&get_data_message)
-                                    .is_err()
-                                {
+                                if cloned_connection.write_message(&get_data_message).is_err() {
                                     return;
                                 }
                                 continue;
@@ -206,11 +171,9 @@ pub fn get_headers(
                             let (_command, response_get_data) = match check_header(&thread_buffer) {
                                 Ok((command, payload_len)) => {
                                     let mut response_get_data = vec![0u8; payload_len];
+
                                     if cloned_connection
-                                        .tcp
-                                        .lock()
-                                        .unwrap()
-                                        .read_exact(&mut response_get_data)
+                                        .read_exact_message(&mut response_get_data)
                                         .is_err()
                                     {
                                         return;
@@ -234,13 +197,7 @@ pub fn get_headers(
                                             }
                                             Err(_) => return,
                                         };
-                                    if cloned_connection
-                                        .tcp
-                                        .lock()
-                                        .unwrap()
-                                        .write(&get_data_message)
-                                        .is_err()
-                                    {
+                                    if cloned_connection.write_message(&get_data_message).is_err() {
                                         return;
                                     }
                                     continue;
@@ -272,17 +229,8 @@ pub fn get_headers(
                 *sha256d::Hash::hash(&last_header.serialize()?).as_byte_array(),
                 [0; 32],
             );
-            get_headers_message = GetHeadersMessage::serialize(&get_headers)?;
-
-            if connection
-                .tcp
-                .lock()
-                .unwrap()
-                .write(&get_headers_message)
-                .is_err()
-            {
-                return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
-            }
+            get_headers_message = get_headers.serialize()?;
+            connection.write_message(&get_headers_message)?;
         }
     }
 

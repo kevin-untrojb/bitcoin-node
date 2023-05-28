@@ -67,9 +67,9 @@ fn main() {
 }
 
 fn download_blockchain() {
-    let args: Vec<String> = env::args().collect();
+    //let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
-        config::inicializar(args)?;
+        //config::inicializar(args)?;
         let admin_connections = connect()?;
         let mut node = Node::new();
         get_headers(admin_connections, &mut node)?;
