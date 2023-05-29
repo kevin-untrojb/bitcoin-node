@@ -24,6 +24,7 @@ pub enum NodoBitcoinError {
 
     // merkle_tree
     _NoChildren,
+    _NoSePuedeArmarElArbol,
 }
 
 impl Error for NodoBitcoinError {}
@@ -97,6 +98,9 @@ impl fmt::Display for NodoBitcoinError {
                     f,
                     "ERROR: No se puede leer correctamente el verack message."
                 )
+            }
+            NodoBitcoinError::_NoSePuedeArmarElArbol => {
+                write!(f, "ERROR: No se puede crear el merkle tree del bloque.")
             }
         }
     }

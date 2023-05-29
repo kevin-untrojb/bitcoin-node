@@ -1,4 +1,4 @@
-use std::vec;
+use std::{collections::HashMap, vec};
 
 use crate::{
     blockchain::{block::SerializedBlock, transaction::Transaction},
@@ -10,6 +10,7 @@ use super::merkle_node::MerkleNode;
 
 pub struct _MerkleRoot {
     pub root: Option<Box<MerkleNode>>,
+    _hashmap: HashMap<[u8; 32], bool>,
 }
 
 impl _MerkleRoot {
@@ -28,12 +29,22 @@ impl _MerkleRoot {
 
     pub fn _from_ids(transactions_ids: &Vec<Uint256>) -> Result<_MerkleRoot, NodoBitcoinError> {
         let mut root = None;
+        let mut hashmap = HashMap::new();
         if !transactions_ids.is_empty() {
             let ids = transactions_ids.clone();
+
+            hashmap = ids
+                .iter()
+                .map(|id| (id.clone()._to_bytes(), true))
+                .collect::<HashMap<[u8; 32], bool>>();
+
             let node = Self::_build_merkle_tree(&ids)?;
             root = Some(Box::new(node));
         }
-        Ok(_MerkleRoot { root })
+        Ok(_MerkleRoot {
+            root,
+            _hashmap: hashmap,
+        })
     }
 
     pub fn _root_hash(&self) -> Vec<u8> {
@@ -73,6 +84,17 @@ impl _MerkleRoot {
             nodes = new_level;
         }
         nodes.first().cloned().ok_or(NodoBitcoinError::_NoChildren)
+    }
+
+    pub fn _proof_of_inclusion(&self, tx: &Transaction) -> bool {
+        // verificar que el txid de la transaccion este en el arbol
+        let txid_result = tx._txid();
+        let txid = match txid_result {
+            Ok(txid) => txid,
+            Err(_) => return false,
+        };
+        let txid_bytes = txid._to_bytes();
+        self._hashmap.contains_key(&txid_bytes)
     }
 }
 
