@@ -18,7 +18,9 @@ use gtk::{
 
 use crate::{
     blockchain::node::Node,
-    protocol::{connection::connect, initial_block_download::get_headers},
+    protocol::{
+        connection::connect, header_download::get_all_headers, initial_block_download::get_headers,
+    },
 };
 
 fn main() {
@@ -73,6 +75,23 @@ fn download_blockchain() {
         let admin_connections = connect()?;
         let mut node = Node::new();
         get_headers(admin_connections, &mut node)?;
+
+        let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
+        println!("Hello, Bitcoin! Somos {}", nombre_grupo);
+        Ok(())
+    };
+
+    if let Err(e) = do_steps() {
+        println!("{}", e);
+    }
+}
+
+fn _download_header() {
+    //let args: Vec<String> = env::args().collect();
+    let do_steps = || -> Result<(), NodoBitcoinError> {
+        //config::inicializar(args)?;
+
+        get_all_headers()?;
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);

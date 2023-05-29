@@ -1,7 +1,7 @@
-use crate::errores::NodoBitcoinError;
-use std::io::Write;
-
 use super::proof_of_work;
+use crate::errores::NodoBitcoinError;
+use bitcoin_hashes::{sha256d, Hash};
+use std::io::Write;
 
 const HEADER_SIZE: usize = 80;
 
@@ -102,6 +102,12 @@ impl BlockHeader {
             n_bits,
             nonce,
         })
+    }
+
+    pub fn hash(&self) -> Result<[u8; 32], NodoBitcoinError> {
+        let serialized = self.serialize()?;
+        let hash = sha256d::Hash::hash(&serialized);
+        Ok(*hash.as_byte_array())
     }
 
     pub fn _is_valid_pow(&self) -> bool {
