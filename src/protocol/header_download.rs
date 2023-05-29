@@ -15,7 +15,7 @@ pub const GENESIS_BLOCK: [u8; 32] = [
     0xae, 0xc3, 0xce, 0xd9, 0x0f, 0xa3, 0xf4, 0x08, 0x71, 0x95, 0x26, 0xf8, 0xd7, 0x7f, 0x49, 0x43,
 ];
 
-pub fn version() -> Result<u32, NodoBitcoinError> {
+pub fn _version() -> Result<u32, NodoBitcoinError> {
     let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
         Ok(res) => res,
         Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig),
@@ -24,15 +24,20 @@ pub fn version() -> Result<u32, NodoBitcoinError> {
 }
 
 pub fn _get_last_header_hash() -> Result<[u8; 32], NodoBitcoinError> {
-    let bytes = _leer_ultimo_header()?;
-    let block_header = BlockHeader::deserialize(&bytes)?;
+    let block_header = _get_last_header()?;
     let hash = block_header.hash()?;
     Ok(hash)
 }
 
-pub fn get_all_headers() -> Result<(), NodoBitcoinError> {
+pub fn _get_last_header() -> Result<BlockHeader, NodoBitcoinError> {
+    let bytes = _leer_ultimo_header()?;
+    let block_header = BlockHeader::deserialize(&bytes)?;
+    Ok(block_header)
+}
+
+pub fn _get_all_headers() -> Result<(), NodoBitcoinError> {
     let mut admin_connections = connect()?;
-    let version = version()?;
+    let version = _version()?;
     let start_block = GENESIS_BLOCK;
     let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
     let mut get_headers_message = get_headers.serialize()?;
