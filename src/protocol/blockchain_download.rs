@@ -1,11 +1,15 @@
-use crate::blockchain::block::{self, SerializedBlock};
-use crate::blockchain::node::Node;
-use crate::common::utils_timestamp::obtener_timestamp_dia;
+use crate::blockchain::block::SerializedBlock;
+use crate::blockchain::blockheader::BlockHeader;
+use crate::blockchain::file::{
+    _leer_ultimo_header, escribir_archivo, escribir_archivo_bloque, existe_archivo_headers,
+    reset_files,
+};
+use crate::common::utils_timestamp::{_timestamp_to_datetime, obtener_timestamp_dia};
 use crate::config;
 use crate::errores::NodoBitcoinError;
 use crate::messages::getdata::GetDataMessage;
 use crate::messages::getheaders::GetHeadersMessage;
-use crate::messages::headers::deserealize;
+use crate::messages::headers::{deserealize, deserealize_sin_guardar};
 use crate::messages::messages_header::check_header;
 use bitcoin_hashes::{sha256d, Hash};
 use std::sync::{Arc, Mutex};
@@ -30,33 +34,69 @@ pub fn _version() -> Result<u32, NodoBitcoinError> {
 pub fn get_full_blockchain(
     mut admin_connections: AdminConnections,
 ) -> Result<(), NodoBitcoinError> {
+    // _ = reset_files();
+    println!("Obteniendo blockchain completa");
+    // obtener la fecha actual
+    let fecha_actual = chrono::offset::Local::now();
+    println!(
+        "Comienza la descarga a las {}",
+        fecha_actual.format("%F %T").to_string()
+    );
+    let existe_header = existe_archivo_headers();
     let version = _version()?;
-    let start_block = GENESIS_BLOCK;
+    let mut start_block = match existe_header {
+        true => {
+            let last_file_header = _leer_ultimo_header()?;
+            let header_serialized = BlockHeader::deserialize(&last_file_header)?;
+            header_serialized.hash()?
+        }
+        false => GENESIS_BLOCK,
+    };
+
     let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
     let mut get_headers_message = get_headers.serialize()?;
 
-    let (connection, id) = admin_connections.find_free_connection()?;
+    let (mut connection, mut id) = admin_connections.find_free_connection()?;
     connection.write_message(&get_headers_message)?;
 
+    let total_reintentos: usize =
+        match (config::get_valor("REINTENTOS_DESCARGA_BLOQUES".to_string())?).parse::<usize>() {
+            Ok(res) => res,
+            Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig),
+        };
+
+    let mut reintentos: usize = 0;
+
     loop {
+        eprint!("Leyendo siguiente header...");
         let mut buffer = [0u8; 24];
         let bytes_read_option = connection.read_message(&mut buffer)?;
         match bytes_read_option {
             Some(read_bytes) => {
                 if read_bytes == 0 {
-                    let (connection, _id) = match admin_connections.find_free_connection() {
+                    (connection, id) = match admin_connections.find_free_connection() {
                         Ok(res) => res,
                         Err(NodoBitcoinError::NoSeEncuentraConexionLibre) => {
+                            println!("No se encuentra conexion libre");
                             admin_connections = connect()?; // actualizo la lista de conexiones
                             admin_connections.find_free_connection()?
                         }
                         Err(_) => continue,
                     };
+                    println!(
+                        "Escribiendo mensaje getheaders en conection_id {}...",
+                        connection.id
+                    );
+                    let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
+                    get_headers_message = get_headers.serialize()?;
                     connection.write_message(&get_headers_message)?;
                     continue;
                 }
             }
-            None => continue,
+            None => {
+                println!("No se leyó ningún byte");
+                continue;
+            }
         }
 
         let valid_command: bool;
@@ -72,6 +112,7 @@ pub fn get_full_blockchain(
             }
             Err(NodoBitcoinError::MagicNumberIncorrecto) => {
                 let (connection, _id) = admin_connections.find_free_connection()?;
+                println!("Escribiendo mensaje getheaders ...");
                 connection.write_message(&get_headers_message)?;
                 continue;
             }
@@ -79,11 +120,14 @@ pub fn get_full_blockchain(
         };
 
         if valid_command {
-            let blockheaders = deserealize(headers)?;
+            let blockheaders = deserealize_sin_guardar(headers)?;
+            let blockheaders_len = blockheaders.len();
             let fecha_inicial = config::get_valor("DIA_INICIAL".to_string())?;
             let timestamp_ini = obtener_timestamp_dia(fecha_inicial);
             let last_header = blockheaders[blockheaders.len() - 1];
+            let datetime = _timestamp_to_datetime(last_header.time.into());
             let headers_filtrados: Vec<_> = blockheaders
+                .clone()
                 .into_iter()
                 .filter(|header| header.time >= timestamp_ini)
                 .collect();
@@ -100,9 +144,12 @@ pub fn get_full_blockchain(
             let mut threads = vec![];
 
             let admin_connections_mutex = Arc::new(Mutex::new(admin_connections.clone()));
+            let headers_filtrados_len = headers_filtrados.len();
             println!(
-                "Descarga de headers. Total obtenidos: {:?}",
-                headers_filtrados.len()
+                "Descarga de headers. Total: {:?}. Bloques a descargar: {:?}. Ultimo timestamp: {:?}",
+                blockheaders_len,
+                headers_filtrados_len,
+                datetime.format("%Y-%m-%d %H:%M").to_string()
             );
 
             for i in 0..n_threads {
@@ -119,18 +166,30 @@ pub fn get_full_blockchain(
                                 let (thread_connection, thread_id_connection) =
                                     match admin.find_free_connection() {
                                         Ok((connection, id)) => (connection, id),
-                                        Err(_) => return,
+                                        Err(_) => {
+                                            println!("Error al buscar conexiones libres.");
+                                            return;
+                                        }
                                     };
                                 drop(admin);
                                 (thread_connection, thread_id_connection)
                             }
-                            Err(_) => return,
+                            Err(_) => {
+                                println!("Error al lockear el Mutex.");
+                                return;
+                            }
                         };
 
                     for header in block_headers_thread {
                         let hash_header = match header.serialize() {
                             Ok(serialized_header) => serialized_header,
-                            Err(_) => continue,
+                            Err(_) => {
+                                println!(
+                                    "Error al deserializar el header {:?}. Reintentando ...",
+                                    header
+                                );
+                                continue;
+                            }
                         };
 
                         let get_data = GetDataMessage::new(
@@ -139,11 +198,53 @@ pub fn get_full_blockchain(
                         );
                         let get_data_message = match get_data.serialize() {
                             Ok(res) => res,
-                            Err(_) => continue,
+                            Err(_) => {
+                                println!(
+                                    "Error al serializar el get_data {:?}. Reintentando ...",
+                                    hash_header
+                                );
+                                continue;
+                            }
                         };
-                        if cloned_connection.write_message(&get_data_message).is_err() {
-                            return;
+
+                        for j in 0..total_reintentos + 1 {
+                            let writed_message = cloned_connection.write_message(&get_data_message);
+                            if writed_message.is_err() {
+                                {
+                                    println!("Error al enviar mensaje de get_data");
+                                    if j == total_reintentos {
+                                        println!(
+                                            "Se realizaron todos los reintentos ... {:?}",
+                                            get_data_message
+                                        );
+                                        return;
+                                    }
+
+                                    (cloned_connection, thread_id_connection) =
+                                        match admin_connections_mutex_thread.lock() {
+                                            Ok(mut admin) => {
+                                                let (thread_connection, thread_id_connection) =
+                                                    match admin
+                                                        .change_connection(thread_id_connection)
+                                                    {
+                                                        Ok((connection, id)) => (connection, id),
+                                                        Err(_) => continue,
+                                                    };
+                                                drop(admin);
+                                                (thread_connection.clone(), thread_id_connection)
+                                            }
+                                            Err(_) => {
+                                                println!("Error al lockear el Mutex.");
+                                                return;
+                                            }
+                                        };
+                                    println!("Se cambió la conexión. Reintento {:?} ...", j);
+                                    continue;
+                                };
+                            }
+                            break;
                         }
+                        let mut intento_actual = 0;
                         loop {
                             let mut change_connection: bool = false;
                             let mut thread_buffer = [0u8; 24];
@@ -154,14 +255,28 @@ pub fn get_full_blockchain(
                                 Ok(thread_bytes_read_option) => match thread_bytes_read_option {
                                     Some(read_bytes) => {
                                         if read_bytes == 0 {
+                                            intento_actual += 1;
                                             change_connection = true;
+                                        } else {
+                                            intento_actual = 0;
                                         }
                                     }
-                                    None => continue,
+                                    None => {
+                                        intento_actual += 1;
+                                        change_connection = true;
+                                    },
                                 },
-                                Err(_) => return,
+                                Err(_) => {
+                                    println!("Error al leer mensaje {:?}", thread_buffer);
+                                    return;
+                                }
                             }
                             if change_connection {
+                                if intento_actual == total_reintentos {
+                                    println!("Se realizaron todos los reintentos ...");
+                                    return;
+                                }
+                                println!("Se va a cambiar la conexión. Reintento {:?} ...", intento_actual);
                                 (cloned_connection, thread_id_connection) =
                                     match admin_connections_mutex_thread.lock() {
                                         Ok(mut admin) => {
@@ -174,9 +289,13 @@ pub fn get_full_blockchain(
                                             drop(admin);
                                             (thread_connection.clone(), thread_id_connection)
                                         }
-                                        Err(_) => return,
+                                        Err(_) => {
+                                            println!("Error al lockear el Mutex.");
+                                            return;
+                                        }
                                     };
                                 if cloned_connection.write_message(&get_data_message).is_err() {
+                                    println!("Error al escribir el mensaje");
                                     return;
                                 }
                                 continue;
@@ -191,6 +310,7 @@ pub fn get_full_blockchain(
                                         .read_exact_message(&mut response_get_data)
                                         .is_err()
                                     {
+                                        println!("Error al leer el mensaje");
                                         return;
                                     }
                                     valid_command = command == "block";
@@ -205,36 +325,88 @@ pub fn get_full_blockchain(
                                                         .change_connection(thread_id_connection)
                                                     {
                                                         Ok((connection, id)) => (connection, id),
-                                                        Err(_) => continue,
+                                                        Err(_) => {
+                                                            println!("Error al cambiar de conexión. Reintentando ...");
+                                                            continue;
+                                                        }
                                                     };
                                                 drop(admin);
                                                 (thread_connection.clone(), thread_id_connection)
                                             }
-                                            Err(_) => return,
+                                            Err(_) => {
+                                                println!("Error al lockear el Mutex.");
+                                                return;
+                                            }
                                         };
                                     if cloned_connection.write_message(&get_data_message).is_err() {
+                                        println!("Error al escribir el mensaje");
                                         return;
                                     }
                                     continue;
                                 }
                                 Err(_) => {
+                                    println!("Error al chequear el header. Reintentando ...");
                                     continue;
                                 }
                             };
 
                             if valid_command {
-                                let mut cloned = shared_blocks.lock().unwrap();
+                                let cloned_result = shared_blocks.lock();
+                                if cloned_result.is_err() {
+                                    println!("Error al lockear el vector de bloques");
+                                    return;
+                                }
+                                let mut cloned = cloned_result.unwrap();
                                 let block = match SerializedBlock::deserialize(&response_get_data) {
                                     Ok(block) => block,
-                                    Err(_) => continue,
+                                    Err(_) => {
+                                        println!(
+                                            "Error al deserializar el bloque {:?}",
+                                            response_get_data
+                                        );
+                                        continue;
+                                    }
                                 };
                                 cloned.push(block);
-                                println!("Bloque #{} descargado", cloned.len());
+                                let cloned_len = cloned.len();
+
+                                let completado =
+                                    ((cloned_len as f32 / headers_filtrados_len as f32) * 50.0)
+                                        as usize;
+                                let barra_completado = "#".repeat(completado);
+                                let barra_no_completado = ".".repeat(50 - completado);
+                                eprint!(
+                                    "\rDescargando bloques[{}{}] {:?}/{:?}. ",
+                                    barra_completado,
+                                    barra_no_completado,
+                                    cloned_len,
+                                    headers_filtrados_len
+                                );
+                                //println!("Bloque #{} descargado", cloned.len());
                                 drop(cloned);
                                 break;
                             }
                         }
                     }
+                    match admin_connections_mutex_thread.lock() {
+                        Ok(mut admin) => {
+                            let _ =
+                            match admin
+                                .free_connection(thread_id_connection)
+                            {
+                                Ok(()) => (),
+                                Err(_) => {
+                                    println!("Error al liberar la conexión ...");
+                                    return;
+                                }
+                            };
+                        drop(admin);
+                        }
+                        Err(_) => {
+                            println!("Error al lockear el Mutex.");
+                            return;
+                        }
+                    };
                 }));
             }
 
@@ -243,25 +415,57 @@ pub fn get_full_blockchain(
             }
 
             // guardar bloques
-            // save blocks
-            let bloques_a_guardar = blocks.lock();
-            if bloques_a_guardar.is_err() {
-                return Err(NodoBitcoinError::NoExisteArchivo);
-            }
-            for bloque in bloques_a_guardar.unwrap().iter() {
-                // guardar bloque
-            }
+            // Convertir Result<MutexGuard<Vec<SerializedBlock>>, _> a Vec<SerializedBlock>
+            let mut bloques_a_guardar = match blocks.lock() {
+                Ok(mutex_guard) => mutex_guard.clone(),
+                Err(_) => return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes),
+            };
 
-            let get_headers = GetHeadersMessage::new(
-                version,
-                1,
-                *sha256d::Hash::hash(&last_header.serialize()?).as_byte_array(),
-                [0; 32],
-            );
-            get_headers_message = get_headers.serialize()?;
+            if bloques_a_guardar.len() > 0 {
+                println!("Bloques descargados: {:?}", bloques_a_guardar.len());
+            };
+
+            if bloques_a_guardar.len() == headers_filtrados_len {
+                // guardo los headers
+
+                eprint!("Guardando headers...");
+                for bh in blockheaders {
+                    let bytes = bh.serialize()?;
+                    _ = escribir_archivo(&bytes)?;
+                }
+                println!("Headers guardados");
+
+                // guardo los bloques
+                if bloques_a_guardar.len() > 0 {
+                    eprint!("Guardando bloques...");
+                    bloques_a_guardar.sort();
+                    for bloque in bloques_a_guardar {
+                        // guardar bloque
+                        _ = escribir_archivo_bloque(&bloque.block_bytes)?;
+                    }
+                    println!("Bloques guardados");
+                }
+
+                start_block = last_header.hash()?;
+                let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
+                get_headers_message = get_headers.serialize()?;
+            } else {
+                reintentos += 1;
+                if reintentos > total_reintentos {
+                    println!("Ya se reintentó muchas veces ... dejamos descarsar un rato que después pruebo otra vez ... ");
+                    return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+                }
+                println!("No se descargaron todos los bloques, reintentando ...");
+            }
             connection.write_message(&get_headers_message)?;
         }
     }
+
+    let fecha_actual = chrono::offset::Local::now();
+    println!(
+        "Finalizada la descarga a las {}",
+        fecha_actual.format("%F %T").to_string()
+    );
 
     Ok(())
 }

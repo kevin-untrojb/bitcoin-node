@@ -17,7 +17,7 @@ const HEADER_SIZE: usize = 80;
 /// * `time` - The Unix timestamp of the block's creation.
 /// * `n_bits` - The compressed target difficulty of the block in compact format.
 /// * `nonce` - A random number used in the mining process to try and find a valid block hash.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct BlockHeader {
     pub version: u32,
     pub previous_block_hash: [u8; 32],

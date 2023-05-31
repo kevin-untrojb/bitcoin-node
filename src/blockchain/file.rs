@@ -1,9 +1,25 @@
 use std::{
     fs::{File, OpenOptions},
     io::{Read, Seek, SeekFrom, Write},
+    path::Path,
 };
 
 use crate::{config, errores::NodoBitcoinError};
+
+pub fn reset_files() {
+    let path = config::get_valor("NOMBRE_ARCHIVO".to_string()).unwrap();
+    let _ = std::fs::remove_file(path);
+    let path = config::get_valor("NOMBRE_ARCHIVO_BLOQUES".to_string()).unwrap();
+    let _ = std::fs::remove_file(path);
+}
+
+pub fn existe_archivo_headers() -> bool {
+    let path = match config::get_valor("NOMBRE_ARCHIVO".to_string()) {
+        Ok(path) => path,
+        Err(_) => return false,
+    };
+    Path::new(&path).exists()
+}
 
 pub fn escribir_archivo(datos: &[u8]) -> Result<(), NodoBitcoinError> {
     let path = config::get_valor("NOMBRE_ARCHIVO".to_string())?;
@@ -15,6 +31,27 @@ pub fn escribir_archivo(datos: &[u8]) -> Result<(), NodoBitcoinError> {
     // Escribe los bytes en el archivo
     archivo
         .write_all(datos)
+        .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+    Ok(())
+}
+
+pub fn escribir_archivo_bloque(datos: &[u8]) -> Result<(), NodoBitcoinError> {
+    let path = config::get_valor("NOMBRE_ARCHIVO_BLOQUES".to_string())?;
+    let mut archivo = match OpenOptions::new().create(true).append(true).open(path) {
+        Ok(archivo) => archivo,
+        Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
+    };
+
+    let datos_len = datos.len();
+    let datos_len_bytes: [u8; 8] = datos_len.to_ne_bytes();
+    // necesito un array de bytes que concatene los datos_len_bytes y los datos
+    let mut datos_con_len = datos_len_bytes.to_vec();
+    datos_con_len.extend_from_slice(datos);
+    let bytes_para_guardar = datos_con_len.as_slice();
+
+    // Escribe los bytes en el archivo
+    archivo
+        .write_all(bytes_para_guardar)
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
     Ok(())
 }

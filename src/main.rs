@@ -19,8 +19,8 @@ use gtk::{
 use crate::{
     blockchain::node::Node,
     protocol::{
-        block_download::get_blocks, connection::connect, header_download::_get_all_headers,
-        initial_block_download::get_headers,
+        block_download::get_blocks, blockchain_download::get_full_blockchain, connection::connect,
+        header_download::_get_all_headers, initial_block_download::get_headers,
     },
 };
 
@@ -109,7 +109,7 @@ fn main() {
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let admin_connections = connect()?;
-        get_blocks(admin_connections)?;
+        get_full_blockchain(admin_connections)?;
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);

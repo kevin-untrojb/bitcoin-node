@@ -23,7 +23,10 @@ impl Connection {
                 }
                 return Ok(());
             }
-            Err(_) => return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes),
+            Err(_) => {
+                println!("No se pudo lockear el TcpStream");
+                return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
+            }
         }
     }
 
@@ -34,9 +37,15 @@ impl Connection {
                 Ok(bytes_read) => {
                     return Ok(Some(bytes_read));
                 }
-                Err(_) => return Ok(None),
+                Err(_) => {
+                    println!("No se pudo leer el mensaje");
+                    return Ok(None);
+                }
             },
-            Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
+            Err(_) => {
+                println!("No se pudo lockear el TcpStream");
+                return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+            }
         };
     }
     pub fn read_exact_message(&self, buf: &mut [u8]) -> Result<(), NodoBitcoinError> {
@@ -46,9 +55,15 @@ impl Connection {
                 Ok(()) => {
                     return Ok(());
                 }
-                Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
+                Err(_) => {
+                    println!("No se pudo leer el mensaje");
+                    return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+                }
             },
-            Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
+            Err(_) => {
+                println!("No se pudo lockear el TcpStream");
+                return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+            }
         }
     }
 }
@@ -84,6 +99,7 @@ impl AdminConnections {
     }
 
     pub fn find_free_connection(&mut self) -> Result<(Connection, i32), NodoBitcoinError> {
+        println!("Buscando conexión libre ...");
         match self
             .connections
             .iter_mut()
@@ -104,8 +120,17 @@ impl AdminConnections {
         let free_connection = self.find_free_connection();
         match self.connections.get_mut(&old_connection_id) {
             Some(mut res) => res.free = false,
-            None => todo!(),
+            None => println!("No se encontro la conexion"),
         };
+        println!("Cambio de conexion");
         free_connection
+    }
+
+    pub fn free_connection(&mut self, connection_id: i32) -> Result<(), NodoBitcoinError> {
+        match self.connections.get_mut(&connection_id) {
+            Some(mut res) => res.free = false,
+            None => println!("No se encontro la conexion"),
+        };
+        Ok(())
     }
 }

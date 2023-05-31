@@ -42,6 +42,10 @@ pub fn make_header(command: String, payload: &Vec<u8>) -> Result<Vec<u8>, NodoBi
 }
 
 pub fn check_header(header: &[u8]) -> Result<(String, usize), NodoBitcoinError> {
+    if header.len() < 4 {
+        return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+    }
+
     let mut offset = 0;
 
     let magic_num = &header[offset..offset + 4];
