@@ -18,13 +18,10 @@ use gtk::{
 
 use crate::{
     blockchain::node::Node,
-    protocol::{
-        block_download::get_blocks, blockchain_download::get_full_blockchain, connection::connect,
-        header_download::_get_all_headers, initial_block_download::get_headers,
-    },
+    protocol::{connection::connect, initial_block_download::get_full_blockchain},
 };
 
-fn no_main() {
+fn main() {
     let args: Vec<String> = env::args().collect();
     _ = config::inicializar(args);
 
@@ -58,7 +55,7 @@ fn no_main() {
         button.connect_clicked(|_| {
             thread::spawn(move || {
                 println!("Descargando!");
-                //download_bloques();
+                download_blockchain();
             });
         });
 
@@ -70,41 +67,6 @@ fn no_main() {
 }
 
 fn download_blockchain() {
-    //let args: Vec<String> = env::args().collect();
-    let do_steps = || -> Result<(), NodoBitcoinError> {
-        //config::inicializar(args)?;
-        let admin_connections = connect()?;
-        let mut node = Node::new();
-        get_headers(admin_connections, &mut node)?;
-
-        let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
-        println!("Hello, Bitcoin! Somos {}", nombre_grupo);
-        Ok(())
-    };
-
-    if let Err(e) = do_steps() {
-        println!("{}", e);
-    }
-}
-
-fn _download_header() {
-    //let args: Vec<String> = env::args().collect();
-    let do_steps = || -> Result<(), NodoBitcoinError> {
-        //config::inicializar(args)?;
-
-        _get_all_headers()?;
-
-        let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
-        println!("Hello, Bitcoin! Somos {}", nombre_grupo);
-        Ok(())
-    };
-
-    if let Err(e) = do_steps() {
-        println!("{}", e);
-    }
-}
-
-fn main() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
