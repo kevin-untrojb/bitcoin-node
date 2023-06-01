@@ -116,10 +116,9 @@ fn leer_bytes(path: String, offset: u64, length: u64) -> Result<Vec<u8>, NodoBit
         return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
     }
     let mut buffer = vec![0; length as usize];
-    let _ = match file.read_exact(&mut buffer) {
+    match file.read_exact(&mut buffer) {
         Ok(readed) => readed,
         Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
     };
-
     Ok(buffer)
 }

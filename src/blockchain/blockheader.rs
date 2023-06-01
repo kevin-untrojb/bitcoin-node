@@ -111,11 +111,7 @@ impl BlockHeader {
     }
 
     pub fn _is_valid_pow(&self) -> bool {
-        let is_valid = match proof_of_work::_pow_validation(self) {
-            Ok(is_valid) => is_valid,
-            Err(_) => false,
-        };
-        is_valid
+        proof_of_work::_pow_validation(self).unwrap_or(false)
     }
 }
 

@@ -14,18 +14,18 @@ pub struct Connection {
     free: bool,
 }
 impl Connection {
-    pub fn write_message(&self, message: &Vec<u8>) -> Result<(), NodoBitcoinError> {
+    pub fn write_message(&self, message: &[u8]) -> Result<(), NodoBitcoinError> {
         let connection = self.tcp.lock();
         match connection {
             Ok(mut connection) => {
                 if connection.write(message).is_err() {
                     return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
                 }
-                return Ok(());
+                Ok(())
             }
             Err(_) => {
                 println!("No se pudo lockear el TcpStream");
-                return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
+                Err(NodoBitcoinError::NoSePuedeEscribirLosBytes)
             }
         }
     }
@@ -34,35 +34,31 @@ impl Connection {
         let connection = self.tcp.lock();
         match connection {
             Ok(mut connection) => match connection.read(buf) {
-                Ok(bytes_read) => {
-                    return Ok(Some(bytes_read));
-                }
+                Ok(bytes_read) => Ok(Some(bytes_read)),
                 Err(_) => {
                     println!("No se pudo leer el mensaje");
-                    return Ok(None);
+                    Ok(None)
                 }
             },
             Err(_) => {
                 println!("No se pudo lockear el TcpStream");
-                return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+                Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
             }
-        };
+        }
     }
     pub fn read_exact_message(&self, buf: &mut [u8]) -> Result<(), NodoBitcoinError> {
         let connection = self.tcp.lock();
         match connection {
             Ok(mut connection) => match connection.read_exact(buf) {
-                Ok(()) => {
-                    return Ok(());
-                }
+                Ok(()) => Ok(()),
                 Err(_) => {
                     println!("No se pudo leer el mensaje");
-                    return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+                    Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
                 }
             },
             Err(_) => {
                 println!("No se pudo lockear el TcpStream");
-                return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+                Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
             }
         }
     }

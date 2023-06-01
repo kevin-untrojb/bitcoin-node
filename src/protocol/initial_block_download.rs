@@ -101,19 +101,16 @@ fn read_bytes_header(
         Some(read_bytes) => {
             if read_bytes > 0 {
                 return Ok(buffer);
-            } else {
-                if intento < total_reintentos() {
-                    println!("Reintentando leer header");
-                    let (admin_connections, (connection, _id)) =
-                        buscar_conexion_libre_o_nuevas_conexiones(admin_connections)?;
-                    return read_bytes_header(&connection, admin_connections, intento + 1);
-                } else {
-                    println!("Máximo de reintentos alcanzado ... probá más tarde ...");
-                    return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
-                }
-            }
+            } else if intento < total_reintentos() {
+                println!("Reintentando leer header");
+                let (admin_connections, (connection, _id)) =
+                    buscar_conexion_libre_o_nuevas_conexiones(admin_connections)?;
+                return read_bytes_header(&connection, admin_connections, intento + 1);
+            };
+            println!("Máximo de reintentos alcanzado ... probá más tarde ...");
+            Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
         }
-        None => return read_bytes_header(connection, admin_connections, intento + 1),
+        None => read_bytes_header(connection, admin_connections, intento + 1),
     }
 }
 
@@ -127,7 +124,7 @@ fn get_timestamp_inicial() -> u32 {
 }
 
 fn get_headers_filtrados(blockheaders: &Vec<BlockHeader>) -> Vec<BlockHeader> {
-    if blockheaders.len() == 0 {
+    if blockheaders.is_empty() {
         println!("No hay bloques para descargar");
         return vec![];
     }
@@ -162,7 +159,7 @@ fn _get_config_threads() -> usize {
 }
 
 fn _headers_by_threads(headers_filtrados: Vec<BlockHeader>) -> Vec<Vec<BlockHeader>> {
-    if headers_filtrados.len() == 0 {
+    if headers_filtrados.is_empty() {
         return vec![];
     }
 
@@ -200,7 +197,7 @@ fn _get_mutex_connection_id(
         }
         Err(_) => {
             println!("Error al lockear el Mutex.");
-            return Err(NodoBitcoinError::NoSeEncuentraConexionLibre);
+            Err(NodoBitcoinError::NoSeEncuentraConexionLibre)
         }
     }
 }
@@ -218,7 +215,7 @@ fn _write_bytes_data(
     let writed_connection = connection.write_message(&get_data_message);
     if writed_connection.is_err() {
         println!("Error al escribir el mensaje get_data");
-        (connection, _) = _get_mutex_connection_id(&admin_connections)?;
+        (connection, _) = _get_mutex_connection_id(admin_connections)?;
         _write_bytes_data(header, connection.clone(), admin_connections, intento + 1)?;
     }
     Ok(connection)
@@ -233,13 +230,13 @@ fn _read_bytes_data(connection: &Connection) -> Result<[u8; 24], NodoBitcoinErro
                 if read_bytes == 0 {
                     return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
                 }
-                return Ok(thread_buffer);
+                Ok(thread_buffer)
             }
-            None => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
+            None => Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
         },
         Err(_) => {
             println!("Error al leer mensaje {:?}", thread_buffer);
-            return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+            Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
         }
     }
 }
@@ -261,7 +258,7 @@ fn _write_read_bytes_data(
         Ok(thread_buffer) => (connection_writed, thread_buffer),
         Err(_) => {
             println!("Error al leer mensaje {:?}", thread_buffer_result);
-            let (new_connection, _) = _get_mutex_connection_id(&admin_connections)?;
+            let (new_connection, _) = _get_mutex_connection_id(admin_connections)?;
             _write_read_bytes_data(header, &new_connection, admin_connections, intento + 1)?
         }
     };
@@ -297,7 +294,7 @@ pub fn get_full_blockchain(admin_connections: AdminConnections) -> Result<(), No
     println!("Obteniendo blockchain completa");
     println!(
         "Comienza la descarga a las {}",
-        chrono::offset::Local::now().format("%F %T").to_string()
+        chrono::offset::Local::now().format("%F %T")
     );
 
     let (mut connection, mut _id) = write_header_message_new_connection(admin_connections.clone())?;
@@ -574,7 +571,7 @@ pub fn get_full_blockchain(admin_connections: AdminConnections) -> Result<(), No
                 Err(_) => return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes),
             };
 
-            if bloques_a_guardar.len() > 0 {
+            if !bloques_a_guardar.is_empty() {
                 println!("Bloques descargados: {:?}", bloques_a_guardar.len());
             };
 
@@ -596,7 +593,7 @@ pub fn get_full_blockchain(admin_connections: AdminConnections) -> Result<(), No
     let fecha_actual = chrono::offset::Local::now();
     println!(
         "Finalizada la descarga a las {}",
-        fecha_actual.format("%F %T").to_string()
+        fecha_actual.format("%F %T")
     );
 
     Ok(())
@@ -608,7 +605,7 @@ fn liberar_conexion(
 ) {
     match admin_connections_mutex_thread.lock() {
         Ok(mut admin) => {
-            let _ = match admin.free_connection(thread_id_connection) {
+            match admin.free_connection(thread_id_connection) {
                 Ok(()) => (),
                 Err(_) => {
                     println!("Error al liberar la conexión ...");
@@ -619,7 +616,6 @@ fn liberar_conexion(
         }
         Err(_) => {
             println!("Error al lockear el Mutex.");
-            return;
         }
     };
 }
@@ -631,17 +627,17 @@ fn guardar_headers_y_bloques(
     eprint!("Guardando headers...");
     for bh in blockheaders {
         let bytes = bh.serialize()?;
-        _ = escribir_archivo(&bytes)?;
+        escribir_archivo(&bytes)?;
     }
     println!("Headers guardados");
 
     // guardo los bloques
-    if bloques_a_guardar.len() > 0 {
+    if !bloques_a_guardar.is_empty() {
         eprint!("Guardando bloques...");
         bloques_a_guardar.sort();
         for bloque in bloques_a_guardar {
             // guardar bloque
-            _ = escribir_archivo_bloque(&bloque.block_bytes)?;
+            escribir_archivo_bloque(&bloque.block_bytes)?;
         }
         println!("Bloques guardados");
     }

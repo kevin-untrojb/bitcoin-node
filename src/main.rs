@@ -30,7 +30,7 @@ fn main() {
         }
     };
 
-    let title = format!("Nodo Bitcoin - {}", nombre_grupo).to_string();
+    let title = format!("Nodo Bitcoin - {}", nombre_grupo);
     let app = Application::builder()
         .application_id("nodo_bitcoin")
         .build();
