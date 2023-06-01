@@ -11,11 +11,12 @@ use crate::messages::getdata::GetDataMessage;
 use crate::messages::getheaders::GetHeadersMessage;
 use crate::messages::headers::{deserealize, deserealize_sin_guardar};
 use crate::messages::messages_header::check_header;
-use bitcoin_hashes::{sha256d, Hash};
+use std::hash::Hash;
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::{cmp, println, thread, vec};
 
-use super::admin_connections::AdminConnections;
+use super::admin_connections::{AdminConnections, Connection};
 use super::connection::connect;
 
 pub const GENESIS_BLOCK: [u8; 32] = [
@@ -31,20 +32,9 @@ pub fn _version() -> Result<u32, NodoBitcoinError> {
     Ok(version)
 }
 
-pub fn get_full_blockchain(
-    mut admin_connections: AdminConnections,
-) -> Result<(), NodoBitcoinError> {
-    // _ = reset_files();
-    println!("Obteniendo blockchain completa");
-    // obtener la fecha actual
-    let fecha_actual = chrono::offset::Local::now();
-    println!(
-        "Comienza la descarga a las {}",
-        fecha_actual.format("%F %T").to_string()
-    );
+fn start_block() -> Result<[u8; 32], NodoBitcoinError> {
     let existe_header = existe_archivo_headers();
-    let version = _version()?;
-    let mut start_block = match existe_header {
+    let start_block = match existe_header {
         true => {
             let last_file_header = _leer_ultimo_header()?;
             let header_serialized = BlockHeader::deserialize(&last_file_header)?;
@@ -52,52 +42,166 @@ pub fn get_full_blockchain(
         }
         false => GENESIS_BLOCK,
     };
+    Ok(start_block)
+}
 
+fn get_headers_message() -> Result<Vec<u8>, NodoBitcoinError> {
+    let version = _version()?;
+    let start_block = start_block()?;
     let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
     let mut get_headers_message = get_headers.serialize()?;
+    Ok(get_headers_message)
+}
 
+fn write_header_message_new_connection(
+    mut admin_connections: AdminConnections,
+) -> Result<(Connection, i32), NodoBitcoinError> {
+    let mut get_headers_message = get_headers_message()?;
     let (mut connection, mut id) = admin_connections.find_free_connection()?;
     connection.write_message(&get_headers_message)?;
+    Ok((connection, id))
+}
 
-    let total_reintentos: usize =
-        match (config::get_valor("REINTENTOS_DESCARGA_BLOQUES".to_string())?).parse::<usize>() {
-            Ok(res) => res,
-            Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig),
+fn write_header_message_old_connection(connection: &Connection) -> Result<(), NodoBitcoinError> {
+    let mut get_headers_message = get_headers_message()?;
+    connection.write_message(&get_headers_message)
+}
+
+const DEFAULT_TOTAL_REINTEGROS: usize = 5;
+
+fn total_reintentos() -> usize {
+    let total_reintentos_config = config::get_valor("REINTENTOS_DESCARGA_BLOQUES".to_string());
+    if let Ok(valor_string) = total_reintentos_config {
+        if let Ok(value) = valor_string.parse::<usize>() {
+            return value;
         };
+    };
+    DEFAULT_TOTAL_REINTEGROS
+}
+
+fn buscar_conexion_libre_o_nuevas_conexiones(
+    mut admin_connections: AdminConnections,
+) -> Result<(AdminConnections, (Connection, i32)), NodoBitcoinError> {
+    let result = match admin_connections.find_free_connection() {
+        Ok(res) => res,
+        Err(_) => {
+            println!("No se encuentra conexion libre");
+            admin_connections = connect()?; // actualizo la lista de conexiones
+            admin_connections.find_free_connection()?
+        }
+    };
+    Ok((admin_connections, result))
+}
+
+fn read_bytes_header(
+    connection: &Connection,
+    mut admin_connections: AdminConnections,
+    intento: usize,
+) -> Result<[u8; 24], NodoBitcoinError> {
+    let mut buffer = [0u8; 24];
+    let bytes_read_option = connection.read_message(&mut buffer)?;
+    match bytes_read_option {
+        Some(read_bytes) => {
+            if read_bytes > 0 {
+                return Ok(buffer);
+            } else {
+                if intento < total_reintentos() {
+                    println!("Reintentando leer header");
+                    let (admin_connections, (connection, id)) =
+                        buscar_conexion_libre_o_nuevas_conexiones(admin_connections)?;
+                    return read_bytes_header(&connection, admin_connections, intento + 1);
+                } else {
+                    println!("Máximo de reintentos alcanzado ... probá más tarde ...");
+                    return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+                }
+            }
+        }
+        None => return read_bytes_header(connection, admin_connections, intento + 1),
+    }
+}
+
+fn get_timestamp_inicial() -> u32 {
+    let fecha_inicial_result = config::get_valor("DIA_INICIAL".to_string());
+    if fecha_inicial_result.is_err() {
+        return 0;
+    }
+    let fecha_inicial = fecha_inicial_result.unwrap();
+    obtener_timestamp_dia(fecha_inicial)
+}
+
+fn get_headers_filtrados(blockheaders: &Vec<BlockHeader>) -> Vec<BlockHeader> {
+    if blockheaders.len() == 0 {
+        println!("No hay bloques para descargar");
+        return vec![];
+    }
+
+    let timestamp_ini = get_timestamp_inicial();
+    let headers_filtrados: Vec<_> = blockheaders
+        .clone()
+        .into_iter()
+        .filter(|header| header.time >= timestamp_ini)
+        .collect();
+    let last_header = headers_filtrados[headers_filtrados.len() - 1];
+    let datetime = _timestamp_to_datetime(last_header.time.into());
+    println!(
+        "Descarga de headers. Total: {:?}. Bloques a descargar: {:?}. Ultimo timestamp: {:?}",
+        blockheaders.len(),
+        headers_filtrados.len(),
+        datetime.format("%Y-%m-%d %H:%M").to_string()
+    );
+    headers_filtrados
+}
+
+const DEFAULT_TOTAL_THREADS: usize = 5;
+
+fn get_config_threads() -> usize {
+    let total_reintentos_config = config::get_valor("CANTIDAD_THREADS".to_string());
+    if let Ok(valor_string) = total_reintentos_config {
+        if let Ok(value) = valor_string.parse::<usize>() {
+            return value;
+        };
+    };
+    DEFAULT_TOTAL_THREADS
+}
+
+fn headers_by_threads(headers_filtrados: Vec<BlockHeader>) -> Vec<Vec<BlockHeader>> {
+    if headers_filtrados.len() == 0 {
+        return vec![];
+    }
+
+    let n_threads_max = get_config_threads();
+    let len_response = cmp::min(n_threads_max, headers_filtrados.len());
+
+    let n_blockheaders_by_thread =
+        (headers_filtrados.len() as f64 / len_response as f64).ceil() as usize;
+
+    let mut response = vec![];
+    for i in 0..len_response {
+        let start: usize = i * n_blockheaders_by_thread;
+        let end: usize = start + n_blockheaders_by_thread;
+        let block_headers_thread =
+            headers_filtrados[start..cmp::min(end, headers_filtrados.len())].to_vec();
+        response.push(block_headers_thread);
+    }
+    response
+}
+
+pub fn get_full_blockchain(
+    mut admin_connections: AdminConnections,
+) -> Result<(), NodoBitcoinError> {
+    println!("Obteniendo blockchain completa");
+    println!(
+        "Comienza la descarga a las {}",
+        chrono::offset::Local::now().format("%F %T").to_string()
+    );
+
+    let (mut connection, mut id) = write_header_message_new_connection(admin_connections.clone())?;
 
     let mut reintentos: usize = 0;
 
     loop {
         eprint!("Leyendo siguiente header...");
-        let mut buffer = [0u8; 24];
-        let bytes_read_option = connection.read_message(&mut buffer)?;
-        match bytes_read_option {
-            Some(read_bytes) => {
-                if read_bytes == 0 {
-                    (connection, id) = match admin_connections.find_free_connection() {
-                        Ok(res) => res,
-                        Err(NodoBitcoinError::NoSeEncuentraConexionLibre) => {
-                            println!("No se encuentra conexion libre");
-                            admin_connections = connect()?; // actualizo la lista de conexiones
-                            admin_connections.find_free_connection()?
-                        }
-                        Err(_) => continue,
-                    };
-                    println!(
-                        "Escribiendo mensaje getheaders en conection_id {}...",
-                        connection.id
-                    );
-                    let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
-                    get_headers_message = get_headers.serialize()?;
-                    connection.write_message(&get_headers_message)?;
-                    continue;
-                }
-            }
-            None => {
-                println!("No se leyó ningún byte");
-                continue;
-            }
-        }
+        let mut buffer = read_bytes_header(&connection, admin_connections.clone(), 0)?;
 
         let valid_command: bool;
         let (_command, headers) = match check_header(&buffer) {
@@ -111,9 +215,7 @@ pub fn get_full_blockchain(
                 (command, headers)
             }
             Err(NodoBitcoinError::MagicNumberIncorrecto) => {
-                let (connection, _id) = admin_connections.find_free_connection()?;
-                println!("Escribiendo mensaje getheaders ...");
-                connection.write_message(&get_headers_message)?;
+                (connection, id) = write_header_message_new_connection(admin_connections.clone())?;
                 continue;
             }
             Err(_) => continue,
@@ -121,16 +223,8 @@ pub fn get_full_blockchain(
 
         if valid_command {
             let blockheaders = deserealize_sin_guardar(headers)?;
-            let blockheaders_len = blockheaders.len();
-            let fecha_inicial = config::get_valor("DIA_INICIAL".to_string())?;
-            let timestamp_ini = obtener_timestamp_dia(fecha_inicial);
-            let last_header = blockheaders[blockheaders.len() - 1];
-            let datetime = _timestamp_to_datetime(last_header.time.into());
-            let headers_filtrados: Vec<_> = blockheaders
-                .clone()
-                .into_iter()
-                .filter(|header| header.time >= timestamp_ini)
-                .collect();
+            let headers_filtrados = get_headers_filtrados(&blockheaders);
+            let headers_filtrados_len = headers_filtrados.len();
 
             let n_threads_max: usize =
                 match (config::get_valor("CANTIDAD_THREADS".to_string())?).parse::<usize>() {
@@ -144,13 +238,6 @@ pub fn get_full_blockchain(
             let mut threads = vec![];
 
             let admin_connections_mutex = Arc::new(Mutex::new(admin_connections.clone()));
-            let headers_filtrados_len = headers_filtrados.len();
-            println!(
-                "Descarga de headers. Total: {:?}. Bloques a descargar: {:?}. Ultimo timestamp: {:?}",
-                blockheaders_len,
-                headers_filtrados_len,
-                datetime.format("%Y-%m-%d %H:%M").to_string()
-            );
 
             for i in 0..n_threads {
                 let start: usize = i * n_blockheaders_thread;
@@ -181,38 +268,31 @@ pub fn get_full_blockchain(
                         };
 
                     for header in block_headers_thread {
-                        let hash_header = match header.serialize() {
-                            Ok(serialized_header) => serialized_header,
+                        let hash_header = match header.hash() {
+                            Ok(res) => res,
                             Err(_) => {
-                                println!(
-                                    "Error al deserializar el header {:?}. Reintentando ...",
-                                    header
-                                );
-                                continue;
+                                println!("Error al calcular el hash del header.");
+                                return;
                             }
                         };
-
                         let get_data = GetDataMessage::new(
                             1,
-                            *sha256d::Hash::hash(&hash_header).as_byte_array(),
+                            hash_header,
                         );
                         let get_data_message = match get_data.serialize() {
                             Ok(res) => res,
                             Err(_) => {
-                                println!(
-                                    "Error al serializar el get_data {:?}. Reintentando ...",
-                                    hash_header
-                                );
+                                println!("Error al serializar el get_data. Reintentando ...");
                                 continue;
                             }
                         };
 
-                        for j in 0..total_reintentos + 1 {
+                        for j in 0..total_reintentos() + 1 {
                             let writed_message = cloned_connection.write_message(&get_data_message);
                             if writed_message.is_err() {
                                 {
                                     println!("Error al enviar mensaje de get_data");
-                                    if j == total_reintentos {
+                                    if j == total_reintentos() {
                                         println!(
                                             "Se realizaron todos los reintentos ... {:?}",
                                             get_data_message
@@ -272,7 +352,7 @@ pub fn get_full_blockchain(
                                 }
                             }
                             if change_connection {
-                                if intento_actual == total_reintentos {
+                                if intento_actual == total_reintentos() {
                                     println!("Se realizaron todos los reintentos ...");
                                     return;
                                 }
@@ -445,19 +525,15 @@ pub fn get_full_blockchain(
                     }
                     println!("Bloques guardados");
                 }
-
-                start_block = last_header.hash()?;
-                let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
-                get_headers_message = get_headers.serialize()?;
             } else {
                 reintentos += 1;
-                if reintentos > total_reintentos {
+                if reintentos > total_reintentos() {
                     println!("Ya se reintentó muchas veces ... dejamos descarsar un rato que después pruebo otra vez ... ");
                     return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
                 }
                 println!("No se descargaron todos los bloques, reintentando ...");
             }
-            connection.write_message(&get_headers_message)?;
+            write_header_message_old_connection(&connection)?;
         }
     }
 
