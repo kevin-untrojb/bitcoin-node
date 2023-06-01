@@ -6,7 +6,7 @@ use std::{
 
 use crate::{config, errores::NodoBitcoinError};
 
-pub fn reset_files() {
+pub fn _reset_files() {
     let path = config::get_valor("NOMBRE_ARCHIVO".to_string()).unwrap();
     let _ = std::fs::remove_file(path);
     let path = config::get_valor("NOMBRE_ARCHIVO_BLOQUES".to_string()).unwrap();

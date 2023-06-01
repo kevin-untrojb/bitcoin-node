@@ -16,10 +16,7 @@ use gtk::{
     Align, Application, ApplicationWindow, Button,
 };
 
-use crate::{
-    blockchain::node::Node,
-    protocol::{connection::connect, initial_block_download::get_full_blockchain},
-};
+use crate::protocol::{connection::connect, initial_block_download::get_full_blockchain};
 
 fn main() {
     let args: Vec<String> = env::args().collect();

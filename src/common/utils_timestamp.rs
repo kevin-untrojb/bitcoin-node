@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 
 pub fn obtener_timestamp_dia(date: String) -> u32 {
     let fecha = NaiveDate::parse_from_str(&date, "%Y-%m-%d").unwrap();
@@ -8,6 +8,9 @@ pub fn obtener_timestamp_dia(date: String) -> u32 {
 }
 
 pub fn _timestamp_to_datetime(timestamp: i64) -> DateTime<Utc> {
-    let naive_datetime = NaiveDateTime::from_timestamp(timestamp, 0);
-    DateTime::<Utc>::from_utc(naive_datetime, Utc)
+    match Utc.timestamp_millis_opt(timestamp) {
+        chrono::offset::LocalResult::Single(date_time) => date_time,
+        chrono::offset::LocalResult::None => Utc::now(),
+        chrono::offset::LocalResult::Ambiguous(_, _) => Utc::now(),
+    }
 }

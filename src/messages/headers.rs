@@ -4,7 +4,7 @@ use crate::{
     errores::NodoBitcoinError,
 };
 
-pub fn deserealize(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoinError> {
+pub fn _deserealize(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoinError> {
     let (size_bytes, num_headers) = parse_varint(&headers);
     headers = headers[size_bytes..].to_vec();
     let mut block_headers = Vec::new();
@@ -44,7 +44,7 @@ pub fn deserealize_sin_guardar(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>,
     Ok(block_headers)
 }
 
-pub fn deserealize_desde_archivo(headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoinError> {
+pub fn _deserealize_desde_archivo(headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoinError> {
     let mut block_headers = Vec::new();
     let num_headers: usize = headers.len() / 80;
     for i in 0..num_headers {

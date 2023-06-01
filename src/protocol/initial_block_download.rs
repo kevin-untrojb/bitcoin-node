@@ -2,17 +2,14 @@ use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::file::{
     _leer_ultimo_header, escribir_archivo, escribir_archivo_bloque, existe_archivo_headers,
-    reset_files,
 };
 use crate::common::utils_timestamp::{_timestamp_to_datetime, obtener_timestamp_dia};
 use crate::config;
 use crate::errores::NodoBitcoinError;
 use crate::messages::getdata::GetDataMessage;
 use crate::messages::getheaders::GetHeadersMessage;
-use crate::messages::headers::{deserealize, deserealize_sin_guardar};
+use crate::messages::headers::deserealize_sin_guardar;
 use crate::messages::messages_header::check_header;
-use std::hash::Hash;
-use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::{cmp, println, thread, vec};
 
@@ -49,21 +46,21 @@ fn get_headers_message() -> Result<Vec<u8>, NodoBitcoinError> {
     let version = _version()?;
     let start_block = start_block()?;
     let get_headers = GetHeadersMessage::new(version, 1, start_block, [0; 32]);
-    let mut get_headers_message = get_headers.serialize()?;
+    let get_headers_message = get_headers.serialize()?;
     Ok(get_headers_message)
 }
 
 fn write_header_message_new_connection(
     mut admin_connections: AdminConnections,
 ) -> Result<(Connection, i32), NodoBitcoinError> {
-    let mut get_headers_message = get_headers_message()?;
-    let (mut connection, mut id) = admin_connections.find_free_connection()?;
+    let get_headers_message = get_headers_message()?;
+    let (connection, id) = admin_connections.find_free_connection()?;
     connection.write_message(&get_headers_message)?;
     Ok((connection, id))
 }
 
 fn write_header_message_old_connection(connection: &Connection) -> Result<(), NodoBitcoinError> {
-    let mut get_headers_message = get_headers_message()?;
+    let get_headers_message = get_headers_message()?;
     connection.write_message(&get_headers_message)
 }
 
@@ -95,7 +92,7 @@ fn buscar_conexion_libre_o_nuevas_conexiones(
 
 fn read_bytes_header(
     connection: &Connection,
-    mut admin_connections: AdminConnections,
+    admin_connections: AdminConnections,
     intento: usize,
 ) -> Result<[u8; 24], NodoBitcoinError> {
     let mut buffer = [0u8; 24];
@@ -107,7 +104,7 @@ fn read_bytes_header(
             } else {
                 if intento < total_reintentos() {
                     println!("Reintentando leer header");
-                    let (admin_connections, (connection, id)) =
+                    let (admin_connections, (connection, _id)) =
                         buscar_conexion_libre_o_nuevas_conexiones(admin_connections)?;
                     return read_bytes_header(&connection, admin_connections, intento + 1);
                 } else {
@@ -152,24 +149,24 @@ fn get_headers_filtrados(blockheaders: &Vec<BlockHeader>) -> Vec<BlockHeader> {
     headers_filtrados
 }
 
-const DEFAULT_TOTAL_THREADS: usize = 5;
+const _DEFAULT_TOTAL_THREADS: usize = 5;
 
-fn get_config_threads() -> usize {
+fn _get_config_threads() -> usize {
     let total_reintentos_config = config::get_valor("CANTIDAD_THREADS".to_string());
     if let Ok(valor_string) = total_reintentos_config {
         if let Ok(value) = valor_string.parse::<usize>() {
             return value;
         };
     };
-    DEFAULT_TOTAL_THREADS
+    _DEFAULT_TOTAL_THREADS
 }
 
-fn headers_by_threads(headers_filtrados: Vec<BlockHeader>) -> Vec<Vec<BlockHeader>> {
+fn _headers_by_threads(headers_filtrados: Vec<BlockHeader>) -> Vec<Vec<BlockHeader>> {
     if headers_filtrados.len() == 0 {
         return vec![];
     }
 
-    let n_threads_max = get_config_threads();
+    let n_threads_max = _get_config_threads();
     let len_response = cmp::min(n_threads_max, headers_filtrados.len());
 
     let n_blockheaders_by_thread =
@@ -186,7 +183,7 @@ fn headers_by_threads(headers_filtrados: Vec<BlockHeader>) -> Vec<Vec<BlockHeade
     response
 }
 
-fn get_mutex_connection_id(
+fn _get_mutex_connection_id(
     admin_connections: &Arc<Mutex<AdminConnections>>,
 ) -> Result<(Connection, i32), NodoBitcoinError> {
     match admin_connections.lock() {
@@ -208,7 +205,7 @@ fn get_mutex_connection_id(
     }
 }
 
-fn write_bytes_data(
+fn _write_bytes_data(
     header: BlockHeader,
     mut connection: Connection,
     admin_connections: &Arc<Mutex<AdminConnections>>,
@@ -217,17 +214,17 @@ fn write_bytes_data(
     if intento == total_reintentos() {
         return Err(NodoBitcoinError::NoSeEncuentraConexionLibre);
     }
-    let get_data_message = get_data_message(header)?;
+    let get_data_message = _get_data_message(header)?;
     let writed_connection = connection.write_message(&get_data_message);
     if writed_connection.is_err() {
         println!("Error al escribir el mensaje get_data");
-        (connection, _) = get_mutex_connection_id(&admin_connections)?;
-        write_bytes_data(header, connection.clone(), admin_connections, intento + 1)?;
+        (connection, _) = _get_mutex_connection_id(&admin_connections)?;
+        _write_bytes_data(header, connection.clone(), admin_connections, intento + 1)?;
     }
     Ok(connection)
 }
 
-fn read_bytes_data(connection: &Connection) -> Result<[u8; 24], NodoBitcoinError> {
+fn _read_bytes_data(connection: &Connection) -> Result<[u8; 24], NodoBitcoinError> {
     let mut thread_buffer = [0u8; 24];
     let thread_bytes_read_result = connection.read_message(&mut thread_buffer);
     match thread_bytes_read_result {
@@ -247,9 +244,9 @@ fn read_bytes_data(connection: &Connection) -> Result<[u8; 24], NodoBitcoinError
     }
 }
 
-fn write_read_bytes_data(
+fn _write_read_bytes_data(
     header: BlockHeader,
-    mut connection: &Connection,
+    connection: &Connection,
     admin_connections: &Arc<Mutex<AdminConnections>>,
     intento: usize,
 ) -> Result<(Connection, [u8; 24]), NodoBitcoinError> {
@@ -257,28 +254,28 @@ fn write_read_bytes_data(
         return Err(NodoBitcoinError::NoSeEncuentraConexionLibre);
     }
     let connection_writed =
-        write_bytes_data(header, connection.clone(), admin_connections, intento)?;
+        _write_bytes_data(header, connection.clone(), admin_connections, intento)?;
 
-    let thread_buffer_result = read_bytes_data(&connection_writed);
+    let thread_buffer_result = _read_bytes_data(&connection_writed);
     let response = match thread_buffer_result {
         Ok(thread_buffer) => (connection_writed, thread_buffer),
         Err(_) => {
             println!("Error al leer mensaje {:?}", thread_buffer_result);
-            let (new_connection, _) = get_mutex_connection_id(&admin_connections)?;
-            write_read_bytes_data(header, &new_connection, admin_connections, intento + 1)?
+            let (new_connection, _) = _get_mutex_connection_id(&admin_connections)?;
+            _write_read_bytes_data(header, &new_connection, admin_connections, intento + 1)?
         }
     };
     Ok(response)
 }
 
-fn get_data_message(header: BlockHeader) -> Result<Vec<u8>, NodoBitcoinError> {
+fn _get_data_message(header: BlockHeader) -> Result<Vec<u8>, NodoBitcoinError> {
     let hash_header = header.hash()?;
     let get_data = GetDataMessage::new(1, hash_header);
     let get_data_message = get_data.serialize()?;
     Ok(get_data_message)
 }
 
-macro_rules! unwrap_or_return {
+macro_rules! _unwrap_or_return {
     ( $e:expr ) => {
         match $e {
             Ok(x) => x,
@@ -287,7 +284,7 @@ macro_rules! unwrap_or_return {
     };
 }
 
-macro_rules! unwrap_or_continue {
+macro_rules! _unwrap_or_continue {
     ( $e:expr ) => {
         match $e {
             Ok(x) => x,
@@ -296,22 +293,20 @@ macro_rules! unwrap_or_continue {
     };
 }
 
-pub fn get_full_blockchain(
-    mut admin_connections: AdminConnections,
-) -> Result<(), NodoBitcoinError> {
+pub fn get_full_blockchain(admin_connections: AdminConnections) -> Result<(), NodoBitcoinError> {
     println!("Obteniendo blockchain completa");
     println!(
         "Comienza la descarga a las {}",
         chrono::offset::Local::now().format("%F %T").to_string()
     );
 
-    let (mut connection, mut id) = write_header_message_new_connection(admin_connections.clone())?;
+    let (mut connection, mut _id) = write_header_message_new_connection(admin_connections.clone())?;
 
     let mut reintentos: usize = 0;
 
     loop {
         eprint!("Leyendo siguiente header...");
-        let mut buffer = read_bytes_header(&connection, admin_connections.clone(), 0)?;
+        let buffer = read_bytes_header(&connection, admin_connections.clone(), 0)?;
 
         let valid_command: bool;
         let (_command, headers) = match check_header(&buffer) {
@@ -325,7 +320,7 @@ pub fn get_full_blockchain(
                 (command, headers)
             }
             Err(NodoBitcoinError::MagicNumberIncorrecto) => {
-                (connection, id) = write_header_message_new_connection(admin_connections.clone())?;
+                (connection, _id) = write_header_message_new_connection(admin_connections.clone())?;
                 continue;
             }
             Err(_) => continue,
@@ -609,7 +604,7 @@ pub fn get_full_blockchain(
 
 fn liberar_conexion(
     thread_id_connection: i32,
-    mut admin_connections_mutex_thread: Arc<Mutex<AdminConnections>>,
+    admin_connections_mutex_thread: Arc<Mutex<AdminConnections>>,
 ) {
     match admin_connections_mutex_thread.lock() {
         Ok(mut admin) => {
