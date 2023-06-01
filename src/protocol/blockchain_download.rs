@@ -186,6 +186,116 @@ fn headers_by_threads(headers_filtrados: Vec<BlockHeader>) -> Vec<Vec<BlockHeade
     response
 }
 
+fn get_mutex_connection_id(
+    admin_connections: &Arc<Mutex<AdminConnections>>,
+) -> Result<(Connection, i32), NodoBitcoinError> {
+    match admin_connections.lock() {
+        Ok(mut admin) => {
+            let (thread_connection, thread_id_connection) = match admin.find_free_connection() {
+                Ok((connection, id)) => (connection, id),
+                Err(_) => {
+                    println!("Error al buscar conexiones libres.");
+                    return Err(NodoBitcoinError::NoSeEncuentraConexionLibre);
+                }
+            };
+            drop(admin);
+            Ok((thread_connection, thread_id_connection))
+        }
+        Err(_) => {
+            println!("Error al lockear el Mutex.");
+            return Err(NodoBitcoinError::NoSeEncuentraConexionLibre);
+        }
+    }
+}
+
+fn write_bytes_data(
+    header: BlockHeader,
+    mut connection: Connection,
+    admin_connections: &Arc<Mutex<AdminConnections>>,
+    intento: usize,
+) -> Result<Connection, NodoBitcoinError> {
+    if intento == total_reintentos() {
+        return Err(NodoBitcoinError::NoSeEncuentraConexionLibre);
+    }
+    let get_data_message = get_data_message(header)?;
+    let writed_connection = connection.write_message(&get_data_message);
+    if writed_connection.is_err() {
+        println!("Error al escribir el mensaje get_data");
+        (connection, _) = get_mutex_connection_id(&admin_connections)?;
+        write_bytes_data(header, connection.clone(), admin_connections, intento + 1)?;
+    }
+    Ok(connection)
+}
+
+fn read_bytes_data(connection: &Connection) -> Result<[u8; 24], NodoBitcoinError> {
+    let mut thread_buffer = [0u8; 24];
+    let thread_bytes_read_result = connection.read_message(&mut thread_buffer);
+    match thread_bytes_read_result {
+        Ok(thread_bytes_read_option) => match thread_bytes_read_option {
+            Some(read_bytes) => {
+                if read_bytes == 0 {
+                    return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+                }
+                return Ok(thread_buffer);
+            }
+            None => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
+        },
+        Err(_) => {
+            println!("Error al leer mensaje {:?}", thread_buffer);
+            return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+        }
+    }
+}
+
+fn write_read_bytes_data(
+    header: BlockHeader,
+    mut connection: &Connection,
+    admin_connections: &Arc<Mutex<AdminConnections>>,
+    intento: usize,
+) -> Result<(Connection, [u8; 24]), NodoBitcoinError> {
+    if intento == total_reintentos() {
+        return Err(NodoBitcoinError::NoSeEncuentraConexionLibre);
+    }
+    let connection_writed =
+        write_bytes_data(header, connection.clone(), admin_connections, intento)?;
+
+    let thread_buffer_result = read_bytes_data(&connection_writed);
+    let response = match thread_buffer_result {
+        Ok(thread_buffer) => (connection_writed, thread_buffer),
+        Err(_) => {
+            println!("Error al leer mensaje {:?}", thread_buffer_result);
+            let (new_connection, _) = get_mutex_connection_id(&admin_connections)?;
+            write_read_bytes_data(header, &new_connection, admin_connections, intento + 1)?
+        }
+    };
+    Ok(response)
+}
+
+fn get_data_message(header: BlockHeader) -> Result<Vec<u8>, NodoBitcoinError> {
+    let hash_header = header.hash()?;
+    let get_data = GetDataMessage::new(1, hash_header);
+    let get_data_message = get_data.serialize()?;
+    Ok(get_data_message)
+}
+
+macro_rules! unwrap_or_return {
+    ( $e:expr ) => {
+        match $e {
+            Ok(x) => x,
+            Err(_) => return,
+        }
+    };
+}
+
+macro_rules! unwrap_or_continue {
+    ( $e:expr ) => {
+        match $e {
+            Ok(x) => x,
+            Err(_) => continue,
+        }
+    };
+}
+
 pub fn get_full_blockchain(
     mut admin_connections: AdminConnections,
 ) -> Result<(), NodoBitcoinError> {
@@ -448,45 +558,13 @@ pub fn get_full_blockchain(
                                     }
                                 };
                                 cloned.push(block);
-                                let cloned_len = cloned.len();
-
-                                let completado =
-                                    ((cloned_len as f32 / headers_filtrados_len as f32) * 50.0)
-                                        as usize;
-                                let barra_completado = "#".repeat(completado);
-                                let barra_no_completado = ".".repeat(50 - completado);
-                                eprint!(
-                                    "\rDescargando bloques[{}{}] {:?}/{:?}. ",
-                                    barra_completado,
-                                    barra_no_completado,
-                                    cloned_len,
-                                    headers_filtrados_len
-                                );
-                                //println!("Bloque #{} descargado", cloned.len());
+                                progress_bar(headers_filtrados_len, cloned.len());
                                 drop(cloned);
                                 break;
                             }
                         }
                     }
-                    match admin_connections_mutex_thread.lock() {
-                        Ok(mut admin) => {
-                            let _ =
-                            match admin
-                                .free_connection(thread_id_connection)
-                            {
-                                Ok(()) => (),
-                                Err(_) => {
-                                    println!("Error al liberar la conexión ...");
-                                    return;
-                                }
-                            };
-                        drop(admin);
-                        }
-                        Err(_) => {
-                            println!("Error al lockear el Mutex.");
-                            return;
-                        }
-                    };
+                    liberar_conexion(thread_id_connection, admin_connections_mutex_thread);
                 }));
             }
 
@@ -496,7 +574,7 @@ pub fn get_full_blockchain(
 
             // guardar bloques
             // Convertir Result<MutexGuard<Vec<SerializedBlock>>, _> a Vec<SerializedBlock>
-            let mut bloques_a_guardar = match blocks.lock() {
+            let bloques_a_guardar = match blocks.lock() {
                 Ok(mutex_guard) => mutex_guard.clone(),
                 Err(_) => return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes),
             };
@@ -506,25 +584,8 @@ pub fn get_full_blockchain(
             };
 
             if bloques_a_guardar.len() == headers_filtrados_len {
-                // guardo los headers
-
-                eprint!("Guardando headers...");
-                for bh in blockheaders {
-                    let bytes = bh.serialize()?;
-                    _ = escribir_archivo(&bytes)?;
-                }
-                println!("Headers guardados");
-
-                // guardo los bloques
-                if bloques_a_guardar.len() > 0 {
-                    eprint!("Guardando bloques...");
-                    bloques_a_guardar.sort();
-                    for bloque in bloques_a_guardar {
-                        // guardar bloque
-                        _ = escribir_archivo_bloque(&bloque.block_bytes)?;
-                    }
-                    println!("Bloques guardados");
-                }
+                // guardo los headers y los bloques
+                guardar_headers_y_bloques(bloques_a_guardar, blockheaders)?;
             } else {
                 reintentos += 1;
                 if reintentos > total_reintentos() {
@@ -544,4 +605,60 @@ pub fn get_full_blockchain(
     );
 
     Ok(())
+}
+
+fn liberar_conexion(
+    thread_id_connection: i32,
+    mut admin_connections_mutex_thread: Arc<Mutex<AdminConnections>>,
+) {
+    match admin_connections_mutex_thread.lock() {
+        Ok(mut admin) => {
+            let _ = match admin.free_connection(thread_id_connection) {
+                Ok(()) => (),
+                Err(_) => {
+                    println!("Error al liberar la conexión ...");
+                    return;
+                }
+            };
+            drop(admin);
+        }
+        Err(_) => {
+            println!("Error al lockear el Mutex.");
+            return;
+        }
+    };
+}
+
+fn guardar_headers_y_bloques(
+    mut bloques_a_guardar: Vec<SerializedBlock>,
+    blockheaders: Vec<BlockHeader>,
+) -> Result<(), NodoBitcoinError> {
+    eprint!("Guardando headers...");
+    for bh in blockheaders {
+        let bytes = bh.serialize()?;
+        _ = escribir_archivo(&bytes)?;
+    }
+    println!("Headers guardados");
+
+    // guardo los bloques
+    if bloques_a_guardar.len() > 0 {
+        eprint!("Guardando bloques...");
+        bloques_a_guardar.sort();
+        for bloque in bloques_a_guardar {
+            // guardar bloque
+            _ = escribir_archivo_bloque(&bloque.block_bytes)?;
+        }
+        println!("Bloques guardados");
+    }
+    Ok(())
+}
+
+fn progress_bar(total: usize, actual: usize) {
+    let completado = ((actual as f32 / total as f32) * 50.0) as usize;
+    let barra_completado = "#".repeat(completado);
+    let barra_no_completado = ".".repeat(50 - completado);
+    eprint!(
+        "\rDescargando bloques[{}{}] {:?}/{:?}. ",
+        barra_completado, barra_no_completado, actual, total
+    );
 }

@@ -99,7 +99,6 @@ impl AdminConnections {
     }
 
     pub fn find_free_connection(&mut self) -> Result<(Connection, i32), NodoBitcoinError> {
-        println!("Buscando conexión libre ...");
         match self
             .connections
             .iter_mut()
