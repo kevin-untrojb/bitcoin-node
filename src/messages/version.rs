@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use crate::{errores::NodoBitcoinError, messages::messages_header::make_header};
 pub struct VersionMessage {
     version: u32,
@@ -16,6 +18,15 @@ pub struct VersionMessage {
     relay: bool,
 }
 
+const DEFAUL_SERVICES: u64 = 0;
+const DEFAUL_NONCE: u64 = 0;
+const DEFAUL_TRANS_PORT: u16 = 18333;
+const DEFAULT_TRANS_IP: &str = "192.168.0.66";
+const DEFAULT_USER_AGENT_BYTES: u32 = 0;
+const DEFAULT_USER_AGENT: &str = "5";
+const DEFAULT_START_HEIGHT: u32 = 0;
+const DEFAULT_RELAY: bool = true;
+
 impl VersionMessage {
     fn string_to_bytes(s: &str, fixed_size: usize) -> Vec<u8> {
         let mut bytes = s.as_bytes().to_vec();
@@ -25,23 +36,22 @@ impl VersionMessage {
         }
         bytes
     }
+    pub fn new(version: u32, timestamp: u64, addr_recv_socket: SocketAddr) -> VersionMessage {
+        let services = DEFAUL_SERVICES;
+        let addr_trans_services = DEFAUL_SERVICES;
 
-    pub fn new(
-        version: u32,
-        services: u64,
-        timestamp: u64,
-        addr_recv_services: u64,
-        addr_recv_ip: String,
-        addr_recv_port: u16,
-        addr_trans_services: u64,
-        addr_trans_ip: String,
-        addr_trans_port: u16,
-        nonce: u64,
-        user_agent_bytes: u32,
-        user_agent: String,
-        start_height: u32,
-        relay: bool,
-    ) -> VersionMessage {
+        let addr_recv_services = DEFAUL_SERVICES;
+        let addr_recv_ip = addr_recv_socket.ip().to_string();
+        let addr_recv_port = addr_recv_socket.port();
+
+        let addr_trans_ip = DEFAULT_TRANS_IP.to_string();
+        let addr_trans_port = DEFAUL_TRANS_PORT;
+        let nonce = DEFAUL_NONCE;
+        let user_agent_bytes = DEFAULT_USER_AGENT_BYTES;
+        let user_agent = DEFAULT_USER_AGENT.to_string();
+        let start_height = DEFAULT_START_HEIGHT;
+        let relay = DEFAULT_RELAY;
+
         VersionMessage {
             version,
             services,

@@ -15,7 +15,7 @@ use std::io::Write;
 /// * output - The vector of output transactions for the transaction.
 /// * lock_time - The lock time for the transaction.
 #[warn(dead_code)]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Transaction {
     pub version: u32,
     pub input: Vec<TxIn>,
@@ -126,7 +126,7 @@ impl Transaction {
 /// * script_bytes - The number of bytes in the signature script.
 /// * signature_script - The signature script for the input.
 /// * sequence - The sequence number for the input.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TxIn {
     pub previous_output: Outpoint,
     pub script_bytes: usize,
@@ -195,7 +195,7 @@ impl TxIn {
 ///
 /// * hash - The transaction hash of the previous transaction.
 /// * index - The index of the output in the previous transaction.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Outpoint {
     pub hash: [u8; 32],
     pub index: u32,
@@ -235,7 +235,7 @@ impl Outpoint {
 ///
 /// * value - The value of the output in satoshis.
 /// * pk_script - The public key script for the output.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TxOut {
     pub value: u64,
     pub pk_len: usize,
@@ -291,26 +291,27 @@ mod tests {
     #[test]
     fn test_serialize_transaction() {
         let version = 1;
-        let input = vec![
-            TxIn {
-                previous_output:Outpoint {
-                    hash: [0; 32],
-                    index: 4294967295,
-                },
-                script_bytes:31,
-                script_bytes_amount:1,
-                signature_script: vec![4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
-                                       101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47 ],
-                sequence:4294967295,
-            }
-        ];
-        let output = vec![ TxOut {
+        let input = vec![TxIn {
+            previous_output: Outpoint {
+                hash: [0; 32],
+                index: 4294967295,
+            },
+            script_bytes: 31,
+            script_bytes_amount: 1,
+            signature_script: vec![
+                4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99, 101, 73, 114, 111,
+                110, 45, 81, 67, 45, 109, 105, 110, 101, 114, 47,
+            ],
+            sequence: 4294967295,
+        }];
+        let output = vec![TxOut {
             value: 5000000000,
-            pk_len:35,
+            pk_len: 35,
             pk_len_bytes: 1,
-            pk_script:vec![33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
-                           108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
-                           84, 81,172],
+            pk_script: vec![
+                33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91, 108, 243,
+                201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107, 84, 81, 172,
+            ],
         }];
         let lock_time = 0;
 
@@ -319,8 +320,8 @@ mod tests {
             input,
             output,
             lock_time,
-            tx_in_count:1,
-            tx_out_count:1
+            tx_in_count: 1,
+            tx_out_count: 1,
         };
 
         let expected_bytes = vec![
@@ -328,20 +329,20 @@ mod tests {
             1, 0, 0, 0, //version
             1, // n-tin
             // trin
-            0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //hash
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, //hash
             255, 255, 255, 255, //index
-            31, // script bytes
-            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
-            101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47, // script
+            31,  // script bytes
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99, 101, 73, 114, 111,
+            110, 45, 81, 67, 45, 109, 105, 110, 101, 114, 47, // script
             255, 255, 255, 255, // sequene
-            1, // n-trout
-            0, 242, 5, 42, 1, 0, 0, 0, // value
+            1,   // n-trout
+            0, 242, 5, 42, 1, 0, 0, 0,  // value
             35, //pk_len
-            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
-            108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
-            84, 81, // trout pk
-            172, 0, 0, 0, 0 ];// lock time
+            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91, 108, 243, 201,
+            188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107, 84, 81, // trout pk
+            172, 0, 0, 0, 0,
+        ]; // lock time
 
         let serialized = transaction._serialize().unwrap();
 
@@ -350,61 +351,72 @@ mod tests {
 
     #[test]
     fn test_deserialize_transaction() {
-        let block_bytes:Vec<u8> = vec![
+        let block_bytes: Vec<u8> = vec![
             //
             1, 0, 0, 0, //version
             1, // n-tin
             // trin
-            0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //hash
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, //hash
             255, 255, 255, 255, //index
-            31, // script bytes
-            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
-            101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47, // script
+            31,  // script bytes
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99, 101, 73, 114, 111,
+            110, 45, 81, 67, 45, 109, 105, 110, 101, 114, 47, // script
             255, 255, 255, 255, // sequene
-            1, // n-trout
-            0, 242, 5, 42, 1, 0, 0, 0, // value
+            1,   // n-trout
+            0, 242, 5, 42, 1, 0, 0, 0,  // value
             35, //pk_len
-            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
-            108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
-            84, 81, 172, // trout pk
-            0, 0, 0, 0 ];// lock time
+            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91, 108, 243, 201,
+            188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107, 84, 81,
+            172, // trout pk
+            0, 0, 0, 0,
+        ]; // lock time
 
         let transaction = Transaction::deserialize(&block_bytes).unwrap();
 
         assert_eq!(transaction.version, 1);
         assert_eq!(transaction.input.len(), 1);
-        assert_eq!(transaction.input[0], TxIn {
-            previous_output:Outpoint {
-                hash: [0; 32],
-                index: 4294967295,
-            },
-            script_bytes:31,
-            script_bytes_amount:1,
-            signature_script: vec![4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
-                                   101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47 ],
-            sequence:4294967295,
-        });
+        assert_eq!(
+            transaction.input[0],
+            TxIn {
+                previous_output: Outpoint {
+                    hash: [0; 32],
+                    index: 4294967295,
+                },
+                script_bytes: 31,
+                script_bytes_amount: 1,
+                signature_script: vec![
+                    4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99, 101, 73, 114,
+                    111, 110, 45, 81, 67, 45, 109, 105, 110, 101, 114, 47
+                ],
+                sequence: 4294967295,
+            }
+        );
         assert_eq!(transaction.output.len(), 1);
-        assert_eq!(transaction.output[0], TxOut {
-            value: 5000000000,
-            pk_len:35,
-            pk_len_bytes: 1,
-            pk_script:vec![33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
-                           108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
-                           84, 81,172],
-        });
+        assert_eq!(
+            transaction.output[0],
+            TxOut {
+                value: 5000000000,
+                pk_len: 35,
+                pk_len_bytes: 1,
+                pk_script: vec![
+                    33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91, 108,
+                    243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107, 84, 81,
+                    172
+                ],
+            }
+        );
         assert_eq!(transaction.lock_time, 0);
     }
 
     #[test]
     fn test_serialize_and_deserialize_transaction() {
         let bytes = [
-            1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 14, 4, 134, 231, 73, 77, 1, 81, 6, 47, 80, 50, 83,
-            72, 47, 255, 255, 255, 255, 1, 0, 242, 5, 42, 1, 0, 0, 0, 35, 33, 3, 246, 217, 255, 76, 18,
-            149, 148, 69, 202, 85, 73, 200, 17, 104, 59, 249, 200, 142, 99, 123, 34, 45, 210, 224, 49,
-            17, 84, 196, 200, 92, 244, 35, 172, 0, 0, 0, 0,
+            1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 14, 4, 134, 231, 73, 77, 1, 81, 6, 47, 80,
+            50, 83, 72, 47, 255, 255, 255, 255, 1, 0, 242, 5, 42, 1, 0, 0, 0, 35, 33, 3, 246, 217,
+            255, 76, 18, 149, 148, 69, 202, 85, 73, 200, 17, 104, 59, 249, 200, 142, 99, 123, 34,
+            45, 210, 224, 49, 17, 84, 196, 200, 92, 244, 35, 172, 0, 0, 0, 0,
         ];
 
         let tx = Transaction::deserialize(&bytes);
@@ -419,30 +431,31 @@ mod tests {
         assert_eq!(serialized, bytes);
     }
 
-
     #[test]
     fn test_transaction_size() {
         let version = 1;
 
-
-        let input =vec![TxIn {
-            previous_output:Outpoint {
+        let input = vec![TxIn {
+            previous_output: Outpoint {
                 hash: [0; 32],
                 index: 4294967295,
             },
-            script_bytes:31,
-            script_bytes_amount:1,
-            signature_script: vec![4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
-                                   101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47 ],
-            sequence:4294967295,
+            script_bytes: 31,
+            script_bytes_amount: 1,
+            signature_script: vec![
+                4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99, 101, 73, 114, 111,
+                110, 45, 81, 67, 45, 109, 105, 110, 101, 114, 47,
+            ],
+            sequence: 4294967295,
         }];
-        let output = vec![ TxOut {
+        let output = vec![TxOut {
             value: 5000000000,
-            pk_len:35,
+            pk_len: 35,
             pk_len_bytes: 1,
-            pk_script:vec![33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
-                           108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
-                           84, 81,172],
+            pk_script: vec![
+                33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91, 108, 243,
+                201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107, 84, 81, 172,
+            ],
         }];
         let lock_time = 0;
 
@@ -451,42 +464,41 @@ mod tests {
             input,
             output,
             lock_time,
-            tx_in_count:1,
-            tx_out_count:1
+            tx_in_count: 1,
+            tx_out_count: 1,
         };
 
         let expected_bytes = vec![
             1, 0, 0, 0, //version
             1, // n-tin
             // trin
-            0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //hash
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, //hash
             255, 255, 255, 255, //index
-            31, // script bytes
-            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
-            101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47, // script
+            31,  // script bytes
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99, 101, 73, 114, 111,
+            110, 45, 81, 67, 45, 109, 105, 110, 101, 114, 47, // script
             255, 255, 255, 255, // sequene
-            1, // n-trout
-            0, 242, 5, 42, 1, 0, 0, 0, // value
+            1,   // n-trout
+            0, 242, 5, 42, 1, 0, 0, 0,  // value
             35, //pk_len
-            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
-            108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
-            84, 81, // trout pk
-            172, 0, 0, 0, 0 ];// lock time
+            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91, 108, 243, 201,
+            188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107, 84, 81, // trout pk
+            172, 0, 0, 0, 0,
+        ]; // lock time
 
         assert_eq!(transaction.size(), expected_bytes.len());
     }
 
-
     #[test]
     fn test_serialize_tx_in() {
-        let expected_bytes= vec![
-            0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //hash
+        let expected_bytes = vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, //hash
             255, 255, 255, 255, //index
-            31, // script bytes
-            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
-            101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47, // script
+            31,  // script bytes
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99, 101, 73, 114, 111,
+            110, 45, 81, 67, 45, 109, 105, 110, 101, 114, 47, // script
             255, 255, 255, 255, // sequene
         ];
         let previous_output = Outpoint {
@@ -494,14 +506,16 @@ mod tests {
             index: 4294967295,
         };
         let script_bytes = 31;
-        let signature_script = vec![4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
-                                    101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47 ];
+        let signature_script = vec![
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99, 101, 73, 114, 111,
+            110, 45, 81, 67, 45, 109, 105, 110, 101, 114, 47,
+        ];
         let sequence = 4294967295;
 
         let tx_in = TxIn {
             previous_output,
             script_bytes,
-            script_bytes_amount:1,
+            script_bytes_amount: 1,
             signature_script: signature_script.clone(),
             sequence,
         };
@@ -514,13 +528,13 @@ mod tests {
 
     #[test]
     fn test_deserialize_tx_in() {
-        let bytes= vec![
-            0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //hash
+        let bytes = vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, //hash
             255, 255, 255, 255, //index
-            31, // script bytes
-            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
-            101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47, // script
+            31,  // script bytes
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99, 101, 73, 114, 111,
+            110, 45, 81, 67, 45, 109, 105, 110, 101, 114, 47, // script
             255, 255, 255, 255, // sequene
         ];
 
@@ -529,8 +543,13 @@ mod tests {
         assert_eq!(tx_in.previous_output.hash, [0u8; 32]);
         assert_eq!(tx_in.previous_output.index, 4294967295);
         assert_eq!(tx_in.script_bytes, 31);
-        assert_eq!(tx_in.signature_script, vec![4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99,
-                                                101, 73, 114, 111, 110, 45, 81, 67, 45, 109, 105, 110, 101,114, 47]);
+        assert_eq!(
+            tx_in.signature_script,
+            vec![
+                4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99, 101, 73, 114, 111,
+                110, 45, 81, 67, 45, 109, 105, 110, 101, 114, 47
+            ]
+        );
         assert_eq!(tx_in.sequence, 4294967295);
     }
 
@@ -559,7 +578,6 @@ mod tests {
         assert_eq!(expected_size, actual_size);
     }
 
-
     #[test]
     fn test_serialize_outpoint() {
         let outpoint = Outpoint {
@@ -568,7 +586,8 @@ mod tests {
         };
 
         let expected_bytes = vec![
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // hash
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, // hash
             123, 0, 0, 0, // index
         ];
 
@@ -580,7 +599,8 @@ mod tests {
     #[test]
     fn test_deserialize_outpoint() {
         let bytes = vec![
-            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, // hash
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2, // hash
             255, 255, 255, 255, // index
         ];
 
@@ -594,24 +614,24 @@ mod tests {
         assert_eq!(deserialized, expected_outpoint);
     }
 
-
     #[test]
     fn test_serialize_tx_out() {
         let expected_bytes = vec![
-            0, 242, 5, 42, 1, 0, 0, 0, // value
+            0, 242, 5, 42, 1, 0, 0, 0,  // value
             35, //pk_len
-            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
-            108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
-            84, 81, 172 // trout pk
+            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91, 108, 243, 201,
+            188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107, 84, 81,
+            172, // trout pk
         ];
 
         let txout = TxOut {
             value: 5000000000,
-            pk_len:1,
+            pk_len: 1,
             pk_len_bytes: 35,
-            pk_script:vec![33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
-                           108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
-                           84, 81,172],
+            pk_script: vec![
+                33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91, 108, 243,
+                201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107, 84, 81, 172,
+            ],
         };
 
         let bytes = txout._serialize().unwrap();
@@ -622,18 +642,22 @@ mod tests {
     #[test]
     fn test_deserialize_tx_out() {
         let bytes = vec![
-            0, 242, 5, 42, 1, 0, 0, 0, // value
+            0, 242, 5, 42, 1, 0, 0, 0,  // value
             35, //pk_len
-            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
-            108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
-            84, 81,172 // trout pk
+            33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91, 108, 243, 201,
+            188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107, 84, 81,
+            172, // trout pk
         ];
 
         let txout = TxOut::deserialize(&bytes).unwrap();
         assert_eq!(txout.value, 5000000000);
-        assert_eq!(txout.pk_script, vec![33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91,
-                                         108, 243, 201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107,
-                                         84, 81,172]);
+        assert_eq!(
+            txout.pk_script,
+            vec![
+                33, 2, 142, 194, 100, 195, 242, 76, 65, 16, 171, 255, 30, 164, 219, 91, 108, 243,
+                201, 188, 210, 174, 108, 157, 164, 77, 116, 205, 122, 47, 28, 107, 84, 81, 172
+            ]
+        );
     }
 
     #[test]
@@ -655,7 +679,4 @@ mod tests {
 
         assert_eq!(expected_size, actual_size);
     }
-
 }
-
-

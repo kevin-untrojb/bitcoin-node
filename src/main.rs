@@ -16,10 +16,7 @@ use gtk::{
     Align, Application, ApplicationWindow, Button,
 };
 
-use crate::{
-    blockchain::node::Node,
-    protocol::{connection::connect, initial_block_download::get_headers},
-};
+use crate::protocol::{connection::connect, initial_block_download::get_full_blockchain};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -33,7 +30,7 @@ fn main() {
         }
     };
 
-    let title = format!("Nodo Bitcoin - {}", nombre_grupo).to_string();
+    let title = format!("Nodo Bitcoin - {}", nombre_grupo);
     let app = Application::builder()
         .application_id("nodo_bitcoin")
         .build();
@@ -47,7 +44,7 @@ fn main() {
             .build();
 
         let button = Button::builder()
-            .label("Descargar Blockchain")
+            .label("Descargar Bloques")
             .halign(Align::Center)
             .valign(Align::Center)
             .build();
@@ -71,8 +68,7 @@ fn download_blockchain() {
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let admin_connections = connect()?;
-        let mut node = Node::new();
-        get_headers(admin_connections, &mut node)?;
+        get_full_blockchain(admin_connections)?;
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
