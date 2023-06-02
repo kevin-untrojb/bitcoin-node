@@ -1,3 +1,4 @@
 /target
 .vscode
 headers.bin
+/blocks.bin

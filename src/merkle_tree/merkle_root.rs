@@ -16,10 +16,10 @@ pub struct _MerkleRoot {
 impl _MerkleRoot {
     pub fn _from_block(block: &SerializedBlock) -> Result<_MerkleRoot, NodoBitcoinError> {
         let txs = &block.txns;
-        Self::_from_txs(&txs)
+        Self::_from_txs(txs)
     }
 
-    pub fn _from_txs(transactions: &Vec<Transaction>) -> Result<_MerkleRoot, NodoBitcoinError> {
+    pub fn _from_txs(transactions: &[Transaction]) -> Result<_MerkleRoot, NodoBitcoinError> {
         let transactions_ids = transactions
             .iter()
             .map(|tx| tx._txid())

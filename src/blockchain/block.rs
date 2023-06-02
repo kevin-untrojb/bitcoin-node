@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use super::{blockheader::BlockHeader, transaction};
 use crate::common::utils_bytes;
 use crate::errores::NodoBitcoinError;
@@ -12,15 +14,19 @@ use transaction::Transaction;
 ///
 /// * `header` - The header of the block, which contains metadata such as the block's version, hash, and timestamp.
 /// * `txns` - The transactions included in the block, represented as a vector of `Transaction` structs.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SerializedBlock {
     pub header: BlockHeader,
     pub txns: Vec<Transaction>,
+    pub block_bytes: Vec<u8>,
 }
 
 impl SerializedBlock {
     pub fn deserialize(block_bytes: &[u8]) -> Result<SerializedBlock, NodoBitcoinError> {
         let mut offset = 0;
+        if block_bytes.len() < 80 {
+            return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+        }
         let header = BlockHeader::deserialize(&block_bytes[offset..offset + 80])?;
         offset += 80;
         let (size_bytes, txn_count) = utils_bytes::parse_varint(&block_bytes[offset..]);
@@ -32,7 +38,11 @@ impl SerializedBlock {
             offset += trn.size();
             txns.push(trn);
         }
-        Ok(SerializedBlock { header, txns })
+        Ok(SerializedBlock {
+            header,
+            txns,
+            block_bytes: block_bytes.to_vec(),
+        })
     }
 
     pub fn _tx_proof_of_inclusion(&self, tx: &Transaction) -> bool {
@@ -60,6 +70,30 @@ impl SerializedBlock {
         let binding = local_merkle._root_hash();
         let local_merkle_hash = binding.as_slice();
         current_merkle == local_merkle_hash
+    }
+}
+
+impl PartialOrd for SerializedBlock {
+    fn partial_cmp(&self, other: &SerializedBlock) -> Option<Ordering> {
+        let self_timestamp = self.header.time;
+        let other_timestamp = other.header.time;
+        match self_timestamp > other_timestamp {
+            true => return Some(Ordering::Greater),
+            false => match self_timestamp < other_timestamp {
+                true => return Some(Ordering::Less),
+                false => (),
+            },
+        }
+        Some(Ordering::Equal)
+    }
+}
+
+impl Ord for SerializedBlock {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.partial_cmp(other) {
+            Some(ordering) => ordering,
+            None => Ordering::Equal,
+        }
     }
 }
 
@@ -159,7 +193,6 @@ mod tests {
         assert_eq!(serialized_block.txns.len(), 1);
         assert_eq!(serialized_block.txns[0], transaction);
     }
-
     fn get_bloque_bytes() -> Vec<u8> {
         let bytes: Vec<u8> = vec![
             1, 0, 0, 0, 32, 120, 42, 0, 82, 85, 182, 87, 105, 110, 160, 87, 213, 185, 143, 52, 222,

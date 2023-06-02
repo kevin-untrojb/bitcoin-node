@@ -43,22 +43,7 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
         Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig),
     };
 
-    let version_message = VersionMessage::new(
-        version,
-        0,
-        timestamp,
-        0,
-        address.ip().to_string(),
-        address.port(),
-        0,
-        "192.168.0.66".to_string(),
-        18333,
-        0,
-        0,
-        "".to_string(),
-        0,
-        true,
-    );
+    let version_message = VersionMessage::new(version, timestamp, address);
     let mensaje = version_message.serialize()?;
     if socket.write_all(&mensaje).is_err() {
         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
