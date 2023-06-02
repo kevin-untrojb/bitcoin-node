@@ -45,9 +45,25 @@ impl SerializedBlock {
         })
     }
 
+    pub fn _tx_proof_of_inclusion(&self, tx: &Transaction) -> bool {
+        let tree = match self._local_merkle_tree() {
+            Ok(tree) => tree,
+            Err(_) => return false,
+        };
+        tree._proof_of_inclusion(tx)
+    }
+
+    pub fn _local_merkle_tree(&self) -> Result<_MerkleRoot, NodoBitcoinError> {
+        let local_merkle = match _MerkleRoot::_from_block(self) {
+            Ok(calculated_merkle) => calculated_merkle,
+            Err(_) => return Err(NodoBitcoinError::_NoSePuedeArmarElArbol),
+        };
+        Ok(local_merkle)
+    }
+
     pub fn _is_valid_merkle(&self) -> bool {
         let current_merkle = self.header.merkle_root_hash;
-        let local_merkle = match _MerkleRoot::_from_block(self) {
+        let local_merkle = match self._local_merkle_tree() {
             Ok(calculated_merkle) => calculated_merkle,
             Err(_) => return false,
         };
@@ -176,5 +192,55 @@ mod tests {
         assert_eq!(serialized_block.header, header);
         assert_eq!(serialized_block.txns.len(), 1);
         assert_eq!(serialized_block.txns[0], transaction);
+    }
+    fn get_bloque_bytes() -> Vec<u8> {
+        let bytes: Vec<u8> = vec![
+            1, 0, 0, 0, 32, 120, 42, 0, 82, 85, 182, 87, 105, 110, 160, 87, 213, 185, 143, 52, 222,
+            252, 247, 81, 150, 246, 79, 110, 234, 200, 2, 108, 0, 0, 0, 0, 65, 186, 90, 252, 83,
+            42, 174, 3, 21, 27, 138, 168, 123, 101, 225, 89, 79, 151, 80, 74, 118, 142, 1, 12, 152,
+            192, 173, 215, 146, 22, 36, 113, 134, 231, 73, 77, 255, 255, 0, 29, 5, 141, 194, 182,
+            1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 14, 4, 134, 231, 73, 77, 1, 81, 6, 47,
+            80, 50, 83, 72, 47, 255, 255, 255, 255, 1, 0, 242, 5, 42, 1, 0, 0, 0, 35, 33, 3, 246,
+            217, 255, 76, 18, 149, 148, 69, 202, 85, 73, 200, 17, 104, 59, 249, 200, 142, 99, 123,
+            34, 45, 210, 224, 49, 17, 84, 196, 200, 92, 244, 35, 172, 0, 0, 0, 0,
+        ];
+        bytes
+    }
+
+    fn get_tx_bytes() -> Vec<u8> {
+        let bytes: Vec<u8> = vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, //hash
+            255, 255, 255, 255, //index
+            31,  // script bytes
+            4, 231, 190, 191, 79, 1, 34, 23, 47, 80, 50, 83, 72, 47, 73, 99, 101, 73, 114, 111,
+            110, 45, 81, 67, 45, 109, 105, 110, 101, 114, 47, // script
+            255, 255, 255, 255, // sequene
+        ];
+        bytes
+    }
+
+    #[test]
+    fn test_proof_of_inclusion() {
+        let bloque_bytes = get_bloque_bytes();
+        let tx_bytes = get_tx_bytes();
+
+        let serialized_block_result = SerializedBlock::deserialize(&bloque_bytes);
+        assert!(serialized_block_result.is_ok());
+
+        let serialized_block = serialized_block_result.unwrap();
+
+        let tx = &serialized_block.txns[0];
+        let proof_of_inclusion_ok = serialized_block._tx_proof_of_inclusion(tx);
+        assert!(proof_of_inclusion_ok);
+
+        let tx_not_included_result = transaction::Transaction::deserialize(&tx_bytes);
+        assert!(tx_not_included_result.is_ok());
+
+        let tx_not_included = tx_not_included_result.unwrap();
+
+        let proof_of_inclusion_no_ok = serialized_block._tx_proof_of_inclusion(&tx_not_included);
+        assert!(!proof_of_inclusion_no_ok);
     }
 }
