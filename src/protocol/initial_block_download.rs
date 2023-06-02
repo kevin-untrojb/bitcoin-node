@@ -158,7 +158,7 @@ fn _get_config_threads() -> usize {
     _DEFAULT_TOTAL_THREADS
 }
 
-fn _headers_by_threads(headers_filtrados: Vec<BlockHeader>) -> Vec<Vec<BlockHeader>> {
+fn headers_by_threads(headers_filtrados: &Vec<BlockHeader>) -> Vec<Vec<BlockHeader>> {
     if headers_filtrados.is_empty() {
         return vec![];
     }
@@ -327,25 +327,14 @@ pub fn get_full_blockchain(admin_connections: AdminConnections) -> Result<(), No
             let blockheaders = deserealize_sin_guardar(headers)?;
             let headers_filtrados = get_headers_filtrados(&blockheaders);
             let headers_filtrados_len = headers_filtrados.len();
+            let headers_by_threads = headers_by_threads(&headers_filtrados);
 
-            let n_threads_max: usize =
-                match (config::get_valor("CANTIDAD_THREADS".to_string())?).parse::<usize>() {
-                    Ok(res) => res,
-                    Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig),
-                };
-            let n_threads = cmp::min(n_threads_max, headers_filtrados.len());
-            let n_blockheaders_thread =
-                (headers_filtrados.len() as f64 / n_threads as f64).ceil() as usize;
             let blocks = Arc::new(Mutex::new(vec![]));
             let mut threads = vec![];
 
             let admin_connections_mutex = Arc::new(Mutex::new(admin_connections.clone()));
 
-            for i in 0..n_threads {
-                let start: usize = i * n_blockheaders_thread;
-                let end: usize = start + n_blockheaders_thread;
-                let block_headers_thread =
-                    headers_filtrados[start..cmp::min(end, headers_filtrados.len())].to_vec();
+            for block_headers_thread in headers_by_threads {
                 let shared_blocks = blocks.clone();
                 let admin_connections_mutex_thread = admin_connections_mutex.clone();
                 threads.push(thread::spawn(move || {
