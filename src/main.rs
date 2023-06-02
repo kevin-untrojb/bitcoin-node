@@ -15,6 +15,8 @@ use gtk::{
     traits::{ButtonExt, ContainerExt, WidgetExt},
     Align, Application, ApplicationWindow, Button,
 };
+use glade::GladeLoader;
+
 
 use crate::protocol::{connection::connect, initial_block_download::get_full_blockchain};
 
@@ -29,19 +31,23 @@ fn main() {
             return;
         }
     };
-
     let title = format!("Nodo Bitcoin - {}", nombre_grupo);
+
+    let glade_src = include_str!("gtk/window.glade");
+    let loader = GladeLoader::new_from_string(glade_src).expect("No se puede cargar el archivo Glade.");
+
     let app = Application::builder()
         .application_id("nodo_bitcoin")
         .build();
 
     app.connect_activate(move |app| {
-        let window = ApplicationWindow::builder()
+        /*let window = ApplicationWindow::builder()
             .application(app)
             .default_width(460)
             .default_height(200)
             .title(&title)
-            .build();
+            .build();*/
+        let window: ApplicationWindow = loader.get_widget("window").expect("No se puede obtener la ventana principal.");
 
         let button = Button::builder()
             .label("Descargar Bloques")
