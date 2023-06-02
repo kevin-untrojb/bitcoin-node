@@ -94,6 +94,11 @@ impl AdminConnections {
         Ok(())
     }
 
+    pub fn get_connections(&mut self) -> Result<Vec<Connection>, NodoBitcoinError> {
+        let values: Vec<&str> = self.values().cloned().collect();
+        values
+    }
+
     pub fn find_free_connection(&mut self) -> Result<(Connection, i32), NodoBitcoinError> {
         match self
             .connections
