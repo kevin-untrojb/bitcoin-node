@@ -135,7 +135,7 @@ fn get_headers_filtrados(blockheaders: &Vec<BlockHeader>) -> Vec<BlockHeader> {
         .into_iter()
         .filter(|header| header.time >= timestamp_ini)
         .collect();
-    let last_header = headers_filtrados[headers_filtrados.len() - 1];
+    let last_header = blockheaders[blockheaders.len() - 1];
     let datetime = _timestamp_to_datetime(last_header.time.into());
     println!(
         "Descarga de headers. Total: {:?}. Bloques a descargar: {:?}. Ultimo timestamp: {:?}",
