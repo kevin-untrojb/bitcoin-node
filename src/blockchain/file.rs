@@ -6,15 +6,24 @@ use std::{
 
 use crate::{config, errores::NodoBitcoinError};
 
-pub fn _reset_files() {
-    let path = config::get_valor("NOMBRE_ARCHIVO".to_string()).unwrap();
+fn get_headers_filename() -> Result<String, NodoBitcoinError> {
+    config::get_valor("NOMBRE_ARCHIVO_HEADERS".to_string())
+}
+
+fn get_blocks_filename() -> Result<String, NodoBitcoinError> {
+    config::get_valor("NOMBRE_ARCHIVO_BLOQUES".to_string())
+}
+
+pub fn _reset_files() -> Result<(), NodoBitcoinError> {
+    let path = get_headers_filename()?;
     let _ = std::fs::remove_file(path);
-    let path = config::get_valor("NOMBRE_ARCHIVO_BLOQUES".to_string()).unwrap();
+    let path = get_blocks_filename()?;
     let _ = std::fs::remove_file(path);
+    Ok(())
 }
 
 pub fn existe_archivo_headers() -> bool {
-    let path = match config::get_valor("NOMBRE_ARCHIVO".to_string()) {
+    let path = match get_headers_filename() {
         Ok(path) => path,
         Err(_) => return false,
     };
@@ -22,7 +31,7 @@ pub fn existe_archivo_headers() -> bool {
 }
 
 pub fn escribir_archivo(datos: &[u8]) -> Result<(), NodoBitcoinError> {
-    let path = config::get_valor("NOMBRE_ARCHIVO".to_string())?;
+    let path = get_headers_filename()?;
     let mut archivo = match OpenOptions::new().create(true).append(true).open(path) {
         Ok(archivo) => archivo,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
@@ -36,7 +45,7 @@ pub fn escribir_archivo(datos: &[u8]) -> Result<(), NodoBitcoinError> {
 }
 
 pub fn escribir_archivo_bloque(datos: &[u8]) -> Result<(), NodoBitcoinError> {
-    let path = config::get_valor("NOMBRE_ARCHIVO_BLOQUES".to_string())?;
+    let path = get_blocks_filename()?;
     let mut archivo = match OpenOptions::new().create(true).append(true).open(path) {
         Ok(archivo) => archivo,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
@@ -63,7 +72,7 @@ pub fn _leer_ultimo_header() -> Result<Vec<u8>, NodoBitcoinError> {
 }
 
 fn _get_file_header_size() -> Result<u64, NodoBitcoinError> {
-    let path = config::get_valor("NOMBRE_ARCHIVO".to_string())?;
+    let path = get_headers_filename()?;
     let file = File::open(path);
     if file.is_err() {
         return Err(NodoBitcoinError::NoExisteArchivo);
@@ -83,13 +92,13 @@ pub fn _header_count() -> Result<u64, NodoBitcoinError> {
 
 pub fn _leer_header_desde_archivo(index: u64) -> Result<Vec<u8>, NodoBitcoinError> {
     //    _leer_header(total_headers)
-    let path = config::get_valor("NOMBRE_ARCHIVO".to_string())?;
+    let path = get_headers_filename()?;
     let offset = index * 80;
     leer_bytes(path, offset, 80)
 }
 
 pub fn _leer_todos_headers() -> Result<Vec<u8>, NodoBitcoinError> {
-    let path = config::get_valor("NOMBRE_ARCHIVO".to_string())?;
+    let path = get_headers_filename()?;
     let file_size = _get_file_header_size()?;
     leer_bytes(path, 0, file_size)
 }
@@ -102,7 +111,7 @@ pub fn _leer_headers(ix: u64) -> Result<Vec<u8>, NodoBitcoinError> {
     // devuelve de a 2000 headers
     let offset: u64 = ix * 2000;
     let length: u64 = 2000 * 80;
-    let path = config::get_valor("NOMBRE_ARCHIVO".to_string())?;
+    let path = get_headers_filename()?;
     leer_bytes(path, offset, length)
 }
 
