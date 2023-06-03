@@ -82,7 +82,7 @@ impl SerializedBlock {
         let block_bytes = leer_todos_blocks()?;
         let mut serialized_blocks = vec![];
         for block in &block_bytes {
-            let serialized_block = SerializedBlock::deserialize(&block)?;
+            let serialized_block = SerializedBlock::deserialize(block)?;
             serialized_blocks.push(serialized_block);
         }
         Ok(serialized_blocks)
