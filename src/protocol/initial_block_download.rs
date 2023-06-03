@@ -223,7 +223,7 @@ fn change_mutex_connection_id(
                     )?,
                 };
             drop(admin);
-            Ok((thread_connection.clone(), thread_id_connection))
+            Ok((thread_connection, thread_id_connection))
         }
         Err(_) => {
             println!("Error al lockear el Mutex.");
