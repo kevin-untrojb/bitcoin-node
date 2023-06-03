@@ -16,7 +16,10 @@ use gtk::{
     Align, Application, ApplicationWindow, Button,
 };
 
-use crate::protocol::{connection::connect, initial_block_download::get_full_blockchain};
+use crate::{
+    blockchain::block::SerializedBlock,
+    protocol::{connection::connect, initial_block_download::get_full_blockchain},
+};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -43,20 +46,37 @@ fn main() {
             .title(&title)
             .build();
 
-        let button = Button::builder()
+        let button_download_blockchain = Button::builder()
             .label("Descargar Bloques")
             .halign(Align::Center)
             .valign(Align::Center)
             .build();
 
-        button.connect_clicked(|_| {
+        button_download_blockchain.connect_clicked(|_| {
             thread::spawn(move || {
                 println!("Descargando!");
                 download_blockchain();
             });
         });
 
-        window.set_child(Some(&button));
+        let button_read_blocks = Button::builder()
+            .label("Leer Bloques")
+            .halign(Align::Center)
+            .valign(Align::Center)
+            .build();
+
+        button_read_blocks.connect_clicked(|_| {
+            thread::spawn(move || {
+                println!("Leyendo!");
+                leer_primer_block();
+            });
+        });
+
+        let box_layout = gtk::Box::new(gtk::Orientation::Vertical, 20);
+        box_layout.add(&button_download_blockchain);
+        box_layout.add(&button_read_blocks);
+
+        window.set_child(Some(&box_layout));
         window.show_all();
     });
 
@@ -69,6 +89,23 @@ fn download_blockchain() {
         config::inicializar(args)?;
         let admin_connections = connect()?;
         get_full_blockchain(admin_connections)?;
+
+        let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
+        println!("Hello, Bitcoin! Somos {}", nombre_grupo);
+        Ok(())
+    };
+
+    if let Err(e) = do_steps() {
+        println!("{}", e);
+    }
+}
+
+fn leer_primer_block() {
+    let args: Vec<String> = env::args().collect();
+    let do_steps = || -> Result<(), NodoBitcoinError> {
+        config::inicializar(args)?;
+        let bloques = SerializedBlock::read_blocks_from_file()?;
+        println!("Bloques totales: {:?}", bloques.len());
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);

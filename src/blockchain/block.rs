@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 
+use super::file::{_leer_primer_block, leer_todos_blocks};
 use super::{blockheader::BlockHeader, transaction};
 use crate::common::utils_bytes;
 use crate::errores::NodoBitcoinError;
@@ -70,6 +71,21 @@ impl SerializedBlock {
         let binding = local_merkle._root_hash();
         let local_merkle_hash = binding.as_slice();
         current_merkle == local_merkle_hash
+    }
+
+    pub fn _read_first_block_from_file() -> Result<SerializedBlock, NodoBitcoinError> {
+        let block_bytes = _leer_primer_block()?;
+        SerializedBlock::deserialize(&block_bytes)
+    }
+
+    pub fn read_blocks_from_file() -> Result<Vec<SerializedBlock>, NodoBitcoinError> {
+        let block_bytes = leer_todos_blocks()?;
+        let mut serialized_blocks = vec![];
+        for block in &block_bytes {
+            let serialized_block = SerializedBlock::deserialize(&block)?;
+            serialized_blocks.push(serialized_block);
+        }
+        Ok(serialized_blocks)
     }
 }
 

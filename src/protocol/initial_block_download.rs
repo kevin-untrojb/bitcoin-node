@@ -1,7 +1,7 @@
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::file::{
-    _leer_ultimo_header, escribir_archivo, escribir_archivo_bloque, existe_archivo_headers,
+    escribir_archivo, escribir_archivo_bloque, existe_archivo_headers, leer_ultimo_header,
 };
 use crate::common::utils_timestamp::{_timestamp_to_datetime, obtener_timestamp_dia};
 use crate::config;
@@ -33,7 +33,7 @@ fn start_block() -> Result<[u8; 32], NodoBitcoinError> {
     let existe_header = existe_archivo_headers();
     let start_block = match existe_header {
         true => {
-            let last_file_header = _leer_ultimo_header()?;
+            let last_file_header = leer_ultimo_header()?;
             let header_serialized = BlockHeader::deserialize(&last_file_header)?;
             header_serialized.hash()?
         }
