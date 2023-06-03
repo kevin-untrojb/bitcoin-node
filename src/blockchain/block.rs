@@ -20,7 +20,6 @@ pub struct SerializedBlock {
     pub header: BlockHeader,
     pub txns: Vec<Transaction>,
     txn_amount: usize,
-    pub block_bytes: Vec<u8>,
 }
 
 impl SerializedBlock {
@@ -44,11 +43,10 @@ impl SerializedBlock {
             header,
             txns,
             txn_amount,
-            block_bytes: block_bytes.to_vec(),
         })
     }
 
-    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
 
         let bytes_header = self.header.serialize()?;
@@ -61,7 +59,7 @@ impl SerializedBlock {
             .write_all(&(utils_bytes::_build_varint_bytes(tx_count_prefix, self.txns.len())?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
-        let bytes_txns_array = self.txns.iter().map(|txn| txn._serialize());
+        let bytes_txns_array = self.txns.iter().map(|txn| txn.serialize());
         for bytes_txn in bytes_txns_array {
             bytes
                 .write_all(bytes_txn?.as_slice())
@@ -277,7 +275,7 @@ mod tests {
 
         let serialized_block = serialized_block_result.unwrap();
 
-        let serialize_result = serialized_block._serialize();
+        let serialize_result = serialized_block.serialize();
         assert!(serialize_result.is_ok());
 
         let serialized = serialize_result.unwrap();
