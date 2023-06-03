@@ -6,6 +6,7 @@ mod merkle_tree;
 mod messages;
 mod parse_args;
 mod protocol;
+mod wallet;
 
 use std::{env, println, thread};
 
@@ -19,6 +20,7 @@ use gtk::{
 use crate::{
     blockchain::node::Node,
     protocol::{connection::connect, initial_block_download::get_headers},
+    wallet::{uxto_set},
 };
 
 fn main() {

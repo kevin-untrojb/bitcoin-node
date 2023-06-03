@@ -2,11 +2,12 @@ use std::{
     cmp::Ordering,
     fmt,
     ops::{Add, BitOr, Mul},
+    borrow::Borrow,
 };
 
 const NUM_BYTES: usize = 32;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Uint256([u8; NUM_BYTES]);
 
 impl Default for Uint256 {
