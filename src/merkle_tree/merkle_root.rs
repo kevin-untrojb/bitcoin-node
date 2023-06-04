@@ -22,7 +22,7 @@ impl _MerkleRoot {
     pub fn _from_txs(transactions: &[Transaction]) -> Result<_MerkleRoot, NodoBitcoinError> {
         let transactions_ids = transactions
             .iter()
-            .map(|tx| tx._txid())
+            .map(|tx| tx.txid())
             .collect::<Result<Vec<Uint256>, NodoBitcoinError>>()?;
         Self::_from_ids(&transactions_ids)
     }
@@ -88,7 +88,7 @@ impl _MerkleRoot {
 
     pub fn _proof_of_inclusion(&self, tx: &Transaction) -> bool {
         // verificar que el txid de la transaccion este en el arbol
-        let txid_result = tx._txid();
+        let txid_result = tx.txid();
         let txid = match txid_result {
             Ok(txid) => txid,
             Err(_) => return false,

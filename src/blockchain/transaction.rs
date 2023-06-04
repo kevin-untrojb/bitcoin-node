@@ -110,7 +110,7 @@ impl Transaction {
             .sum::<usize>();
         8 + input_size + output_size + self.tx_in_count + self.tx_out_count
     }
-    pub fn _txid(&self) -> Result<Uint256, NodoBitcoinError> {
+    pub fn txid(&self) -> Result<Uint256, NodoBitcoinError> {
         let bytes = self.serialize()?;
         let hash = sha256d::Hash::hash(&bytes);
         let u256 = Uint256::_from_be_bytes(*hash.as_byte_array());

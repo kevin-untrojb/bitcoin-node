@@ -2,7 +2,6 @@ use std::{
     cmp::Ordering,
     fmt,
     ops::{Add, BitOr, Mul},
-    borrow::Borrow,
 };
 
 const NUM_BYTES: usize = 32;

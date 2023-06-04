@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use crate::blockchain::transaction::{Transaction, TxIn, TxOut, Outpoint};
-use crate::errores::NodoBitcoinError;
+use crate::blockchain::transaction::Transaction;
 use crate::common::uint256::Uint256;
+use crate::errores::NodoBitcoinError;
+use std::collections::HashMap;
 
 pub struct UTXO {
     pub tx_id: Uint256,
@@ -21,7 +21,10 @@ impl UTXOSet {
         }
     }
 
-    pub fn build_from_transactions(&mut self, transactions: Vec<Transaction>) -> Result<(), NodoBitcoinError> {
+    pub fn build_from_transactions(
+        &mut self,
+        transactions: Vec<Transaction>,
+    ) -> Result<(), NodoBitcoinError> {
         let mut spent_outputs: HashMap<Uint256, Vec<u32>> = HashMap::new();
 
         for transaction in transactions.iter().rev() {
@@ -29,15 +32,18 @@ impl UTXOSet {
                 let previous_tx_id = Uint256::_from_bytes(tx_in.previous_output.hash);
                 let output_index = tx_in.previous_output.index;
 
-                let spent_outputs_for_tx = spent_outputs.entry(previous_tx_id).or_insert(Vec::new());
+                let spent_outputs_for_tx =
+                    spent_outputs.entry(previous_tx_id).or_insert(Vec::new());
                 spent_outputs_for_tx.push(output_index);
             }
         }
 
         for transaction in transactions {
-            let tx_id = transaction._txid()?;
+            let tx_id = transaction.txid()?;
             for (output_index, tx_out) in transaction.output.iter().enumerate() {
-                if spent_outputs.contains_key(&tx_id) && spent_outputs[&tx_id].contains(&(output_index as u32)) {
+                if spent_outputs.contains_key(&tx_id)
+                    && spent_outputs[&tx_id].contains(&(output_index as u32))
+                {
                     // si la salida de transacción está gastada no es un UXTO
                     continue;
                 }
@@ -59,6 +65,8 @@ impl UTXOSet {
 
 #[cfg(test)]
 mod tests {
+    use crate::blockchain::transaction::{Outpoint, TxIn, TxOut};
+
     use super::*;
 
     #[test]
@@ -119,14 +127,14 @@ mod tests {
         utxo_set.build_from_transactions(transactions);
 
         assert_eq!(utxo_set.utxos.len(), 2);
-        assert!(utxo_set.utxos.contains_key(&transaction1._txid().unwrap()));
-        assert!(utxo_set.utxos.contains_key(&transaction2._txid().unwrap()));
+        assert!(utxo_set.utxos.contains_key(&transaction1.txid().unwrap()));
+        assert!(utxo_set.utxos.contains_key(&transaction2.txid().unwrap()));
 
-        let utxos_tx1 = utxo_set.utxos.get(&transaction1._txid().unwrap()).unwrap();
+        let utxos_tx1 = utxo_set.utxos.get(&transaction1.txid().unwrap()).unwrap();
         assert_eq!(utxos_tx1.len(), 1);
         assert_eq!(utxos_tx1[0].amount, tx_out1.value);
 
-        let utxos_tx2 = utxo_set.utxos.get(&transaction2._txid().unwrap()).unwrap();
+        let utxos_tx2 = utxo_set.utxos.get(&transaction2.txid().unwrap()).unwrap();
         assert_eq!(utxos_tx2.len(), 1);
         assert_eq!(utxos_tx2[0].amount, tx_out2.value);
     }
@@ -140,39 +148,41 @@ mod tests {
             output: vec![TxOut {
                 value: 10,
                 pk_script: vec![],
-                pk_len:0,
-                pk_len_bytes:0,
+                pk_len: 0,
+                pk_len_bytes: 0,
             }],
-            lock_time:0,
-            tx_in_count:1,
-            tx_out_count:1,
-            version:1,
+            lock_time: 0,
+            tx_in_count: 1,
+            tx_out_count: 1,
+            version: 1,
         };
 
         let transaction2 = Transaction {
             input: vec![TxIn {
                 previous_output: Outpoint {
-                    hash: transaction1._txid().unwrap()._to_bytes(),
+                    hash: transaction1.txid().unwrap()._to_bytes(),
                     index: 0,
                 },
                 signature_script: vec![],
                 script_bytes: 0,
-                script_bytes_amount:0,
-                sequence:0,
+                script_bytes_amount: 0,
+                sequence: 0,
             }],
             output: vec![TxOut {
                 value: 5,
                 pk_script: vec![],
-                pk_len:0,
-                pk_len_bytes:0,
+                pk_len: 0,
+                pk_len_bytes: 0,
             }],
-            lock_time:0,
-            tx_in_count:1,
-            tx_out_count:1,
-            version:1,
+            lock_time: 0,
+            tx_in_count: 1,
+            tx_out_count: 1,
+            version: 1,
         };
 
-        utxo_set.build_from_transactions(vec![transaction1,transaction2]).unwrap();
+        utxo_set
+            .build_from_transactions(vec![transaction1, transaction2])
+            .unwrap();
         assert_eq!(utxo_set.utxos.len(), 0);
     }
 }
