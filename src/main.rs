@@ -11,12 +11,10 @@ use std::{env, println, thread};
 
 use errores::NodoBitcoinError;
 use gtk::{
-    prelude::{ApplicationExt, ApplicationExtManual},
+    prelude::*,
     traits::{ButtonExt, ContainerExt, WidgetExt},
-    Align, Application, ApplicationWindow, Button,
+    Align, Application, ApplicationWindow, Button, Window, Builder,
 };
-use glade::GladeLoader;
-
 
 use crate::protocol::{connection::connect, initial_block_download::get_full_blockchain};
 
@@ -33,40 +31,29 @@ fn main() {
     };
     let title = format!("Nodo Bitcoin - {}", nombre_grupo);
 
+    gtk::init().expect("No se pudo inicializar GTK.");
+
     let glade_src = include_str!("gtk/window.glade");
-    let loader = GladeLoader::new_from_string(glade_src).expect("No se puede cargar el archivo Glade.");
+    let builder = Builder::from_string(glade_src);
 
-    let app = Application::builder()
-        .application_id("nodo_bitcoin")
-        .build();
+    let window: Window = builder.object("window").expect("Error: No encuentra objeto 'window'");
 
-    app.connect_activate(move |app| {
-        /*let window = ApplicationWindow::builder()
-            .application(app)
-            .default_width(460)
-            .default_height(200)
-            .title(&title)
-            .build();*/
-        let window: ApplicationWindow = loader.get_widget("window").expect("No se puede obtener la ventana principal.");
-
-        let button = Button::builder()
-            .label("Descargar Bloques")
-            .halign(Align::Center)
-            .valign(Align::Center)
-            .build();
-
-        button.connect_clicked(|_| {
-            thread::spawn(move || {
-                println!("Descargando!");
-                download_blockchain();
-            });
-        });
-
-        window.set_child(Some(&button));
-        window.show_all();
+    window.connect_delete_event(|_, _| {
+        gtk::main_quit();
+        Inhibit(false)
     });
 
-    app.run();
+    /*button.connect_clicked(|_| {
+        thread::spawn(move || {
+            println!("Descargando!");
+            download_blockchain();
+        });
+    });*/
+
+    window.show_all();
+
+    gtk::main();
+
 }
 
 fn download_blockchain() {
