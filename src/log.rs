@@ -1,11 +1,12 @@
+use crate::errores::NodoBitcoinError;
+use chrono::DateTime;
+use chrono::Local;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::sync::mpsc::{channel, Sender};
-use std::fs::File;
-use std::io::Write;
-use chrono::Local;
-use chrono::DateTime;
-use crate::errores::NodoBitcoinError;
 
 pub enum LogMessages {
     Info(String),
@@ -16,7 +17,6 @@ struct LoggerActor {
     log_file: Option<File>,
 }
 
-
 impl LoggerActor {
     fn handle_message(&mut self, message: LogMessages) {
         let current_time: DateTime<Local> = Local::now();
@@ -24,46 +24,41 @@ impl LoggerActor {
         match message {
             LogMessages::Info(comment) => {
                 if let Some(file) = &mut self.log_file {
-                    if let Err(err) = writeln!(file, "{} - Info: {} \n", formatted_time, comment) {
+                    if let Err(err) = writeln!(file, "{} - Info: {}", formatted_time, comment) {
                         eprintln!("Error writing to log file: {}", err);
                     }
                 } else {
-                    println!("{} - Info: {}\n", formatted_time, comment);
+                    println!("{} - Info: {}", formatted_time, comment);
                 }
             }
             LogMessages::Error(error_msg) => {
                 if let Some(file) = &mut self.log_file {
-                    if let Err(err) = writeln!(file, "{} - Error: {}\n", formatted_time, error_msg) {
+                    if let Err(err) = writeln!(file, "{} - Error: {}", formatted_time, error_msg) {
                         eprintln!("Error writing to log file: {}", err);
                     }
                 } else {
-                    println!("{} - Error: {}\n",formatted_time, error_msg);
+                    println!("{} - Error: {}", formatted_time, error_msg);
                 }
             }
         }
     }
 }
 
-
 pub fn create_logger_actor(log_file_path: Result<String, NodoBitcoinError>) -> Sender<LogMessages> {
     let (sender, receiver) = channel();
 
     let log_file = match log_file_path {
-        Ok(path) => {
-            match File::create(path) {
-                Ok(file) => Some(file),
-                Err(err) => {
-                    eprintln!("Error opening log file: {}", err);
-                    None
-                }
+        Ok(path) => match OpenOptions::new().create(true).append(true).open(path) {
+            Ok(file) => Some(file),
+            Err(err) => {
+                eprintln!("Error opening log file: {}", err);
+                None
             }
-        }
+        },
         _ => None,
     };
 
-    let actor = Arc::new(Mutex::new(LoggerActor {
-        log_file,
-    }));
+    let actor = Arc::new(Mutex::new(LoggerActor { log_file }));
 
     thread::spawn(move || {
         let actor = actor.clone();
@@ -83,25 +78,16 @@ pub fn create_logger_actor(log_file_path: Result<String, NodoBitcoinError>) -> S
     sender
 }
 
-pub fn log_info_message(logger: Sender<LogMessages>, log_msg: String) -> bool{
-    match logger.send(LogMessages::Info(log_msg)){
-        Ok(())=> {
-            return true
-        }
-        _ => {
-            return false
-        }
+pub fn log_info_message(logger: Sender<LogMessages>, log_msg: String) -> bool {
+    match logger.send(LogMessages::Info(log_msg)) {
+        Ok(()) => return true,
+        _ => return false,
     };
 }
 
-pub fn log_error_message(logger: Sender<LogMessages>, log_msg: String) -> bool{
-    match logger.send(LogMessages::Error(log_msg)){
-        Ok(()) => {
-            return true
-        }
-        _ => {
-            return false
-        }
+pub fn log_error_message(logger: Sender<LogMessages>, log_msg: String) -> bool {
+    match logger.send(LogMessages::Error(log_msg)) {
+        Ok(()) => return true,
+        _ => return false,
     };
-
 }
