@@ -2,13 +2,17 @@ mod blockchain;
 mod common;
 mod config;
 mod errores;
+mod log;
 mod merkle_tree;
 mod messages;
 mod parse_args;
 mod protocol;
+<<<<<<< HEAD
 mod wallet;
 
 mod log;
+=======
+>>>>>>> develop
 use std::sync::mpsc::Sender;
 use std::{env, println, thread};
 
@@ -20,11 +24,15 @@ use gtk::{
 };
 
 use crate::log::{create_logger_actor, LogMessages};
+<<<<<<< HEAD
 use crate::wallet::uxto_set::UTXOSet;
 use crate::{
     blockchain::block::SerializedBlock,
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
 };
+=======
+use crate::protocol::{connection::connect, initial_block_download::get_full_blockchain};
+>>>>>>> develop
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -58,7 +66,11 @@ fn main() {
 
         button_download_blockchain.connect_clicked(|_| {
             thread::spawn(move || {
+<<<<<<< HEAD
                 click_download_blockchain(create_logger_actor(config::get_valor(
+=======
+                download_blockchain(create_logger_actor(config::get_valor(
+>>>>>>> develop
                     "LOG_FILE".to_string(),
                 )));
             });
@@ -101,12 +113,17 @@ fn main() {
     app.run();
 }
 
+<<<<<<< HEAD
 fn click_download_blockchain(logger: Sender<LogMessages>) {
+=======
+fn download_blockchain(logger: Sender<LogMessages>) {
+>>>>>>> develop
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let admin_connections = connect(logger.clone())?;
         get_full_blockchain(logger.clone(), admin_connections)?;
+<<<<<<< HEAD
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
@@ -152,6 +169,8 @@ fn click_build_utxo_set() {
         utxo_set.build_from_transactions(txns)?;
 
         println!("UTXO Set: {:?}", utxo_set.utxos.len());
+=======
+>>>>>>> develop
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);

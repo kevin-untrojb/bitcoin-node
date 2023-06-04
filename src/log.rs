@@ -62,16 +62,9 @@ pub fn create_logger_actor(log_file_path: Result<String, NodoBitcoinError>) -> S
 
     thread::spawn(move || {
         let actor = actor.clone();
-        loop {
-            match receiver.recv() {
-                Ok(message) => {
-                    let mut log_actor = actor.lock().unwrap();
-                    log_actor.handle_message(message);
-                }
-                Err(_) => {
-                    break;
-                }
-            }
+        while let Ok(message) = receiver.recv() {
+            let mut log_actor = actor.lock().unwrap();
+            log_actor.handle_message(message);
         }
     });
 
@@ -79,15 +72,9 @@ pub fn create_logger_actor(log_file_path: Result<String, NodoBitcoinError>) -> S
 }
 
 pub fn log_info_message(logger: Sender<LogMessages>, log_msg: String) -> bool {
-    match logger.send(LogMessages::Info(log_msg)) {
-        Ok(()) => return true,
-        _ => return false,
-    };
+    logger.send(LogMessages::Info(log_msg)).is_ok()
 }
 
 pub fn log_error_message(logger: Sender<LogMessages>, log_msg: String) -> bool {
-    match logger.send(LogMessages::Error(log_msg)) {
-        Ok(()) => return true,
-        _ => return false,
-    };
+    logger.send(LogMessages::Error(log_msg)).is_ok()
 }
