@@ -84,8 +84,8 @@ fn buscar_conexion_libre_o_nuevas_conexiones(
     let result = match admin_connections.find_free_connection() {
         Ok(res) => res,
         Err(_) => {
-            log_error_message(logger.clone(), format!("No se encuentra conexion libre"));
-            admin_connections = connect(logger.clone())?; // actualizo la lista de conexiones
+            log_error_message(logger.clone(), "No se encuentra conexion libre".to_string());
+            admin_connections = connect(logger)?; // actualizo la lista de conexiones
             admin_connections.find_free_connection()?
         }
     };
@@ -105,23 +105,18 @@ fn read_bytes_header(
             if read_bytes > 0 {
                 return Ok(buffer);
             } else if intento < total_reintentos() {
-                log_info_message(logger.clone(), format!("Reintentando leer header"));
+                log_info_message(logger.clone(), "Reintentando leer header".to_string());
                 let (admin_connections, (connection, _id)) =
                     buscar_conexion_libre_o_nuevas_conexiones(logger.clone(), admin_connections)?;
-                return read_bytes_header(
-                    logger.clone(),
-                    &connection,
-                    admin_connections,
-                    intento + 1,
-                );
+                return read_bytes_header(logger, &connection, admin_connections, intento + 1);
             };
             log_error_message(
-                logger.clone(),
-                format!("Máximo de reintentos alcanzado ... probá más tarde ..."),
+                logger,
+                "Máximo de reintentos alcanzado ... probá más tarde ...".to_string(),
             );
             Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
         }
-        None => read_bytes_header(logger.clone(), connection, admin_connections, intento + 1),
+        None => read_bytes_header(logger, connection, admin_connections, intento + 1),
     }
 }
 
@@ -139,7 +134,7 @@ fn get_headers_filtrados(
     blockheaders: &Vec<BlockHeader>,
 ) -> Vec<BlockHeader> {
     if blockheaders.is_empty() {
-        log_info_message(logger.clone(), format!("No hay bloques para descargar"));
+        log_info_message(logger, "No hay bloques para descargar".to_string());
         return vec![];
     }
 
@@ -152,7 +147,7 @@ fn get_headers_filtrados(
     let last_header = blockheaders[blockheaders.len() - 1];
     let datetime = _timestamp_to_datetime(last_header.time.into());
     log_info_message(
-        logger.clone(),
+        logger,
         format!(
             "Descarga de headers. Total: {:?}. Bloques a descargar: {:?}. Ultimo timestamp: {:?}",
             blockheaders.len(),
@@ -206,10 +201,7 @@ fn get_mutex_connection_id(
             let (thread_connection, thread_id_connection) = match admin.find_free_connection() {
                 Ok((connection, id)) => (connection, id),
                 Err(_) => {
-                    log_error_message(
-                        logger.clone(),
-                        format!("Error al buscar conexiones libres."),
-                    );
+                    log_error_message(logger, "Error al buscar conexiones libres.".to_string());
                     return Err(NodoBitcoinError::NoSeEncuentraConexionLibre);
                 }
             };
@@ -217,7 +209,7 @@ fn get_mutex_connection_id(
             Ok((thread_connection, thread_id_connection))
         }
         Err(_) => {
-            log_error_message(logger.clone(), format!("Error al lockear el Mutex."));
+            log_error_message(logger, "Error al lockear el Mutex.".to_string());
             Err(NodoBitcoinError::NoSeEncuentraConexionLibre)
         }
     }
@@ -231,8 +223,8 @@ fn change_mutex_connection_id(
 ) -> Result<(Connection, i32), NodoBitcoinError> {
     if intento > total_reintentos() {
         log_info_message(
-            logger.clone(),
-            format!("Máximo de reintentos alcanzado ... probá más tarde ..."),
+            logger,
+            "Máximo de reintentos alcanzado ... probá más tarde ...".to_string(),
         );
         return Err(NodoBitcoinError::NoSeEncuentraConexionLibre);
     }
@@ -242,7 +234,7 @@ fn change_mutex_connection_id(
                 match admin.change_connection(previous_id) {
                     Ok((connection, id)) => (connection, id),
                     Err(_) => change_mutex_connection_id(
-                        logger.clone(),
+                        logger,
                         previous_id,
                         admin_connections_mutex_thread,
                         intento + 1,
@@ -252,7 +244,7 @@ fn change_mutex_connection_id(
             Ok((thread_connection, thread_id_connection))
         }
         Err(_) => {
-            log_error_message(logger.clone(), format!("Error al lockear el Mutex."));
+            log_error_message(logger, "Error al lockear el Mutex.".to_string());
             Err(NodoBitcoinError::NoSeEncuentraConexionLibre)
         }
     }
@@ -272,7 +264,7 @@ fn write_data_message_new_connection(
         intento + 1,
     )?;
     write_bytes_data(
-        logger.clone(),
+        logger,
         data_message,
         connection,
         new_connection_id,
@@ -298,10 +290,7 @@ fn read_bytes_data(
             None => Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
         },
         Err(_) => {
-            log_error_message(
-                logger.clone(),
-                format!("Error al leer mensaje {:?}", thread_buffer),
-            );
+            log_error_message(logger, format!("Error al leer mensaje {:?}", thread_buffer));
             Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
         }
     }
@@ -322,7 +311,7 @@ fn write_bytes_data(
     if writed_connection.is_err() {
         log_error_message(
             logger.clone(),
-            format!("Error al escribir el mensaje get_data"),
+            "Error al escribir el mensaje get_data".to_string(),
         );
         (connection, _) = change_mutex_connection_id(
             logger.clone(),
@@ -331,7 +320,7 @@ fn write_bytes_data(
             intento + 1,
         )?;
         (connection, connection_id) = write_bytes_data(
-            logger.clone(),
+            logger,
             data_message,
             connection,
             connection_id,
@@ -413,7 +402,7 @@ fn thread_data(
                         .read_exact_message(&mut response_get_data)
                         .is_err()
                     {
-                        log_info_message(logger.clone(), format!("Error al leer el mensaje"));
+                        log_info_message(logger, "Error al leer el mensaje".to_string());
                         return;
                     }
                     valid_command = command == "block";
@@ -435,10 +424,7 @@ fn thread_data(
             if valid_command {
                 let cloned_result = shared_blocks.lock();
                 if cloned_result.is_err() {
-                    log_info_message(
-                        logger.clone(),
-                        format!("Error al lockear el vector de bloques"),
-                    );
+                    log_info_message(logger, "Error al lockear el vector de bloques".to_string());
                     return;
                 }
                 let mut cloned = cloned_result.unwrap();
@@ -459,18 +445,14 @@ fn thread_data(
             }
         }
     }
-    liberar_conexion(
-        logger.clone(),
-        thread_id_connection,
-        admin_connections_mutex_thread,
-    );
+    liberar_conexion(logger, thread_id_connection, admin_connections_mutex_thread);
 }
 
 pub fn get_full_blockchain(
     logger: Sender<LogMessages>,
     admin_connections: AdminConnections,
 ) -> Result<(), NodoBitcoinError> {
-    log_info_message(logger.clone(), format!("Obteniendo blockchain completa"));
+    log_info_message(logger.clone(), "Obteniendo blockchain completa".to_string());
     log_info_message(
         logger.clone(),
         format!(
@@ -551,7 +533,7 @@ pub fn get_full_blockchain(
 
     let fecha_actual = chrono::offset::Local::now();
     log_info_message(
-        logger.clone(),
+        logger,
         format!(
             "Finalizada la descarga a las {}",
             fecha_actual.format("%F %T")
@@ -571,14 +553,14 @@ fn liberar_conexion(
             match admin.free_connection(thread_id_connection) {
                 Ok(()) => (),
                 Err(_) => {
-                    log_info_message(logger.clone(), format!("Error al liberar la conexión ..."));
+                    log_info_message(logger, "Error al liberar la conexión ...".to_string());
                     return;
                 }
             };
             drop(admin);
         }
         Err(_) => {
-            log_error_message(logger.clone(), format!("Error al lockear el Mutex."));
+            log_error_message(logger, "Error al lockear el Mutex.".to_string());
         }
     };
 }
@@ -606,15 +588,15 @@ fn blocks_joined_guardar(
 
     if bloques_a_guardar.len() == headers_filtrados_len {
         // guardo los headers y los bloques
-        guardar_headers_y_bloques(logger.clone(), bloques_a_guardar, blockheaders)?;
+        guardar_headers_y_bloques(logger, bloques_a_guardar, blockheaders)?;
     } else {
         if intento > total_reintentos() {
-            log_info_message(logger.clone(),format!("Ya se reintentó muchas veces ... dejamos descarsar un rato que después pruebo otra vez ... "));
+            log_info_message(logger,"Ya se reintentó muchas veces ... dejamos descarsar un rato que después pruebo otra vez ... ".to_string());
             return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
         }
         log_info_message(
-            logger.clone(),
-            format!("No se descargaron todos los bloques, reintentando ..."),
+            logger,
+            "No se descargaron todos los bloques, reintentando ...".to_string(),
         );
     }
     Ok(())
@@ -630,7 +612,7 @@ fn guardar_headers_y_bloques(
         let bytes = bh.serialize()?;
         escribir_archivo(&bytes)?;
     }
-    log_info_message(logger.clone(), format!("Headers guardados"));
+    log_info_message(logger.clone(), "Headers guardados".to_string());
 
     // guardo los bloques
     if !bloques_a_guardar.is_empty() {
@@ -640,7 +622,7 @@ fn guardar_headers_y_bloques(
             // guardar bloque
             escribir_archivo_bloque(&bloque.serialize()?)?;
         }
-        log_info_message(logger.clone(), format!("Bloques guardados"));
+        log_info_message(logger, "Bloques guardados".to_string());
     }
     Ok(())
 }
