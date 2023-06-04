@@ -575,7 +575,7 @@ fn guardar_headers_y_bloques(
         bloques_a_guardar.sort();
         for bloque in bloques_a_guardar {
             // guardar bloque
-            escribir_archivo_bloque(&bloque.block_bytes)?;
+            escribir_archivo_bloque(&bloque.serialize()?)?;
         }
         log_info_message(logger.clone(),format!("Bloques guardados"));
     }
