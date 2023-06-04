@@ -11,10 +11,11 @@ use std::net::TcpStream;
 use std::net::UdpSocket;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::Duration;
-
+use std::sync::mpsc::Sender;
+use crate::log::{log_info_message,LogMessages};
 use super::admin_connections::AdminConnections;
 
-pub fn connect() -> Result<AdminConnections, NodoBitcoinError> {
+pub fn connect(logger:Sender<LogMessages>) -> Result<AdminConnections, NodoBitcoinError> {
     let mut admin_connections = AdminConnections::new();
     let addresses = get_address();
     let mut id: i32 = 0;
@@ -23,7 +24,7 @@ pub fn connect() -> Result<AdminConnections, NodoBitcoinError> {
             Ok(socket) => {
                 match handshake(socket, *address) {
                     Ok(connection) => {
-                        println!("Conexion establecida: {:?}", address);
+                        log_info_message(logger.clone(),format!("Conexion establecida: {:?}", address));
                         admin_connections.add(connection, id)?;
                         id += 1;
                     }
@@ -43,22 +44,7 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
         Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerValorDeArchivoConfig),
     };
 
-    let version_message = VersionMessage::new(
-        version,
-        0,
-        timestamp,
-        0,
-        address.ip().to_string(),
-        address.port(),
-        0,
-        "192.168.0.66".to_string(),
-        18333,
-        0,
-        0,
-        "".to_string(),
-        0,
-        true,
-    );
+    let version_message = VersionMessage::new(version, timestamp, address);
     let mensaje = version_message.serialize()?;
     if socket.write_all(&mensaje).is_err() {
         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
