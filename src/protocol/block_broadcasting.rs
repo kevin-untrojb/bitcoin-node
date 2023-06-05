@@ -6,16 +6,19 @@ use super::admin_connections::AdminConnections;
 
 pub fn init_block_broadcasting(logger: Sender<LogMessages>, admin_connections: AdminConnections) -> Result<(), NodoBitcoinError> {
     for connection in admin_connections.clone().get_connections() {
-        let mut socket = connection.clone();
+        let socket = connection.clone();
         let thread_logger = logger.clone();
         thread::spawn(move || {
             loop {
                 let mut buffer = [0u8; 24];
-                socket.read_exact_message(&mut buffer);
+                if socket.read_exact_message(&mut buffer).is_err(){
+                    log_info_message(thread_logger, "Error al leer el mensaje".to_string());
+                    return;
+                }
                 let (command, header) = match check_header(&buffer) {
                     Ok((command, payload_len)) => {
                         let mut header = vec![0u8; payload_len];
-                        if connection.read_exact_message(&mut header).is_err(){
+                        if socket.read_exact_message(&mut header).is_err(){
                             log_info_message(thread_logger, "Error al leer el mensaje".to_string());
                             return;
                         }
@@ -24,9 +27,12 @@ pub fn init_block_broadcasting(logger: Sender<LogMessages>, admin_connections: A
                     Err(NodoBitcoinError::MagicNumberIncorrecto) => {
                         continue;
                     }
-                    Err(_) => continue,
+                    Err(_) => {
+                        println!("ERRROR");
+                        continue
+                    },
                 };
-
+                println!("{:?}", command);
                 if command == "headers" {
                     let header = match deserealize_sin_guardar(header){
                         Ok(header) => header,
@@ -53,7 +59,7 @@ pub fn init_block_broadcasting(logger: Sender<LogMessages>, admin_connections: A
                         }
                     };
 
-                    if connection.write_message(&get_data_message).is_err(){
+                    if socket.write_message(&get_data_message).is_err(){
                         log_info_message(thread_logger, "Error al escribir el mensaje".to_string());
                         return;
                     }
@@ -66,7 +72,7 @@ pub fn init_block_broadcasting(logger: Sender<LogMessages>, admin_connections: A
                     let (command, block_read) = match check_header(&buffer) {
                         Ok((command, payload_len)) => {
                             let mut block_read = vec![0u8; payload_len];
-                            if connection.read_exact_message(&mut block_read).is_err(){
+                            if socket.read_exact_message(&mut block_read).is_err(){
                                 log_info_message(thread_logger, "Error al leer el mensaje".to_string());
                                 return;
                             }

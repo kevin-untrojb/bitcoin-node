@@ -52,7 +52,7 @@ impl Connection {
             Ok(mut connection) => match connection.read_exact(buf) {
                 Ok(()) => Ok(()),
                 Err(_) => {
-                    println!("No se pudo leer el mensaje");
+                    println!("No se pudo leer exact message");
                     Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
                 }
             },

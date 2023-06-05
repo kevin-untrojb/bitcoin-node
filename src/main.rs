@@ -17,6 +17,7 @@ use gtk::{
     Align, Application, ApplicationWindow, Button,
 };
 
+use crate::protocol::block_broadcasting::init_block_broadcasting;
 use crate::{
     blockchain::block::SerializedBlock,
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
@@ -70,7 +71,10 @@ fn main() {
         button_read_blocks.connect_clicked(|_| {
             thread::spawn(move || {
                 println!("Leyendo!");
-                leer_primer_block();
+                //leer_primer_block();
+                block_broadcasting(create_logger_actor(config::get_valor(
+                    "LOG_FILE".to_string(),
+                )));
             });
         });
 
@@ -108,6 +112,23 @@ fn leer_primer_block() {
         config::inicializar(args)?;
         let bloques = SerializedBlock::read_blocks_from_file()?;
         println!("Bloques totales: {:?}", bloques.len());
+
+        let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
+        println!("Hello, Bitcoin! Somos {}", nombre_grupo);
+        Ok(())
+    };
+
+    if let Err(e) = do_steps() {
+        println!("{}", e);
+    }
+}
+
+fn block_broadcasting(logger: Sender<LogMessages>){
+    let args: Vec<String> = env::args().collect();
+    let do_steps = || -> Result<(), NodoBitcoinError> {
+        config::inicializar(args)?;
+        let admin_connections = connect(logger.clone())?;
+        init_block_broadcasting(logger.clone(),admin_connections);
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
