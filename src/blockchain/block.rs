@@ -85,7 +85,7 @@ impl SerializedBlock {
         Ok(local_merkle)
     }
 
-    pub fn _is_valid_merkle(&self) -> bool {
+    pub fn is_valid_merkle(&self) -> bool {
         let current_merkle = self.header.merkle_root_hash;
         let local_merkle = match self._local_merkle_tree() {
             Ok(calculated_merkle) => calculated_merkle,
