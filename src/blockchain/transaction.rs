@@ -27,7 +27,7 @@ pub struct Transaction {
 
 impl Transaction {
     #[warn(dead_code)]
-    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
         bytes
             .write_all(&(self.version).to_le_bytes())
@@ -111,7 +111,7 @@ impl Transaction {
         8 + input_size + output_size + self.tx_in_count + self.tx_out_count
     }
     pub fn _txid(&self) -> Result<Uint256, NodoBitcoinError> {
-        let bytes = self._serialize()?;
+        let bytes = self.serialize()?;
         let hash = sha256d::Hash::hash(&bytes);
         let u256 = Uint256::_from_be_bytes(*hash.as_byte_array());
         Ok(u256)
@@ -344,7 +344,7 @@ mod tests {
             172, 0, 0, 0, 0,
         ]; // lock time
 
-        let serialized = transaction._serialize().unwrap();
+        let serialized = transaction.serialize().unwrap();
 
         assert_eq!(serialized, expected_bytes);
     }
@@ -423,7 +423,7 @@ mod tests {
         assert!(tx.is_ok());
 
         let tx = tx.unwrap();
-        let serialized = tx._serialize();
+        let serialized = tx.serialize();
         assert!(serialized.is_ok());
 
         let serialized = serialized.unwrap();

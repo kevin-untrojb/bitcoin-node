@@ -2,6 +2,7 @@ pub mod blockchain;
 pub mod common;
 pub mod config;
 pub mod errores;
+pub mod log;
 pub mod merkle_tree;
 pub mod messages;
 pub mod parse_args;

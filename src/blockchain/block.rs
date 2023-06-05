@@ -1,5 +1,7 @@
 use std::cmp::Ordering;
+use std::io::Write;
 
+use super::file::{_leer_primer_block, leer_todos_blocks};
 use super::{blockheader::BlockHeader, transaction};
 use crate::common::utils_bytes;
 use crate::errores::NodoBitcoinError;
@@ -18,7 +20,7 @@ use transaction::Transaction;
 pub struct SerializedBlock {
     pub header: BlockHeader,
     pub txns: Vec<Transaction>,
-    pub block_bytes: Vec<u8>,
+    txn_amount: usize,
 }
 
 impl SerializedBlock {
@@ -29,8 +31,8 @@ impl SerializedBlock {
         }
         let header = BlockHeader::deserialize(&block_bytes[offset..offset + 80])?;
         offset += 80;
-        let (size_bytes, txn_count) = utils_bytes::parse_varint(&block_bytes[offset..]);
-        offset += size_bytes;
+        let (txn_amount, txn_count) = utils_bytes::parse_varint(&block_bytes[offset..]);
+        offset += txn_amount;
 
         let mut txns = Vec::new();
         for _ in 0..txn_count {
@@ -41,8 +43,30 @@ impl SerializedBlock {
         Ok(SerializedBlock {
             header,
             txns,
-            block_bytes: block_bytes.to_vec(),
+            txn_amount,
         })
+    }
+
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+        let mut bytes = Vec::new();
+
+        let bytes_header = self.header.serialize()?;
+        bytes
+            .write_all(bytes_header.as_slice())
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+
+        let tx_count_prefix = utils_bytes::_from_amount_bytes_to_prefix(self.txn_amount);
+        bytes
+            .write_all(&(utils_bytes::_build_varint_bytes(tx_count_prefix, self.txns.len())?))
+            .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+
+        let bytes_txns_array = self.txns.iter().map(|txn| txn.serialize());
+        for bytes_txn in bytes_txns_array {
+            bytes
+                .write_all(bytes_txn?.as_slice())
+                .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+        }
+        Ok(bytes)
     }
 
     pub fn _tx_proof_of_inclusion(&self, tx: &Transaction) -> bool {
@@ -70,6 +94,21 @@ impl SerializedBlock {
         let binding = local_merkle._root_hash();
         let local_merkle_hash = binding.as_slice();
         current_merkle == local_merkle_hash
+    }
+
+    pub fn _read_first_block_from_file() -> Result<SerializedBlock, NodoBitcoinError> {
+        let block_bytes = _leer_primer_block()?;
+        SerializedBlock::deserialize(&block_bytes)
+    }
+
+    pub fn read_blocks_from_file() -> Result<Vec<SerializedBlock>, NodoBitcoinError> {
+        let block_bytes = leer_todos_blocks()?;
+        let mut serialized_blocks = vec![];
+        for block in &block_bytes {
+            let serialized_block = SerializedBlock::deserialize(block)?;
+            serialized_blocks.push(serialized_block);
+        }
+        Ok(serialized_blocks)
     }
 }
 
@@ -242,5 +281,21 @@ mod tests {
 
         let proof_of_inclusion_no_ok = serialized_block._tx_proof_of_inclusion(&tx_not_included);
         assert!(!proof_of_inclusion_no_ok);
+    }
+
+    #[test]
+    fn test_serialize() {
+        let bloque_bytes = get_bloque_bytes();
+        let serialized_block_result = SerializedBlock::deserialize(&bloque_bytes);
+        assert!(serialized_block_result.is_ok());
+
+        let serialized_block = serialized_block_result.unwrap();
+
+        let serialize_result = serialized_block.serialize();
+        assert!(serialize_result.is_ok());
+
+        let serialized = serialize_result.unwrap();
+
+        assert_eq!(serialized, bloque_bytes);
     }
 }

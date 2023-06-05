@@ -1,6 +1,7 @@
 use std::{
     fs::{File, OpenOptions},
     io::{Read, Seek, SeekFrom, Write},
+    mem,
     path::Path,
 };
 
@@ -12,6 +13,36 @@ fn get_headers_filename() -> Result<String, NodoBitcoinError> {
 
 fn get_blocks_filename() -> Result<String, NodoBitcoinError> {
     config::get_valor("NOMBRE_ARCHIVO_BLOQUES".to_string())
+}
+
+fn leer_bloque(offset: u64) -> Result<(Vec<u8>, u64), NodoBitcoinError> {
+    let path = get_blocks_filename()?;
+    let sizeof_usize = mem::size_of::<usize>() as u64;
+    let from_file = leer_bytes(path.clone(), offset, sizeof_usize)?;
+    let len_bytes: [u8; 8] = match from_file.as_slice().try_into() {
+        Ok(bytes) => bytes,
+        Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
+    };
+    let len_block = usize::from_ne_bytes(len_bytes);
+    let block_bytes = leer_bytes(path, offset + sizeof_usize, len_block as u64)?;
+    Ok((block_bytes, offset + sizeof_usize + len_block as u64))
+}
+
+pub fn leer_todos_blocks() -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
+    let mut todos = vec![];
+    let mut offset = 0;
+    let block_file_len = get_file_blocks_size()?;
+    while offset < block_file_len {
+        let (bytes, new_offset) = leer_bloque(offset)?;
+        todos.push(bytes);
+        offset = new_offset;
+    }
+    Ok(todos)
+}
+
+pub fn _leer_primer_block() -> Result<Vec<u8>, NodoBitcoinError> {
+    let (bytes, _) = leer_bloque(0)?;
+    Ok(bytes)
 }
 
 pub fn _reset_files() -> Result<(), NodoBitcoinError> {
@@ -65,14 +96,12 @@ pub fn escribir_archivo_bloque(datos: &[u8]) -> Result<(), NodoBitcoinError> {
     Ok(())
 }
 
-pub fn _leer_ultimo_header() -> Result<Vec<u8>, NodoBitcoinError> {
-    //_leer_header(1)
+pub fn leer_ultimo_header() -> Result<Vec<u8>, NodoBitcoinError> {
     let cantidad_headers = _header_count()?;
-    _leer_header_desde_archivo(cantidad_headers - 1)
+    leer_header_desde_archivo(cantidad_headers - 1)
 }
 
-fn _get_file_header_size() -> Result<u64, NodoBitcoinError> {
-    let path = get_headers_filename()?;
+fn get_file_size(path: String) -> Result<u64, NodoBitcoinError> {
     let file = File::open(path);
     if file.is_err() {
         return Err(NodoBitcoinError::NoExisteArchivo);
@@ -85,13 +114,22 @@ fn _get_file_header_size() -> Result<u64, NodoBitcoinError> {
     Ok(metadata.unwrap().len())
 }
 
+fn get_file_header_size() -> Result<u64, NodoBitcoinError> {
+    let path = get_headers_filename()?;
+    get_file_size(path)
+}
+
+fn get_file_blocks_size() -> Result<u64, NodoBitcoinError> {
+    let path = get_blocks_filename()?;
+    get_file_size(path)
+}
+
 pub fn _header_count() -> Result<u64, NodoBitcoinError> {
-    let file_size = _get_file_header_size()?;
+    let file_size = get_file_header_size()?;
     Ok(file_size / 80)
 }
 
-pub fn _leer_header_desde_archivo(index: u64) -> Result<Vec<u8>, NodoBitcoinError> {
-    //    _leer_header(total_headers)
+pub fn leer_header_desde_archivo(index: u64) -> Result<Vec<u8>, NodoBitcoinError> {
     let path = get_headers_filename()?;
     let offset = index * 80;
     leer_bytes(path, offset, 80)
@@ -99,12 +137,12 @@ pub fn _leer_header_desde_archivo(index: u64) -> Result<Vec<u8>, NodoBitcoinErro
 
 pub fn _leer_todos_headers() -> Result<Vec<u8>, NodoBitcoinError> {
     let path = get_headers_filename()?;
-    let file_size = _get_file_header_size()?;
+    let file_size = get_file_header_size()?;
     leer_bytes(path, 0, file_size)
 }
 
 pub fn _leer_primer_header() -> Result<Vec<u8>, NodoBitcoinError> {
-    _leer_header_desde_archivo(0)
+    leer_header_desde_archivo(0)
 }
 
 pub fn _leer_headers(ix: u64) -> Result<Vec<u8>, NodoBitcoinError> {
