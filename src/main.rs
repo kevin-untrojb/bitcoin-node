@@ -2,11 +2,12 @@ mod blockchain;
 mod common;
 mod config;
 mod errores;
+mod log;
 mod merkle_tree;
 mod messages;
 mod parse_args;
 mod protocol;
-
+use std::sync::mpsc::Sender;
 use std::{env, println, thread};
 
 use errores::NodoBitcoinError;
@@ -19,12 +20,12 @@ use gtk::{
 use crate::{
     blockchain::block::SerializedBlock,
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
+    log::{create_logger_actor, LogMessages};
 };
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     _ = config::inicializar(args);
-
     let nombre_grupo = match config::get_valor("NOMBRE_GRUPO".to_string()) {
         Ok(valor) => valor,
         Err(e) => {
@@ -54,8 +55,9 @@ fn main() {
 
         button_download_blockchain.connect_clicked(|_| {
             thread::spawn(move || {
-                println!("Descargando!");
-                download_blockchain();
+                download_blockchain(create_logger_actor(config::get_valor(
+                    "LOG_FILE".to_string(),
+                )));
             });
         });
 
@@ -83,12 +85,12 @@ fn main() {
     app.run();
 }
 
-fn download_blockchain() {
+fn download_blockchain(logger: Sender<LogMessages>) {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
-        let admin_connections = connect()?;
-        get_full_blockchain(admin_connections)?;
+        let admin_connections = connect(logger.clone())?;
+        get_full_blockchain(logger.clone(), admin_connections)?;
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
