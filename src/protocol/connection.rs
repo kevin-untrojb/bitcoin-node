@@ -85,9 +85,9 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
     }
 
-    let sendheaders_msg = make_header("sendheaders".to_string(), &Vec::new());
+    let sendheaders_msg = make_header("sendheaders".to_string(), &Vec::new())?;
     if socket.write_all(&sendheaders_msg).is_err() {
-        return (Err(NodoBitcoinError::NoSePuedeEscribirLosBytes));
+        return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
     }
 
     Ok(socket)

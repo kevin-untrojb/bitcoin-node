@@ -56,7 +56,7 @@ mod tests {
             blockheader::BlockHeader,
             proof_of_work::{
                 _calculate_hash, _calculate_proof, _calculate_target, _is_valid_pow,
-                _pow_validation,
+                pow_validation,
             },
         },
         common::uint256::Uint256,
@@ -104,7 +104,7 @@ mod tests {
         // pruebo con el BlokHeader del bloque génesis
         let block_header = blockheader_test_oreilly();
 
-        let validation_result = _pow_validation(&block_header);
+        let validation_result = pow_validation(&block_header);
         assert!(validation_result.is_ok());
 
         let is_valid = validation_result.unwrap();
@@ -117,7 +117,7 @@ mod tests {
         let mut block_header = blockheader_test_oreilly();
         // le cambio el nonce para que no pase la pow
         block_header.nonce = 0xFFFFFFFF;
-        let validation_result = _pow_validation(&block_header);
+        let validation_result = pow_validation(&block_header);
         assert!(validation_result.is_ok());
 
         let is_valid = validation_result.unwrap();
@@ -130,7 +130,7 @@ mod tests {
         let mut block_header = blockheader_test_oreilly();
         // le cambio el n_bits para que no pase la pow
         block_header.n_bits = 0xFFFFFFFF;
-        let validation_result = _pow_validation(&block_header);
+        let validation_result = pow_validation(&block_header);
         assert!(validation_result.is_ok());
 
         let is_valid = validation_result.unwrap();

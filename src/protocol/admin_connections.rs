@@ -94,8 +94,8 @@ impl AdminConnections {
         Ok(())
     }
 
-    pub fn get_connections(&mut self) -> Result<Vec<Connection>, NodoBitcoinError> {
-        let values: Vec<&str> = self.values().cloned().collect();
+    pub fn get_connections(&mut self) -> Vec<Connection> {
+        let values = self.connections.values().cloned().collect();
         values
     }
 
