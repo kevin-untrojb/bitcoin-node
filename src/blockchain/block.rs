@@ -1,7 +1,8 @@
 use std::cmp::Ordering;
+use std::fmt;
 use std::io::Write;
 
-use super::file::{_leer_primer_block, leer_todos_blocks};
+use super::file::{_leer_primer_block, leer_algunos_blocks, leer_todos_blocks};
 use super::{blockheader::BlockHeader, transaction};
 use crate::common::utils_bytes;
 use crate::errores::NodoBitcoinError;
@@ -21,6 +22,16 @@ pub struct SerializedBlock {
     pub header: BlockHeader,
     pub txns: Vec<Transaction>,
     txn_amount: usize,
+}
+
+impl fmt::Display for SerializedBlock {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "SerializedBlock[header: {:?}, txns: {:?}]",
+            self.header, self.txns
+        )
+    }
 }
 
 impl SerializedBlock {
@@ -99,6 +110,18 @@ impl SerializedBlock {
     pub fn _read_first_block_from_file() -> Result<SerializedBlock, NodoBitcoinError> {
         let block_bytes = _leer_primer_block()?;
         SerializedBlock::deserialize(&block_bytes)
+    }
+
+    pub fn read_n_blocks_from_file(
+        cantidad: u32,
+    ) -> Result<Vec<SerializedBlock>, NodoBitcoinError> {
+        let block_bytes = leer_algunos_blocks(cantidad)?;
+        let mut serialized_blocks = vec![];
+        for block in &block_bytes {
+            let serialized_block = SerializedBlock::deserialize(block)?;
+            serialized_blocks.push(serialized_block);
+        }
+        Ok(serialized_blocks)
     }
 
     pub fn read_blocks_from_file() -> Result<Vec<SerializedBlock>, NodoBitcoinError> {

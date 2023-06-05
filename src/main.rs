@@ -7,12 +7,7 @@ mod merkle_tree;
 mod messages;
 mod parse_args;
 mod protocol;
-<<<<<<< HEAD
 mod wallet;
-
-mod log;
-=======
->>>>>>> develop
 use std::sync::mpsc::Sender;
 use std::{env, println, thread};
 
@@ -24,16 +19,11 @@ use gtk::{
 };
 
 use crate::log::{create_logger_actor, LogMessages};
-<<<<<<< HEAD
 use crate::wallet::uxto_set::UTXOSet;
 use crate::{
     blockchain::block::SerializedBlock,
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
 };
-=======
-use crate::protocol::{connection::connect, initial_block_download::get_full_blockchain};
->>>>>>> develop
-
 fn main() {
     let args: Vec<String> = env::args().collect();
     _ = config::inicializar(args);
@@ -66,11 +56,7 @@ fn main() {
 
         button_download_blockchain.connect_clicked(|_| {
             thread::spawn(move || {
-<<<<<<< HEAD
                 click_download_blockchain(create_logger_actor(config::get_valor(
-=======
-                download_blockchain(create_logger_actor(config::get_valor(
->>>>>>> develop
                     "LOG_FILE".to_string(),
                 )));
             });
@@ -113,17 +99,12 @@ fn main() {
     app.run();
 }
 
-<<<<<<< HEAD
 fn click_download_blockchain(logger: Sender<LogMessages>) {
-=======
-fn download_blockchain(logger: Sender<LogMessages>) {
->>>>>>> develop
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let admin_connections = connect(logger.clone())?;
         get_full_blockchain(logger.clone(), admin_connections)?;
-<<<<<<< HEAD
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
@@ -156,7 +137,8 @@ fn click_build_utxo_set() {
     //let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         //config::inicializar(args)?;
-        let bloques = SerializedBlock::read_blocks_from_file()?;
+        let cantidad_bloques: u32 = 2;
+        let bloques = SerializedBlock::read_n_blocks_from_file(cantidad_bloques)?;
         println!("Bloques totales: {:?}", bloques.len());
 
         let txns = bloques
@@ -165,13 +147,15 @@ fn click_build_utxo_set() {
             .collect::<Vec<_>>();
         println!("Txns totales: {:?}", txns.len());
 
+        for txn in &txns {
+            println!("Txn: {}", txn);
+        }
+
         let mut utxo_set = UTXOSet::new();
         utxo_set.build_from_transactions(txns)?;
 
-        println!("UTXO Set: {:?}", utxo_set.utxos.len());
-=======
->>>>>>> develop
-
+        println!("UTXO Set len: {}", utxo_set.utxos.len());
+        println!("UTXO Set:\n{}", utxo_set);
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())

@@ -2,16 +2,40 @@ use crate::blockchain::transaction::Transaction;
 use crate::common::uint256::Uint256;
 use crate::errores::NodoBitcoinError;
 use std::collections::HashMap;
+use std::fmt;
 
-pub struct UTXO {
+#[derive(Debug)]
+pub struct Utxo {
     pub tx_id: Uint256,
     pub output_index: u32,
     pub amount: u64,
     pub recipient: Vec<u8>,
 }
 
+impl fmt::Display for Utxo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f,
+            "tx_id: {:?}\namount: {:?}\nrecipient: {:?}",
+            self.tx_id, self.amount, self.recipient
+        )
+    }
+}
+
+#[derive(Debug)]
 pub struct UTXOSet {
-    pub utxos: HashMap<Uint256, Vec<UTXO>>,
+    pub utxos: HashMap<Uint256, Vec<Utxo>>,
+}
+
+impl fmt::Display for UTXOSet {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut utxos = Vec::new();
+        for (key, utxos_for_tx) in &self.utxos {
+            let format_string = format!("key: {:?}\nutxos_for_tx: {:?}", key, utxos_for_tx);
+            utxos.push(format_string);
+        }
+        write!(f, "UTXOSet\n{:?}]", utxos)
+    }
 }
 
 impl UTXOSet {
@@ -48,7 +72,7 @@ impl UTXOSet {
                     continue;
                 }
 
-                let utxo = UTXO {
+                let utxo = Utxo {
                     tx_id,
                     output_index: output_index as u32,
                     amount: tx_out.value,
@@ -146,16 +170,18 @@ mod tests {
         let transaction1 = Transaction {
             input: vec![],
             output: vec![TxOut {
-                value: 10,
+                value: 5,
                 pk_script: vec![],
                 pk_len: 0,
                 pk_len_bytes: 0,
             }],
             lock_time: 0,
-            tx_in_count: 1,
+            tx_in_count: 0,
             tx_out_count: 1,
             version: 1,
         };
+
+        println!("tx1 Id: {:?}", transaction1.txid().unwrap()._to_bytes());
 
         let transaction2 = Transaction {
             input: vec![TxIn {

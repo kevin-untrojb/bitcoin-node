@@ -1,7 +1,7 @@
 use super::proof_of_work;
 use crate::errores::NodoBitcoinError;
 use bitcoin_hashes::{sha256d, Hash};
-use std::io::Write;
+use std::{fmt, io::Write};
 
 const HEADER_SIZE: usize = 80;
 
@@ -25,6 +25,18 @@ pub struct BlockHeader {
     pub time: u32,
     pub n_bits: u32,
     pub nonce: u32,
+}
+
+impl fmt::Display for BlockHeader {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f, "BlockHeader:\nversion: {:?}\nprevious_block_hash: {:?}\nmerkle_root_hash: {:?}\ntime: {:?}",
+            self.version,
+            self.previous_block_hash,
+            self.merkle_root_hash,
+            self.time
+        )
+    }
 }
 
 impl BlockHeader {
