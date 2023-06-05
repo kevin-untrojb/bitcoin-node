@@ -20,7 +20,7 @@ use gtk::{
 use crate::{
     blockchain::block::SerializedBlock,
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
-    log::{create_logger_actor, LogMessages};
+    log::{create_logger_actor, LogMessages}
 };
 
 fn main() {
