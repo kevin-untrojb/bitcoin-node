@@ -18,12 +18,13 @@ use gtk::{
     Align, Application, ApplicationWindow, Button,
 };
 
-use crate::log::{create_logger_actor, LogMessages};
 use crate::wallet::uxto_set::UTXOSet;
 use crate::{
     blockchain::block::SerializedBlock,
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
+    log::{create_logger_actor, LogMessages}
 };
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     _ = config::inicializar(args);
