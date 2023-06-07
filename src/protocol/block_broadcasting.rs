@@ -1,4 +1,4 @@
-use crate::{errores::NodoBitcoinError, blockchain::{block::SerializedBlock, proof_of_work::pow_validation}, messages::{messages_header::check_header, headers::deserealize_sin_guardar, getdata::GetDataMessage}, log::{log_info_message, LogMessages}};
+use crate::{errores::NodoBitcoinError, blockchain::{block::SerializedBlock, proof_of_work::pow_validation}, messages::{messages_header::check_header, headers::deserealize_sin_guardar, getdata::GetDataMessage, ping_pong::make_pong}, log::{log_info_message, LogMessages}};
 use std::{thread};
 use std::sync::mpsc::Sender;
 
@@ -32,6 +32,20 @@ pub fn init_block_broadcasting(logger: Sender<LogMessages>, admin_connections: A
                         continue
                     },
                 };
+
+                if command == "ping" {
+                    let pong_msg = match make_pong(&header){
+                        Ok(msg) => msg,
+                        Err(_) => continue,
+                    };
+
+                    if socket.write_message(&pong_msg).is_err(){
+                        log_info_message(thread_logger, "Error al escribir el mensaje".to_string());
+                        return;
+                    }
+
+                }
+
                 println!("{:?}", command);
                 if command == "headers" {
                     let header = match deserealize_sin_guardar(header){
