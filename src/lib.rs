@@ -6,3 +6,4 @@ pub mod merkle_tree;
 pub mod messages;
 pub mod parse_args;
 pub mod protocol;
+pub mod interface;

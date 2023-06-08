@@ -6,23 +6,20 @@ mod merkle_tree;
 mod messages;
 mod parse_args;
 mod protocol;
+mod interface;
 
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::{env, println, thread};
 
-use chrono::Duration;
 use errores::NodoBitcoinError;
-use glib::PRIORITY_DEFAULT;
+use glib::Sender;
+use gtk::Button;
 use gtk::Label;
-use gtk::glib::MainContext;
-use gtk::glib::PropertyGet;
-use gtk::glib::Sender;
-use gtk::{
-    prelude::*,
-    traits::{ButtonExt, ContainerExt, WidgetExt},
-    Align, Application, ApplicationWindow, Button, Window, Builder,
-};
+use interface::view::View;
+use interface::view::ViewObject;
+use interface::view::ViewObjectType;
+
 
 use crate::protocol::{connection::connect, initial_block_download::get_full_blockchain};
 
@@ -30,85 +27,33 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     _ = config::inicializar(args);
 
-    let nombre_grupo = match config::get_valor("NOMBRE_GRUPO".to_string()) {
-        Ok(valor) => valor,
-        Err(e) => {
-            println!("{}", e);
-            return;
-        }
-    };
-    let title = format!("Nodo Bitcoin - {}", nombre_grupo);
-
     gtk::init().expect("No se pudo inicializar GTK.");
 
-    let glade_src = include_str!("gtk/window.glade");
-    let builder = Builder::from_string(glade_src);
+    let new_view = View::new();
 
-    let window: Window = builder.object("window").expect("Error: No encuentra objeto 'window'");
-    window.set_title(&title);
+    let view_clone = Arc::clone(&new_view);
+    let view_result = view_clone.lock();
+    if let Ok(view_guard) = view_result {
+        let view_object = ViewObject{ id: "id_prueba".to_string(), text: "bla".to_string() };
+        let label = Label::new(None);
+        let object = ViewObjectType::Label(label.clone());
+        view_guard.sender.send((view_object, object));
 
-    let (mut sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-    let label: Label = builder.object("id_prueba").expect("Error: No encuentra objeto 'id_prueba'");
-    let button: Button = builder.object("prueba_button").expect("Error: No encuentra objeto 'prueba_button'");
-
-    let sender_clone = sender.clone();
-
-    thread::spawn(move || {
-
-        let data2 = "SIN CLICK!!!!!!"; // Datos a enviar
-        thread::sleep(std::time::Duration::from_secs(5));
-        let result = format!("Datos enviados: {}", data2);
-        sender_clone.send(result).expect("Failed to send data result.");
-        
-        let data3 = "CAMBIA LABEL!!!!!!"; // Datos a enviar
-        thread::sleep(std::time::Duration::from_secs(10));
-        let result2 = format!("Datos enviados: {}", data3);
-        sender_clone.send(result2).expect("Failed to send data result.");
-        });
-    
-    let data = "CLICK"; // Datos a enviar
-
-    button.connect_clicked(move |_| {
-        let sender_clone = sender.clone();
-
-        thread::spawn(move || {
-            let result = format!("Datos enviados: {}", data);
-            sender_clone.send(result).expect("Failed to send data result.");
-        });
-    });
-
-    receiver.attach(None, move |result| {
-        label.set_text(&result);
-        glib::Continue(true)
-    });
-    
-
-    /*button.connect_clicked(|_| {
-        thread::spawn(move || {
-            println!("Descargando!");
-            download_blockchain();
-        });
-    });*/
-
-    window.show_all();
+        let view_object2 = ViewObject{ id: "prueba_button".to_string(), text: "Cambio".to_string() };
+        let button = Button::new();
+        let object2 = ViewObjectType::Button(button.clone());
+        view_guard.sender.send((view_object2, object2));
+        let clone = (view_guard.sender).clone();
+        //download_blockchain(clone);
+    }
 
     gtk::main();
-
-    window.connect_delete_event(|_, _| {
-        gtk::main_quit();
-        Inhibit(false)
-    });
-
 }
 
-fn download_blockchain() {
-    let args: Vec<String> = env::args().collect();
+fn download_blockchain(sender: Sender<ViewObject>) {
     let do_steps = || -> Result<(), NodoBitcoinError> {
-        config::inicializar(args)?;
         let admin_connections = connect()?;
         get_full_blockchain(admin_connections)?;
-
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())
