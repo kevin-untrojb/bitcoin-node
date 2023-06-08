@@ -110,6 +110,21 @@ impl SerializedBlock {
         }
         Ok(serialized_blocks)
     }
+
+    pub fn exist_block(
+        blocks: Vec<SerializedBlock>,
+        block: SerializedBlock,
+    ) -> Result<bool, NodoBitcoinError> {
+        // verificar si el block se encuentra en blocks
+        let mut exist = false;
+        for b in blocks {
+            if b.header.hash() == block.header.hash() {
+                exist = true;
+                break;
+            }
+        }
+        Ok(exist)
+    }
 }
 
 impl PartialOrd for SerializedBlock {
