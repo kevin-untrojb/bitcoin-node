@@ -123,7 +123,7 @@ impl BlockHeader {
     }
 
     pub fn _is_valid_pow(&self) -> bool {
-        proof_of_work::_pow_validation(self).unwrap_or(false)
+        proof_of_work::pow_validation(self).unwrap_or(false)
     }
 }
 

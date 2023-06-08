@@ -19,6 +19,7 @@ use gtk::{
 };
 
 use crate::wallet::uxto_set::UTXOSet;
+use crate::protocol::block_broadcasting::init_block_broadcasting;
 use crate::{
     blockchain::block::SerializedBlock,
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
@@ -105,8 +106,8 @@ fn click_download_blockchain(logger: Sender<LogMessages>) {
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let admin_connections = connect(logger.clone())?;
-        get_full_blockchain(logger.clone(), admin_connections)?;
-
+        get_full_blockchain(logger.clone(), admin_connections.clone())?;
+        init_block_broadcasting(logger.clone(), admin_connections.clone())?;
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())
