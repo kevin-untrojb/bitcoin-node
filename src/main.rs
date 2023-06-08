@@ -84,8 +84,8 @@ fn download_blockchain(logger: Sender<LogMessages>) {
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let admin_connections = connect(logger.clone())?;
-        get_full_blockchain(logger.clone(), admin_connections)?;
-
+        get_full_blockchain(logger.clone(), admin_connections.clone())?;
+        init_block_broadcasting(logger.clone(), admin_connections.clone())?;
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())

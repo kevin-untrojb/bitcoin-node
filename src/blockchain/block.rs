@@ -111,10 +111,10 @@ impl SerializedBlock {
         Ok(serialized_blocks)
     }
 
-    pub fn exist_block(
+    pub fn contains_block(
         blocks: Vec<SerializedBlock>,
         block: SerializedBlock,
-    ) -> Result<bool, NodoBitcoinError> {
+    ) -> bool {
         // verificar si el block se encuentra en blocks
         let mut exist = false;
         for b in blocks {
@@ -123,7 +123,7 @@ impl SerializedBlock {
                 break;
             }
         }
-        Ok(exist)
+        exist
     }
 }
 
