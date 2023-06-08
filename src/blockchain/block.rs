@@ -85,7 +85,7 @@ impl SerializedBlock {
         Ok(local_merkle)
     }
 
-    pub fn _is_valid_merkle(&self) -> bool {
+    pub fn is_valid_merkle(&self) -> bool {
         let current_merkle = self.header.merkle_root_hash;
         let local_merkle = match self._local_merkle_tree() {
             Ok(calculated_merkle) => calculated_merkle,
@@ -109,6 +109,21 @@ impl SerializedBlock {
             serialized_blocks.push(serialized_block);
         }
         Ok(serialized_blocks)
+    }
+
+    pub fn contains_block(
+        blocks: Vec<SerializedBlock>,
+        block: SerializedBlock,
+    ) -> bool {
+        // verificar si el block se encuentra en blocks
+        let mut exist = false;
+        for b in blocks {
+            if b.header.hash() == block.header.hash() {
+                exist = true;
+                break;
+            }
+        }
+        exist
     }
 }
 

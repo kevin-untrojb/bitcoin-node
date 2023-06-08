@@ -17,6 +17,7 @@ use gtk::{
     Align, Application, ApplicationWindow, Button,
 };
 
+use crate::protocol::block_broadcasting::init_block_broadcasting;
 use crate::{
     blockchain::block::SerializedBlock,
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
@@ -67,13 +68,6 @@ fn main() {
             .valign(Align::Center)
             .build();
 
-        button_read_blocks.connect_clicked(|_| {
-            thread::spawn(move || {
-                println!("Leyendo!");
-                leer_primer_block();
-            });
-        });
-
         let box_layout = gtk::Box::new(gtk::Orientation::Vertical, 20);
         box_layout.add(&button_download_blockchain);
         box_layout.add(&button_read_blocks);
@@ -90,8 +84,8 @@ fn download_blockchain(logger: Sender<LogMessages>) {
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let admin_connections = connect(logger.clone())?;
-        get_full_blockchain(logger.clone(), admin_connections)?;
-
+        get_full_blockchain(logger.clone(), admin_connections.clone())?;
+        init_block_broadcasting(logger.clone(), admin_connections.clone())?;
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())
