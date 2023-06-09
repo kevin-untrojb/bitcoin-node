@@ -2,58 +2,103 @@ mod blockchain;
 mod common;
 mod config;
 mod errores;
+mod interface;
+mod log;
 mod merkle_tree;
 mod messages;
 mod parse_args;
 mod protocol;
-mod interface;
 
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::mpsc;
 use std::{env, println, thread};
 
 use errores::NodoBitcoinError;
-use glib::Sender;
-use gtk::Button;
-use gtk::Label;
-use interface::view::View;
+use gtk::{Spinner, TextView};
 use interface::view::ViewObject;
-use interface::view::ViewObjectType;
+use interface::view::ViewObjectData;
+use std::sync::{Arc, Mutex};
 
-
+use crate::protocol::block_broadcasting::init_block_broadcasting;
 use crate::protocol::{connection::connect, initial_block_download::get_full_blockchain};
+use log::{create_logger_actor, LogMessages};
+
+use glib::Sender;
+use gtk::{
+    prelude::*,
+    traits::{ButtonExt, WidgetExt},
+    Builder, Button, Label, Window,
+};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     _ = config::inicializar(args);
 
     gtk::init().expect("No se pudo inicializar GTK.");
+    let title = format!("Nodo Bitcoin - Los Rustybandidos");
+    let glade_src = include_str!("interface/window.glade");
 
-    let new_view = View::new();
+    let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
 
-    let view_clone = Arc::clone(&new_view);
-    let view_result = view_clone.lock();
-    if let Ok(view_guard) = view_result {
-        let view_object = ViewObject{ id: "id_prueba".to_string(), text: "bla".to_string() };
-        let label = Label::new(None);
-        let object = ViewObjectType::Label(label.clone());
-        view_guard.sender.send((view_object, object));
+    let builder = Builder::from_string(glade_src);
+    let window: Window = builder
+        .object("window")
+        .expect("Error: No encuentra objeto 'window'");
+    window.set_title(&title);
+    window.show_all();
 
-        let view_object2 = ViewObject{ id: "prueba_button".to_string(), text: "Cambio".to_string() };
-        let button = Button::new();
-        let object2 = ViewObjectType::Button(button.clone());
-        view_guard.sender.send((view_object2, object2));
-        let clone = (view_guard.sender).clone();
-        //download_blockchain(clone);
-    }
+    receiver.attach(None, move |view_object: ViewObject| {
+        match view_object {
+            ViewObject::Label(data) => {
+                println!(
+                    "RECEIVER LABEL {} {}",
+                    &String::from(&data.id),
+                    &data.text.to_string()
+                );
+                let label: Label = builder.object(&String::from(data.id)).expect("error");
+                label.set_text(&data.text.to_string());
+            }
+            ViewObject::Button(data) => {
+                println!(
+                    "RECEIVER BUTTON {} {}",
+                    String::from(&data.id),
+                    data.text.to_string()
+                );
+                let button: Button = builder.object(&String::from(data.id)).expect("error");
+                button.set_label(&data.text.to_string());
+            }
+            ViewObject::Spinner(data) => {
+                println!(
+                    "RECEIVER SPINNER {} {}",
+                    String::from(&data.id),
+                    data.active.to_string()
+                );
+                let button: Spinner = builder.object(&String::from(data.id)).expect("error");
+                button.set_active(data.active);
+            }
+            ViewObject::TextView(data) => {
+                let text_view: TextView = builder.object(&String::from(data.id)).expect("error");
+                let buffer = text_view.buffer().unwrap();
+                buffer.insert_at_cursor(&data.text.to_string());
+            }
+        }
+        glib::Continue(true)
+    });
+
+    thread::spawn(move || {
+        download_blockchain(
+            create_logger_actor(config::get_valor("LOG_FILE".to_string())),
+            sender.clone(),
+        );
+    });
 
     gtk::main();
 }
 
-fn download_blockchain(sender: Sender<ViewObject>) {
+fn download_blockchain(logger: mpsc::Sender<LogMessages>, sender: glib::Sender<ViewObject>) {
     let do_steps = || -> Result<(), NodoBitcoinError> {
-        let admin_connections = connect()?;
-        get_full_blockchain(admin_connections)?;
+        let admin_connections = connect(logger.clone(), sender.clone())?;
+        get_full_blockchain(logger.clone(), sender.clone(), admin_connections.clone())?;
+        init_block_broadcasting(logger.clone(), admin_connections.clone())?;
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())
