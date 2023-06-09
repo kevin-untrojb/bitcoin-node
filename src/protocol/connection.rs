@@ -1,8 +1,11 @@
+use super::admin_connections::AdminConnections;
+use crate::config;
 use crate::errores::NodoBitcoinError;
+use crate::interface::view::{ViewObject, ViewObjectData, ViewObjectStatus};
+use crate::log::{log_info_message, LogMessages};
 use crate::messages::messages_header::check_header;
 use crate::messages::messages_header::make_header;
 use crate::messages::version::VersionMessage;
-use crate::config;
 use chrono::Utc;
 use std::io::Read;
 use std::io::Write;
@@ -10,11 +13,24 @@ use std::net::IpAddr;
 use std::net::TcpStream;
 use std::net::UdpSocket;
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::sync::mpsc::Sender;
 use std::time::Duration;
 
-use super::admin_connections::AdminConnections;
+pub fn connect(
+    logger: Sender<LogMessages>,
+    sender: glib::Sender<ViewObject>,
+) -> Result<AdminConnections, NodoBitcoinError> {
+    let viewObjectData = ViewObjectData {
+        id: "connecting_message".to_string(),
+        text: "Connecting to peers...".to_string(),
+    };
+    sender.send(ViewObject::Label(viewObjectData));
+    let viewObjectStatus = ViewObjectStatus {
+        id: "connecting_spinner".to_string(),
+        active: true,
+    };
+    sender.send(ViewObject::Spinner(viewObjectStatus));
 
-pub fn connect() -> Result<AdminConnections, NodoBitcoinError> {
     let mut admin_connections = AdminConnections::new();
     let addresses = get_address();
     let mut id: i32 = 0;
@@ -23,7 +39,10 @@ pub fn connect() -> Result<AdminConnections, NodoBitcoinError> {
             Ok(socket) => {
                 match handshake(socket, *address) {
                     Ok(connection) => {
-                        println!("Conexion establecida: {:?}", address);
+                        log_info_message(
+                            logger.clone(),
+                            format!("Conexion establecida: {:?}", address),
+                        );
                         admin_connections.add(connection, id)?;
                         id += 1;
                     }
@@ -33,6 +52,17 @@ pub fn connect() -> Result<AdminConnections, NodoBitcoinError> {
             Err(_) => continue,
         };
     }
+    let viewObjectData = ViewObjectData {
+        id: "connecting_message".to_string(),
+        text: "".to_string(),
+    };
+    sender.send(ViewObject::Label(viewObjectData));
+    let viewObjectStatus = ViewObjectStatus {
+        id: "connecting_spinner".to_string(),
+        active: false,
+    };
+    sender.send(ViewObject::Spinner(viewObjectStatus));
+
     Ok(admin_connections)
 }
 
@@ -78,6 +108,11 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
 
     let verack_msg = make_header("verack".to_string(), &Vec::new())?;
     if socket.write_all(&verack_msg).is_err() {
+        return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
+    }
+
+    let sendheaders_msg = make_header("sendheaders".to_string(), &Vec::new())?;
+    if socket.write_all(&sendheaders_msg).is_err() {
         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
     }
 
