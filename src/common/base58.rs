@@ -33,3 +33,80 @@ pub fn p2pkh_script_serialized(pubkey_hash: &[u8]) -> Result<Vec<u8>, NodoBitcoi
     script.extend_from_slice(&[0x88, 0xac]); // OP_EQUALVERIFY OP_CHECKSIG
     Ok(script)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{decode_base58, p2pkh_script_serialized};
+
+    #[test]
+    fn test_decode_base58() {
+        let decode_ok: [u8; 20] = [
+            0xd5, 0x2a, 0xd7, 0xca, 0x9b, 0x3d, 0x09, 0x6a, 0x38, 0xe7, 0x52, 0xc2, 0x01, 0x8e,
+            0x6f, 0xbc, 0x40, 0xcd, 0xf2, 0x6f,
+        ];
+
+        let source = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2";
+        let result = decode_base58(source);
+
+        assert_eq!(result.is_ok(), true);
+
+        let decode = result.unwrap();
+        let bytes_decoded = decode.as_slice();
+        assert_eq!(bytes_decoded, decode_ok.as_ref());
+    }
+
+    #[test]
+    fn test_decode_base58_no_ok() {
+        let decode_ok: [u8; 20] = [
+            0xd5, 0x2a, 0xd7, 0xca, 0x9b, 0x3d, 0x09, 0x6a, 0x38, 0xe7, 0x52, 0xc2, 0x01, 0x8e,
+            0x6f, 0xbc, 0x40, 0xcd, 0xf2, 0x6c,
+        ];
+
+        let source = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2";
+        let result = decode_base58(source);
+
+        assert_eq!(result.is_ok(), true);
+
+        let decode = result.unwrap();
+        let bytes_decoded = decode.as_slice();
+        assert_ne!(bytes_decoded, decode_ok.as_ref());
+    }
+
+    #[test]
+    fn test_p2pkh_script_serialized() {
+        let p2pkh_ok: [u8; 25] = [
+            0x76, 0xa9, 0x14, 0xd5, 0x2a, 0xd7, 0xca, 0x9b, 0x3d, 0x09, 0x6a, 0x38, 0xe7, 0x52,
+            0xc2, 0x01, 0x8e, 0x6f, 0xbc, 0x40, 0xcd, 0xf2, 0x6f, 0x88, 0xac,
+        ];
+        let source: [u8; 20] = [
+            0xd5, 0x2a, 0xd7, 0xca, 0x9b, 0x3d, 0x09, 0x6a, 0x38, 0xe7, 0x52, 0xc2, 0x01, 0x8e,
+            0x6f, 0xbc, 0x40, 0xcd, 0xf2, 0x6f,
+        ];
+
+        let result = p2pkh_script_serialized(&source);
+        assert_eq!(result.is_ok(), true);
+
+        let script = result.unwrap();
+        let bytes_script = script.as_slice();
+        assert_eq!(bytes_script, p2pkh_ok.as_ref());
+    }
+
+    #[test]
+    fn test_p2pkh_script_serialized_no_ok() {
+        let p2pkh_ok: [u8; 25] = [
+            0x76, 0xa9, 0x14, 0xd5, 0x2a, 0xd7, 0xca, 0x9b, 0x3d, 0x09, 0x6a, 0x38, 0xe7, 0x52,
+            0xc2, 0x01, 0x8e, 0x6f, 0xbc, 0x40, 0xcd, 0xf2, 0x6f, 0x88, 0xde,
+        ];
+        let source: [u8; 20] = [
+            0xd5, 0x2a, 0xd7, 0xca, 0x9b, 0x3d, 0x09, 0x6a, 0x38, 0xe7, 0x52, 0xc2, 0x01, 0x8e,
+            0x6f, 0xbc, 0x40, 0xcd, 0xf2, 0x6f,
+        ];
+
+        let result = p2pkh_script_serialized(&source);
+        assert_eq!(result.is_ok(), true);
+
+        let script = result.unwrap();
+        let bytes_script = script.as_slice();
+        assert_ne!(bytes_script, p2pkh_ok.as_ref());
+    }
+}

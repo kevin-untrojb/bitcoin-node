@@ -121,7 +121,7 @@ impl Transaction {
         Ok(u256)
     }
 
-    pub fn get_tx_from_file(txid: Uint256) -> Result<Transaction, NodoBitcoinError> {
+    pub fn _get_tx_from_file(txid: Uint256) -> Result<Transaction, NodoBitcoinError> {
         let blocks = SerializedBlock::read_blocks_from_file()?;
         let mut txs = HashMap::new();
         for block in blocks {
@@ -152,18 +152,6 @@ impl Transaction {
             tx_in_count,
             tx_out_count,
         })
-    }
-
-    pub fn encode_tx(
-        prev_txid: Uint256,
-        prev_txout_idx: usize,
-        private_key: Vec<u8>,
-        values_to_send: Vec<(usize, Vec<u8>)>,
-    ) -> Result<Vec<u8>, NodoBitcoinError> {
-        // let outpoint = Outpoint::new(prev_txid, prev_txout_idx);
-
-        // let txin = TxIn::new(prev_txid, prev_txout_idx);
-        Ok(vec![])
     }
 }
 
