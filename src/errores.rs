@@ -25,6 +25,9 @@ pub enum NodoBitcoinError {
     // merkle_tree
     _NoChildren,
     _NoSePuedeArmarElArbol,
+
+    // decode base58 error
+    DecodeError,
 }
 
 impl Error for NodoBitcoinError {}
@@ -101,6 +104,9 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::_NoSePuedeArmarElArbol => {
                 write!(f, "ERROR: No se puede crear el merkle tree del bloque.")
+            }
+            NodoBitcoinError::DecodeError => {
+                write!(f, "ERROR: No se pudo decodificar.")
             }
         }
     }

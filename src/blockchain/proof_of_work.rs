@@ -41,7 +41,7 @@ fn _calculate_hash(data: &[u8]) -> [u8; 32] {
 
 fn _calculate_proof(data: &[u8]) -> Uint256 {
     let hash = _calculate_hash(data);
-    Uint256::_from_le_bytes(hash)
+    Uint256::from_le_bytes(hash)
 }
 
 fn _is_valid_pow(data: &[u8], target_difficulty: Uint256) -> Result<bool, NodoBitcoinError> {
@@ -55,8 +55,7 @@ mod tests {
         blockchain::{
             blockheader::BlockHeader,
             proof_of_work::{
-                _calculate_hash, _calculate_proof, _calculate_target, _is_valid_pow,
-                pow_validation,
+                _calculate_hash, _calculate_proof, _calculate_target, _is_valid_pow, pow_validation,
             },
         },
         common::uint256::Uint256,
@@ -149,7 +148,7 @@ mod tests {
     fn test_calculate_proof() {
         let header_bytes_array = bytes_block_oreilly();
         let proof = _calculate_proof(&header_bytes_array);
-        let proof_ok = Uint256::_from_le_bytes(bytes_hash_oreilly()); // la proof es el hash del bloque en little endian
+        let proof_ok = Uint256::from_le_bytes(bytes_hash_oreilly()); // la proof es el hash del bloque en little endian
         assert_eq!(proof, proof_ok);
     }
 

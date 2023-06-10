@@ -1,8 +1,10 @@
-use crate::common::uint256::Uint256;
 use crate::common::utils_bytes;
+use crate::common::{base58::p2pkh_script_serialized, uint256::Uint256};
 use crate::errores::NodoBitcoinError;
 use bitcoin_hashes::{sha256d, Hash};
-use std::io::Write;
+use std::{collections::HashMap, io::Write, vec};
+
+use super::block::SerializedBlock;
 
 /// A struct representing a Bitcoin transaction
 /// ### Bitcoin Core References
@@ -33,24 +35,24 @@ impl Transaction {
             .write_all(&(self.version).to_le_bytes())
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
-        let tx_in_count_prefix = utils_bytes::_from_amount_bytes_to_prefix(self.tx_in_count);
+        let tx_in_count_prefix = utils_bytes::from_amount_bytes_to_prefix(self.tx_in_count);
         bytes
             .write_all(&(utils_bytes::_build_varint_bytes(tx_in_count_prefix, self.input.len())?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
         for tx_in in &self.input {
             bytes
-                .write_all(&tx_in._serialize()?)
+                .write_all(&tx_in.serialize()?)
                 .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         }
 
-        let tx_out_count_prefix = utils_bytes::_from_amount_bytes_to_prefix(self.tx_out_count);
+        let tx_out_count_prefix = utils_bytes::from_amount_bytes_to_prefix(self.tx_out_count);
         bytes
             .write_all(&(utils_bytes::_build_varint_bytes(tx_out_count_prefix, self.output.len())?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         for tx_out in &self.output {
             bytes
-                .write_all(&tx_out._serialize()?)
+                .write_all(&tx_out.serialize()?)
                 .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         }
         bytes
@@ -101,6 +103,7 @@ impl Transaction {
             tx_out_count,
         })
     }
+
     pub fn size(&self) -> usize {
         let input_size = self.input.iter().map(|tx_in| tx_in.size()).sum::<usize>();
         let output_size = self
@@ -110,11 +113,57 @@ impl Transaction {
             .sum::<usize>();
         8 + input_size + output_size + self.tx_in_count + self.tx_out_count
     }
-    pub fn _txid(&self) -> Result<Uint256, NodoBitcoinError> {
+
+    pub fn txid(&self) -> Result<Uint256, NodoBitcoinError> {
         let bytes = self.serialize()?;
         let hash = sha256d::Hash::hash(&bytes);
         let u256 = Uint256::_from_be_bytes(*hash.as_byte_array());
         Ok(u256)
+    }
+
+    pub fn get_tx_from_file(txid: Uint256) -> Result<Transaction, NodoBitcoinError> {
+        let blocks = SerializedBlock::read_blocks_from_file()?;
+        let mut txs = HashMap::new();
+        for block in blocks {
+            for tx in block.txns {
+                txs.insert(tx.txid()?, tx);
+            }
+        }
+        let ret = txs.get(&txid);
+        match ret {
+            Some(tx) => Ok(tx.clone()),
+            None => Err(NodoBitcoinError::NoExisteClave),
+        }
+    }
+
+    pub fn new(
+        version: u32,
+        input: Vec<TxIn>,
+        output: Vec<TxOut>,
+        lock_time: u32,
+    ) -> Result<Transaction, NodoBitcoinError> {
+        let tx_in_count = input.len();
+        let tx_out_count = output.len();
+        Ok(Transaction {
+            version,
+            input,
+            output,
+            lock_time,
+            tx_in_count,
+            tx_out_count,
+        })
+    }
+
+    pub fn encode_tx(
+        prev_txid: Uint256,
+        prev_txout_idx: usize,
+        private_key: Vec<u8>,
+        values_to_send: Vec<(usize, Vec<u8>)>,
+    ) -> Result<Vec<u8>, NodoBitcoinError> {
+        // let outpoint = Outpoint::new(prev_txid, prev_txout_idx);
+
+        // let txin = TxIn::new(prev_txid, prev_txout_idx);
+        Ok(vec![])
     }
 }
 
@@ -136,14 +185,14 @@ pub struct TxIn {
 }
 
 impl TxIn {
-    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
         bytes
             .write_all(&(self.previous_output._serialize()?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
         let script_bytes_prefix =
-            utils_bytes::_from_amount_bytes_to_prefix(self.script_bytes_amount);
+            utils_bytes::from_amount_bytes_to_prefix(self.script_bytes_amount);
         bytes
             .write_all(&(utils_bytes::_build_varint_bytes(script_bytes_prefix, self.script_bytes)?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
@@ -187,6 +236,16 @@ impl TxIn {
     pub fn size(&self) -> usize {
         40 + self.script_bytes_amount + self.signature_script.len()
     }
+    pub fn new(hash: Uint256, index: usize) -> TxIn {
+        let previous_output = Outpoint::new(hash, index);
+        TxIn {
+            previous_output,
+            script_bytes: 0,
+            signature_script: vec![],
+            sequence: 0xffffffff,
+            script_bytes_amount: 0,
+        }
+    }
 }
 
 /// A struct representing an outpoint from a previous transaction
@@ -227,6 +286,15 @@ impl Outpoint {
 
         Ok(Outpoint { hash, index })
     }
+
+    pub fn new(hash: Uint256, index: usize) -> Outpoint {
+        let mut hash_bytes = [0u8; 32];
+        hash_bytes.copy_from_slice(&hash.to_bytes());
+        Outpoint {
+            hash: hash_bytes,
+            index: index as u32,
+        }
+    }
 }
 
 /// A struct representing an output transaction for a Bitcoin transaction
@@ -244,12 +312,12 @@ pub struct TxOut {
 }
 
 impl TxOut {
-    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
         bytes
             .write_all(&(self.value).to_le_bytes())
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-        let n_bytes_prefix = utils_bytes::_from_amount_bytes_to_prefix(self.pk_len_bytes);
+        let n_bytes_prefix = utils_bytes::from_amount_bytes_to_prefix(self.pk_len_bytes);
         bytes
             .write_all(&(utils_bytes::_build_varint_bytes(n_bytes_prefix, self.pk_script.len())?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
@@ -279,8 +347,21 @@ impl TxOut {
             pk_len_bytes,
         })
     }
+
     pub fn size(&self) -> usize {
         8 + self.pk_len_bytes + self.pk_script.len()
+    }
+
+    pub fn new(amount: usize, script: Vec<u8>) -> Result<TxOut, NodoBitcoinError> {
+        let p2pkh_script = p2pkh_script_serialized(&script)?;
+        let pk_len = p2pkh_script.len();
+        let pk_len_bytes = utils_bytes::from_amount_bytes_to_prefix(pk_len);
+        Ok(TxOut {
+            value: amount as u64,
+            pk_len,
+            pk_script: p2pkh_script,
+            pk_len_bytes: pk_len_bytes.into(),
+        })
     }
 }
 
@@ -520,7 +601,7 @@ mod tests {
             sequence,
         };
 
-        let serialized = tx_in._serialize().unwrap();
+        let serialized = tx_in.serialize().unwrap();
 
         assert_eq!(serialized.len(), expected_bytes.len());
         assert_eq!(serialized, expected_bytes);
@@ -634,7 +715,7 @@ mod tests {
             ],
         };
 
-        let bytes = txout._serialize().unwrap();
+        let bytes = txout.serialize().unwrap();
 
         assert_eq!(bytes, expected_bytes);
     }
