@@ -1,7 +1,6 @@
 use std::vec;
 
 use crate::errores::NodoBitcoinError;
-
 pub fn decode_base58(input: &str) -> Result<Vec<u8>, NodoBitcoinError> {
     let base_58 = bs58::decode(input);
     if let Ok(base_vec) = base_58.into_vec() {

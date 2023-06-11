@@ -1,4 +1,4 @@
-pub mod base58;
+pub mod decoder;
 pub mod uint256;
 pub mod utils_bytes;
 pub mod utils_timestamp;
