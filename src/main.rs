@@ -10,13 +10,6 @@ mod protocol;
 use std::sync::mpsc::Sender;
 use std::{env, println, thread};
 
-use errores::NodoBitcoinError;
-use gtk::{
-    prelude::{ApplicationExt, ApplicationExtManual},
-    traits::{ButtonExt, ContainerExt, WidgetExt},
-    Align, Application, ApplicationWindow, Button,
-};
-
 use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::decoder::decode_base58;
 use crate::common::uint256::Uint256;
@@ -24,6 +17,12 @@ use crate::protocol::block_broadcasting::init_block_broadcasting;
 use crate::{
     log::{create_logger_actor, LogMessages},
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
+};
+use errores::NodoBitcoinError;
+use gtk::{
+    prelude::{ApplicationExt, ApplicationExtManual},
+    traits::{ButtonExt, ContainerExt, WidgetExt},
+    Align, Application, ApplicationWindow, Button,
 };
 
 fn main() {
@@ -226,9 +225,22 @@ fn signature() {
             0x06, 0x00,
         ];
 
-        let transaction = Transaction::deserialize(&tx_bytes[..])?;
+        let mut transaction = Transaction::deserialize(&tx_bytes[..])?;
 
-        let _sign_hash = transaction.sig_hash(0, previous_tx)?;
+        let private_key_hexa: [u8; 32] = [
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x84, 0x5f, 0xed,
+        ];
+
+        let input_index = 0;
+        transaction.sign_with_hexa_key(input_index, private_key_hexa.to_vec(), previous_tx)?;
+
+        let tx_in_bytes = transaction.input[0].serialize()?;
+        println!("TxIn: {:02X?}", tx_in_bytes);
+
+        let tx_bytes = transaction.serialize()?;
+        println!("Tx: {:02X?}", tx_bytes);
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
