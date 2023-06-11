@@ -277,7 +277,7 @@ impl Outpoint {
 
     pub fn new(hash: Uint256, index: usize) -> Outpoint {
         let mut hash_bytes = [0u8; 32];
-        hash_bytes.copy_from_slice(&hash.to_bytes());
+        hash_bytes.copy_from_slice(&hash.get_bytes());
         Outpoint {
             hash: hash_bytes,
             index: index as u32,
@@ -355,6 +355,8 @@ impl TxOut {
 
 #[cfg(test)]
 mod tests {
+    use crate::common::base58::decode_base58;
+
     use super::*;
 
     #[test]
@@ -747,5 +749,60 @@ mod tests {
         let actual_size = tx_out.size();
 
         assert_eq!(expected_size, actual_size);
+    }
+
+    #[test]
+    fn test_create_new_tx() {
+        let prev_tx_bytes = [
+            0x0d, 0x6f, 0xe5, 0x21, 0x3c, 0x0b, 0x32, 0x91, 0xf2, 0x08, 0xcb, 0xa8, 0xbf, 0xb5,
+            0x9b, 0x74, 0x76, 0xdf, 0xfa, 0xcc, 0x4e, 0x5c, 0xb6, 0x6f, 0x6e, 0xb2, 0x0a, 0x08,
+            0x08, 0x43, 0xa2, 0x99,
+        ];
+        let prev_tx = Uint256::from_le_bytes(prev_tx_bytes.clone());
+        let prev_index = 13;
+        let tx_in = TxIn::new(prev_tx, prev_index);
+
+        let change_amount = 33000000;
+        let public_account = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2";
+        let script = decode_base58(public_account);
+        assert!(script.is_ok());
+        let script = script.unwrap();
+        let txout = TxOut::new(change_amount, script);
+        assert!(txout.is_ok());
+        let txout = txout.unwrap();
+
+        let target_amount = 10000000;
+        let target_account = "mnrVtF8DWjMu839VW3rBfgYaAfKk8983Xf";
+        let target_h160 = decode_base58(target_account);
+        assert!(target_h160.is_ok());
+        let target_h160 = target_h160.unwrap();
+        let tx_out_change = TxOut::new(target_amount, target_h160);
+        assert!(tx_out_change.is_ok());
+        let tx_out_change = tx_out_change.unwrap();
+
+        let tx_obj = Transaction::new(1, vec![tx_in], vec![txout, tx_out_change], 0);
+        assert!(tx_obj.is_ok());
+        let tx_obj = tx_obj.unwrap();
+
+        let serialize = tx_obj.serialize();
+        assert!(serialize.is_ok());
+        let serialize = serialize.unwrap();
+
+        println!("serialize: {:?}", serialize);
+
+        let bytes_serialized_oreilly = [
+            0x01, 0x00, 0x00, 0x00, 0x01, 0x99, 0xa2, 0x43, 0x08, 0x08, 0x0a, 0xb2, 0x6e, 0x6f,
+            0xb6, 0x5c, 0x4e, 0xcc, 0xfa, 0xdf, 0x76, 0x74, 0x9b, 0xb5, 0xbf, 0xa8, 0xcb, 0x08,
+            0xf2, 0x91, 0x32, 0x0b, 0x3c, 0x21, 0xe5, 0x6f, 0x0d, 0x0d, 0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff, 0x02, 0x40, 0x8a, 0xf7, 0x01, 0x00, 0x00, 0x00, 0x00, 0x19,
+            0x76, 0xa9, 0x14, 0xd5, 0x2a, 0xd7, 0xca, 0x9b, 0x3d, 0x09, 0x6a, 0x38, 0xe7, 0x52,
+            0xc2, 0x01, 0x8e, 0x6f, 0xbc, 0x40, 0xcd, 0xf2, 0x6f, 0x88, 0xac, 0x80, 0x96, 0x98,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x19, 0x76, 0xa9, 0x14, 0x50, 0x7b, 0x27, 0x41, 0x1c,
+            0xcf, 0x7f, 0x16, 0xf1, 0x02, 0x97, 0xde, 0x6c, 0xef, 0x3f, 0x29, 0x16, 0x23, 0xed,
+            0xdf, 0x88, 0xac, 0x00, 0x00, 0x00, 0x00,
+        ];
+
+        let bytes_tx = serialize.as_slice();
+        assert_eq!(bytes_tx, bytes_serialized_oreilly);
     }
 }

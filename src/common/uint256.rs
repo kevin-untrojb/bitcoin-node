@@ -58,12 +58,12 @@ impl Uint256 {
         Uint256(bytes)
     }
 
-    pub fn to_bytes(&self) -> [u8; NUM_BYTES] {
+    pub fn get_bytes(&self) -> [u8; NUM_BYTES] {
         self.0
     }
 
-    pub fn _to_le_bytes(&self) -> [u8; NUM_BYTES] {
-        let mut bytes = self.to_bytes();
+    pub fn _get_le_bytes(&self) -> [u8; NUM_BYTES] {
+        let mut bytes = self.get_bytes();
         bytes.reverse();
         bytes
     }

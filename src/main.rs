@@ -93,7 +93,7 @@ fn download_blockchain(logger: Sender<LogMessages>) {
         config::inicializar(args)?;
         let admin_connections = connect(logger.clone())?;
         get_full_blockchain(logger.clone(), admin_connections.clone())?;
-        init_block_broadcasting(logger.clone(), admin_connections.clone())?;
+        init_block_broadcasting(logger.clone(), admin_connections)?;
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())
@@ -113,7 +113,7 @@ fn new_tx() {
             0x9b, 0x74, 0x76, 0xdf, 0xfa, 0xcc, 0x4e, 0x5c, 0xb6, 0x6f, 0x6e, 0xb2, 0x0a, 0x08,
             0x08, 0x43, 0xa2, 0x99,
         ];
-        let prev_tx = Uint256::from_le_bytes(prev_tx_bytes.clone());
+        let prev_tx = Uint256::from_le_bytes(prev_tx_bytes);
         let prev_index = 13;
         let tx_in = TxIn::new(prev_tx, prev_index);
 

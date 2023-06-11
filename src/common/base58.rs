@@ -9,9 +9,9 @@ pub fn decode_base58(input: &str) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut base_vec = base_vec[1..].to_vec();
         // quitar los ultimos 4 bytes
         base_vec.truncate(base_vec.len() - 4);
-        return Ok(base_vec);
+        Ok(base_vec)
     } else {
-        return Err(NodoBitcoinError::DecodeError);
+        Err(NodoBitcoinError::DecodeError)
     }
 }
 
@@ -23,7 +23,7 @@ pub fn p2pkh_script_serialized(pubkey_hash: &[u8]) -> Result<Vec<u8>, NodoBitcoi
     } else if length > 75 && length < 0x100 {
         script.push(76);
         script.push(length as u8);
-    } else if length >= 0x100 && length <= 520 {
+    } else if (0x100..=520).contains(&length) {
         script.push(77);
         script.extend_from_slice(&length.to_le_bytes());
     } else {
