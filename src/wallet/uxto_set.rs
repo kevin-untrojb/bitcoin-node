@@ -53,7 +53,7 @@ impl UTXOSet {
 
         for transaction in transactions.iter().rev() {
             for tx_in in &transaction.input {
-                let previous_tx_id = Uint256::_from_bytes(tx_in.previous_output.hash);
+                let previous_tx_id = Uint256::from_be_bytes(tx_in.previous_output.hash);
                 let output_index = tx_in.previous_output.index;
 
                 let spent_outputs_for_tx =
@@ -148,7 +148,8 @@ mod tests {
         let transactions = vec![transaction1.clone(), transaction2.clone()];
 
         let mut utxo_set = UTXOSet::new();
-        utxo_set.build_from_transactions(transactions);
+        let result = utxo_set.build_from_transactions(transactions);
+        assert!(result.is_ok());
 
         assert_eq!(utxo_set.utxos.len(), 2);
         assert!(utxo_set.utxos.contains_key(&transaction1.txid().unwrap()));
@@ -181,12 +182,12 @@ mod tests {
             version: 1,
         };
 
-        println!("tx1 Id: {:?}", transaction1.txid().unwrap()._to_bytes());
+        println!("tx1 Id: {:?}", transaction1.txid().unwrap().get_bytes());
 
         let transaction2 = Transaction {
             input: vec![TxIn {
                 previous_output: Outpoint {
-                    hash: transaction1.txid().unwrap()._to_bytes(),
+                    hash: transaction1.txid().unwrap().get_bytes(),
                     index: 0,
                 },
                 signature_script: vec![],
@@ -209,6 +210,6 @@ mod tests {
         utxo_set
             .build_from_transactions(vec![transaction1, transaction2])
             .unwrap();
-        assert_eq!(utxo_set.utxos.len(), 0);
+        assert_eq!(utxo_set.utxos.len(), 1);
     }
 }

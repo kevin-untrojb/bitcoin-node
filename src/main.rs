@@ -11,6 +11,7 @@ mod wallet;
 use std::sync::mpsc::Sender;
 use std::{env, println, thread};
 
+use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::uint256::Uint256;
 use crate::protocol::block_broadcasting::init_block_broadcasting;
@@ -77,7 +78,6 @@ fn main() {
         });
 
         let button_read_blocks = Button::builder()
-        let button_new_basic_tx = Button::builder()
             .label("Leer Bloques")
             .halign(Align::Center)
             .valign(Align::Center)
@@ -86,9 +86,15 @@ fn main() {
         button_read_blocks.connect_clicked(|_| {
             thread::spawn(move || {
                 println!("Leyendo!");
-                click_read_blocks();
+                click_build_utxo_set();
             });
         });
+
+        let button_new_basic_tx = Button::builder()
+            .label("Leer Bloques")
+            .halign(Align::Center)
+            .valign(Align::Center)
+            .build();
 
         button_new_basic_tx.connect_clicked(|_| {
             thread::spawn(move || {
@@ -334,7 +340,6 @@ fn new_tx_signed() {
     if let Err(e) = do_steps() {
         println!("{}", e);
     }
-}
 }
 
 fn click_build_utxo_set() {

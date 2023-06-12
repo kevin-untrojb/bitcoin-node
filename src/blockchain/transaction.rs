@@ -5,8 +5,7 @@ use crate::common::utils_bytes;
 use crate::common::{decoder::p2pkh_script_serialized, uint256::Uint256};
 use crate::errores::NodoBitcoinError;
 use bitcoin_hashes::{sha256d, Hash};
-use std::{fmt, io::Write};
-use std::{collections::HashMap, io::Write, vec};
+use std::{collections::HashMap, fmt, io::Write, vec};
 
 use super::block::SerializedBlock;
 
