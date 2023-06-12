@@ -267,23 +267,23 @@ fn new_tx_signed() {
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let previous_tx_id_bytes = [
-            0x76, 0x7b, 0xde, 0xb4, 0x80, 0x00, 0xee, 0x5c, 0x39, 0xda, 0x7d, 0x94, 0xbc, 0x42,
-            0xc7, 0xac, 0x90, 0xfe, 0xc1, 0x2e, 0xe0, 0x84, 0x27, 0xc2, 0xac, 0x7a, 0x4c, 0x1f,
-            0x99, 0xe3, 0xbf, 0x0a,
+            0x85, 0x25, 0xc9, 0xb1, 0x6d, 0x36, 0x3a, 0x81, 0x50, 0x09, 0x86, 0xe5, 0x9f, 0xd7,
+            0xdc, 0x63, 0x0b, 0xda, 0x5d, 0x9c, 0x3c, 0x97, 0xa0, 0x34, 0xda, 0x56, 0xab, 0x58,
+            0xe7, 0x5f, 0xcd, 0x1a,
         ];
 
         let previous_tx_id = Uint256::from_le_bytes(previous_tx_id_bytes);
         let previous_tx = Transaction::get_tx_from_file(previous_tx_id)?;
 
-        let prev_index: usize = 0;
+        let prev_index: usize = 1;
 
         let private_key_wif = "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw";
 
         let target_address = "mtm4vS3WH7pg13pjFEmqGq2TSPDcUN6k7a";
-        let target_amount: usize = 1100000;
+        let target_amount: usize = 1000000;
 
         let change_address = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun";
-        let change_amount: usize = 621052;
+        let change_amount: usize = 100000;
 
         let mut tx_ins = vec![];
         let tx_in = TxIn::new(previous_tx.txid()?, prev_index);
