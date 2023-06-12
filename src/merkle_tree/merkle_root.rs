@@ -190,7 +190,10 @@ mod tests {
             0x18, 0xad, 0x7e, 0xcd,
         ];
 
-        let txids = vec![Uint256::_from_bytes(bytes1), Uint256::_from_bytes(bytes2)];
+        let txids = vec![
+            Uint256::from_be_bytes(bytes1),
+            Uint256::from_be_bytes(bytes2),
+        ];
         let result_merkle_root = _MerkleRoot::_build_merkle_tree(&txids);
         assert!(result_merkle_root.is_ok());
 
@@ -327,11 +330,11 @@ mod tests {
         ];
 
         let txids = vec![
-            Uint256::_from_bytes(bytes1),
-            Uint256::_from_bytes(bytes2),
-            Uint256::_from_bytes(bytes3),
-            Uint256::_from_bytes(bytes4),
-            Uint256::_from_bytes(bytes5),
+            Uint256::from_be_bytes(bytes1),
+            Uint256::from_be_bytes(bytes2),
+            Uint256::from_be_bytes(bytes3),
+            Uint256::from_be_bytes(bytes4),
+            Uint256::from_be_bytes(bytes5),
         ];
         let result_merkle_tree = _MerkleRoot::_from_ids(&txids);
         assert!(result_merkle_tree.is_ok());

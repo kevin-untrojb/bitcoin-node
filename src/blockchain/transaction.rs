@@ -121,11 +121,11 @@ impl Transaction {
     pub fn txid(&self) -> Result<Uint256, NodoBitcoinError> {
         let bytes = self.serialize()?;
         let hash = sha256d::Hash::hash(&bytes);
-        let u256 = Uint256::_from_be_bytes(*hash.as_byte_array());
+        let u256 = Uint256::from_be_bytes(*hash.as_byte_array());
         Ok(u256)
     }
 
-    pub fn _get_tx_from_file(txid: Uint256) -> Result<Transaction, NodoBitcoinError> {
+    pub fn get_tx_from_file(txid: Uint256) -> Result<Transaction, NodoBitcoinError> {
         let blocks = SerializedBlock::read_blocks_from_file()?;
         let mut txs = HashMap::new();
         for block in blocks {
@@ -259,7 +259,7 @@ impl Transaction {
         Ok(())
     }
 
-    pub fn _sign_with_wif_compressed_key(
+    pub fn sign_with_wif_compressed_key(
         &mut self,
         input_index: usize,
         private_key_compresed: &str,

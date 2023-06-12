@@ -44,11 +44,7 @@ impl Uint256 {
         Uint256(bytes)
     }
 
-    pub fn _from_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
-        Uint256(bytes)
-    }
-
-    pub fn _from_be_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
+    pub fn from_be_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
         Uint256(bytes)
     }
 
