@@ -22,7 +22,7 @@ pub fn parse_varint(bytes: &[u8]) -> (usize, usize) {
     }
 }
 
-pub fn _from_amount_bytes_to_prefix(nbytes: usize) -> u8 {
+pub fn from_amount_bytes_to_prefix(nbytes: usize) -> u8 {
     match nbytes {
         3 => PREFIX_FD,
         5 => PREFIX_FE,
@@ -152,9 +152,9 @@ mod tests {
 
     #[test]
     fn testfrom_amount_bytes_to_prefix() {
-        assert_eq!(_from_amount_bytes_to_prefix(3), PREFIX_FD);
-        assert_eq!(_from_amount_bytes_to_prefix(5), PREFIX_FE);
-        assert_eq!(_from_amount_bytes_to_prefix(9), PREFIX_FF);
-        assert_eq!(_from_amount_bytes_to_prefix(2), 1);
+        assert_eq!(from_amount_bytes_to_prefix(3), PREFIX_FD);
+        assert_eq!(from_amount_bytes_to_prefix(5), PREFIX_FE);
+        assert_eq!(from_amount_bytes_to_prefix(9), PREFIX_FF);
+        assert_eq!(from_amount_bytes_to_prefix(2), 1);
     }
 }

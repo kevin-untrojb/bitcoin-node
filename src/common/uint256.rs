@@ -44,22 +44,24 @@ impl Uint256 {
         Uint256(bytes)
     }
 
-    pub fn _from_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
+    pub fn from_be_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
         Uint256(bytes)
     }
 
-    pub fn _from_be_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
-        Uint256(bytes)
-    }
-
-    pub fn _from_le_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
+    pub fn from_le_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
         let mut bytes = bytes;
         bytes.reverse();
         Uint256(bytes)
     }
 
-    pub fn _to_bytes(&self) -> [u8; NUM_BYTES] {
+    pub fn get_bytes(&self) -> [u8; NUM_BYTES] {
         self.0
+    }
+
+    pub fn _get_le_bytes(&self) -> [u8; NUM_BYTES] {
+        let mut bytes = self.get_bytes();
+        bytes.reverse();
+        bytes
     }
 
     pub fn _pow(&self, exponent: u32) -> Uint256 {

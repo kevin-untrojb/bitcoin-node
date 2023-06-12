@@ -66,7 +66,7 @@ impl SerializedBlock {
             .write_all(bytes_header.as_slice())
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
-        let tx_count_prefix = utils_bytes::_from_amount_bytes_to_prefix(self.txn_amount);
+        let tx_count_prefix = utils_bytes::from_amount_bytes_to_prefix(self.txn_amount);
         bytes
             .write_all(&(utils_bytes::_build_varint_bytes(tx_count_prefix, self.txns.len())?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
@@ -134,10 +134,7 @@ impl SerializedBlock {
         Ok(serialized_blocks)
     }
 
-    pub fn contains_block(
-        blocks: Vec<SerializedBlock>,
-        block: SerializedBlock,
-    ) -> bool {
+    pub fn contains_block(blocks: Vec<SerializedBlock>, block: SerializedBlock) -> bool {
         // verificar si el block se encuentra en blocks
         let mut exist = false;
         for b in blocks {
