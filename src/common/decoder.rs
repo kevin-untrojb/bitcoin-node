@@ -100,10 +100,6 @@ pub fn p2pkh_script_serialized(pubkey_hash: &[u8]) -> Result<Vec<u8>, NodoBitcoi
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
-    use secp256k1::{ecdsa::Signature, Message, PublicKey, Secp256k1, SecretKey};
-
     use crate::common::decoder::{_wif_to_hex, point_sec, signature_der};
 
     use super::{decode_base58, p2pkh_script_serialized};

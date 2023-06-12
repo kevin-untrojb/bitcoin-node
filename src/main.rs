@@ -11,7 +11,6 @@ use std::sync::mpsc::Sender;
 use std::{env, println, thread};
 
 use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
-use crate::common::decoder::decode_base58;
 use crate::common::uint256::Uint256;
 use crate::protocol::block_broadcasting::init_block_broadcasting;
 use crate::{
@@ -144,15 +143,13 @@ fn new_tx() {
 
         let change_amount = 33000000;
         let public_account = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2";
-        let script = decode_base58(public_account)?;
-        let txout = TxOut::new(change_amount, script)?;
+        let txout = TxOut::new(change_amount, public_account)?;
 
         let target_amount = 10000000;
         let target_account = "mnrVtF8DWjMu839VW3rBfgYaAfKk8983Xf";
-        let target_h160 = decode_base58(target_account)?;
-        let tx_out_change = TxOut::new(target_amount, target_h160)?;
+        let tx_out_change = TxOut::new(target_amount, target_account)?;
 
-        let tx_obj = Transaction::new(1, vec![tx_in], vec![txout, tx_out_change], 0)?;
+        let tx_obj = Transaction::new(vec![tx_in], vec![txout, tx_out_change], 0)?;
 
         let serialize = tx_obj.serialize()?;
         println!("serialize: {:?}", serialize);
@@ -297,8 +294,8 @@ fn new_tx_signed() {
             0x00, 0x84, 0x5f, 0xed,
         ];
 
-        let tx_id = previous_tx.txid()?;
-        //let bytes_previous_id = tx_id._get_le_bytes();
+        let _tx_id = previous_tx.txid()?;
+        let _bytes_previous_id = _tx_id._get_le_bytes();
 
         let target_address = "mwJn1YPMq7y5F8J3LkC5Hxg9PHyZ5K4cFv";
         let target_amount: usize = 1000000;
@@ -311,17 +308,15 @@ fn new_tx_signed() {
         tx_ins.push(tx_in);
 
         let mut tx_outs = vec![];
-        let target_h160_script = decode_base58(target_address)?;
-        let tx_out = TxOut::new(target_amount, target_h160_script)?;
+        let tx_out = TxOut::new(target_amount, target_address)?;
         tx_outs.push(tx_out);
 
-        let change_h160_script = decode_base58(change_address)?;
-        let tx_out_change = TxOut::new(change_amount, change_h160_script)?;
+        let tx_out_change = TxOut::new(change_amount, change_address)?;
         tx_outs.push(tx_out_change);
 
-        let mut tx_obj = Transaction::new(1, tx_ins, tx_outs, 0)?;
+        let mut tx_obj = Transaction::new(tx_ins, tx_outs, 0)?;
 
-        let result = tx_obj.sign_with_hexa_key(0, private_key_hexa.to_vec(), previous_tx)?;
+        tx_obj.sign_with_hexa_key(0, private_key_hexa.to_vec(), previous_tx)?;
 
         let tx_obj_bytes = tx_obj.serialize()?;
         println!("tx_obj_bytes: {:02X?}", tx_obj_bytes);
