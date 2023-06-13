@@ -474,7 +474,6 @@ pub fn get_full_blockchain(
 
     let mut reintentos: usize = 0;
 
-    println!("Leyendo siguiente header...");
     loop {
         let buffer = read_bytes_header(
             logger.clone(),
@@ -541,7 +540,6 @@ pub fn get_full_blockchain(
             )?;
             reintentos += 1;
             write_header_message_old_connection(&connection)?;
-            println!("Leyendo siguiente header...");
         }
     }
 
@@ -621,7 +619,7 @@ fn guardar_headers_y_bloques(
     mut bloques_a_guardar: Vec<SerializedBlock>,
     blockheaders: Vec<BlockHeader>,
 ) -> Result<(), NodoBitcoinError> {
-    eprint!("Guardando headers...");
+    log_info_message(logger.clone(), "Guardando headers...".to_string());
     for bh in blockheaders {
         let bytes = bh.serialize()?;
         escribir_archivo(&bytes)?;

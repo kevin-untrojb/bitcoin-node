@@ -22,7 +22,7 @@ impl _MerkleRoot {
     pub fn _from_txs(transactions: &[Transaction]) -> Result<_MerkleRoot, NodoBitcoinError> {
         let transactions_ids = transactions
             .iter()
-            .map(|tx| tx._txid())
+            .map(|tx| tx.txid())
             .collect::<Result<Vec<Uint256>, NodoBitcoinError>>()?;
         Self::_from_ids(&transactions_ids)
     }
@@ -35,7 +35,7 @@ impl _MerkleRoot {
 
             hashmap = ids
                 .iter()
-                .map(|id| (id.clone()._to_bytes(), true))
+                .map(|id| (id.clone().get_bytes(), true))
                 .collect::<HashMap<[u8; 32], bool>>();
 
             let node = Self::_build_merkle_tree(&ids)?;
@@ -61,7 +61,7 @@ impl _MerkleRoot {
             .map(|id| MerkleNode {
                 left: None,
                 right: None,
-                hash: id._to_bytes().to_vec(),
+                hash: id.get_bytes().to_vec(),
             })
             .collect();
 
@@ -88,12 +88,12 @@ impl _MerkleRoot {
 
     pub fn _proof_of_inclusion(&self, tx: &Transaction) -> bool {
         // verificar que el txid de la transaccion este en el arbol
-        let txid_result = tx._txid();
+        let txid_result = tx.txid();
         let txid = match txid_result {
             Ok(txid) => txid,
             Err(_) => return false,
         };
-        let txid_bytes = txid._to_bytes();
+        let txid_bytes = txid.get_bytes();
         self._hashmap.contains_key(&txid_bytes)
     }
 }
@@ -136,7 +136,7 @@ mod tests {
 
         let root = merkle_root.root.unwrap();
 
-        let calculate_hash = txids[0]._to_bytes().to_vec();
+        let calculate_hash = txids[0].get_bytes().to_vec();
         assert!(root.hash == calculate_hash);
     }
 
@@ -190,7 +190,10 @@ mod tests {
             0x18, 0xad, 0x7e, 0xcd,
         ];
 
-        let txids = vec![Uint256::_from_bytes(bytes1), Uint256::_from_bytes(bytes2)];
+        let txids = vec![
+            Uint256::from_be_bytes(bytes1),
+            Uint256::from_be_bytes(bytes2),
+        ];
         let result_merkle_root = _MerkleRoot::_build_merkle_tree(&txids);
         assert!(result_merkle_root.is_ok());
 
@@ -225,14 +228,14 @@ mod tests {
 
         let hash = merkle_root.hash;
 
-        let left_one = txids[0]._to_bytes().to_vec();
-        let right_one = txids[1]._to_bytes().to_vec();
+        let left_one = txids[0].get_bytes().to_vec();
+        let right_one = txids[1].get_bytes().to_vec();
         let concat_hashes_one = [left_one, right_one].concat();
         let calculate_hash_one = sha256d::Hash::hash(&concat_hashes_one);
         let calculate_hash_vector_one = calculate_hash_one.as_byte_array().clone().to_vec();
 
-        let left_two = txids[2]._to_bytes().to_vec();
-        let right_two = txids[2]._to_bytes().to_vec();
+        let left_two = txids[2].get_bytes().to_vec();
+        let right_two = txids[2].get_bytes().to_vec();
         let concat_hashes_two = [left_two, right_two].concat();
         let calculate_hash_two = sha256d::Hash::hash(&concat_hashes_two);
         let calculate_hash_vector_two = calculate_hash_two.as_byte_array().clone().to_vec();
@@ -261,14 +264,14 @@ mod tests {
 
         let hash = merkle_root.hash;
 
-        let left_one = txids[0]._to_bytes().to_vec();
-        let right_one = txids[1]._to_bytes().to_vec();
+        let left_one = txids[0].get_bytes().to_vec();
+        let right_one = txids[1].get_bytes().to_vec();
         let concat_hashes_one = [left_one, right_one].concat();
         let calculate_hash_one = sha256d::Hash::hash(&concat_hashes_one);
         let calculate_hash_vector_one = calculate_hash_one.as_byte_array().clone().to_vec();
 
-        let left_two = txids[2]._to_bytes().to_vec();
-        let right_two = txids[3]._to_bytes().to_vec();
+        let left_two = txids[2].get_bytes().to_vec();
+        let right_two = txids[3].get_bytes().to_vec();
         let concat_hashes_two = [left_two, right_two].concat();
         let calculate_hash_two = sha256d::Hash::hash(&concat_hashes_two);
         let calculate_hash_vector_two = calculate_hash_two.as_byte_array().clone().to_vec();
@@ -327,11 +330,11 @@ mod tests {
         ];
 
         let txids = vec![
-            Uint256::_from_bytes(bytes1),
-            Uint256::_from_bytes(bytes2),
-            Uint256::_from_bytes(bytes3),
-            Uint256::_from_bytes(bytes4),
-            Uint256::_from_bytes(bytes5),
+            Uint256::from_be_bytes(bytes1),
+            Uint256::from_be_bytes(bytes2),
+            Uint256::from_be_bytes(bytes3),
+            Uint256::from_be_bytes(bytes4),
+            Uint256::from_be_bytes(bytes5),
         ];
         let result_merkle_tree = _MerkleRoot::_from_ids(&txids);
         assert!(result_merkle_tree.is_ok());

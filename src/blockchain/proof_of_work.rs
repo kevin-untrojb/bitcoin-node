@@ -41,7 +41,7 @@ fn _calculate_hash(data: &[u8]) -> [u8; 32] {
 
 fn _calculate_proof(data: &[u8]) -> Uint256 {
     let hash = _calculate_hash(data);
-    Uint256::_from_le_bytes(hash)
+    Uint256::from_le_bytes(hash)
 }
 
 fn _is_valid_pow(data: &[u8], target_difficulty: Uint256) -> Result<bool, NodoBitcoinError> {
@@ -148,7 +148,7 @@ mod tests {
     fn test_calculate_proof() {
         let header_bytes_array = bytes_block_oreilly();
         let proof = _calculate_proof(&header_bytes_array);
-        let proof_ok = Uint256::_from_le_bytes(bytes_hash_oreilly()); // la proof es el hash del bloque en little endian
+        let proof_ok = Uint256::from_le_bytes(bytes_hash_oreilly()); // la proof es el hash del bloque en little endian
         assert_eq!(proof, proof_ok);
     }
 
@@ -156,7 +156,7 @@ mod tests {
     fn test_calculate_target() {
         let block_header = blockheader_test_oreilly();
         let target_bl = _calculate_target(&block_header);
-        let target_ok = Uint256::_from_bytes(bytes_target_oreilly());
+        let target_ok = Uint256::from_be_bytes(bytes_target_oreilly());
         assert_eq!(target_bl, target_ok);
     }
 
@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_is_valid_pow() {
-        let target = Uint256::_from_bytes(bytes_target_oreilly());
+        let target = Uint256::from_be_bytes(bytes_target_oreilly());
         let header = bytes_block_oreilly();
 
         let is_valid_pow_result = _is_valid_pow(&header, target);
@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_is_invalid_pow() {
-        let target = Uint256::_from_bytes(bytes_target_oreilly());
+        let target = Uint256::from_be_bytes(bytes_target_oreilly());
         let header = bytes_block_oreilly();
 
         let is_valid_pow_result = _is_valid_pow(&header, target);

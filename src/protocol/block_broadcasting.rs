@@ -22,11 +22,11 @@ use super::admin_connections::AdminConnections;
 
 pub fn init_block_broadcasting(
     logger: Sender<LogMessages>,
-    admin_connections: AdminConnections,
+    mut admin_connections: AdminConnections,
 ) -> Result<(), NodoBitcoinError> {
     let blocks = Arc::new(Mutex::new(SerializedBlock::read_blocks_from_file()?));
     let mut threads = vec![];
-    for connection in admin_connections.clone().get_connections() {
+    for connection in admin_connections.get_connections() {
         let socket = connection.clone();
         let thread_logger = logger.clone();
         let shared_blocks = blocks.clone();
@@ -173,22 +173,16 @@ fn pow_poi_validation(thread_logger: Sender<LogMessages>, block: SerializedBlock
             pow
         }
         Err(_) => {
-            log_error_message(
-                thread_logger.clone(),
-                "POW nuevo bloque inválida".to_string(),
-            );
+            log_error_message(thread_logger, "POW nuevo bloque inválida".to_string());
             return false;
         }
     };
 
     let poi = block.is_valid_merkle();
     if poi {
-        log_info_message(thread_logger.clone(), "POI nuevo bloque válida".to_string());
+        log_info_message(thread_logger, "POI nuevo bloque válida".to_string());
     } else {
-        log_error_message(
-            thread_logger.clone(),
-            "POI nuevo bloque inválida".to_string(),
-        );
+        log_error_message(thread_logger, "POI nuevo bloque inválida".to_string());
     }
 
     pow && poi
@@ -201,20 +195,20 @@ fn guardar_header_y_bloque(
     header: BlockHeader,
 ) {
     if SerializedBlock::contains_block(cloned.to_vec(), block.clone()) {
-        log_error_message(thread_logger.clone(), "Bloque repetido".to_string());
+        log_error_message(thread_logger, "Bloque repetido".to_string());
     } else {
         match escribir_header_y_bloque(thread_logger.clone(), block.clone(), header) {
             Ok(_) => {
                 cloned.push(block);
                 log_info_message(
-                    thread_logger.clone(),
+                    thread_logger,
                     "Bloque nuevo guardado correctamente".to_string(),
                 );
                 drop(cloned);
             }
             Err(_) => {
                 log_error_message(
-                    thread_logger.clone(),
+                    thread_logger,
                     "Error al guardar el nuevo bloque".to_string(),
                 );
             }
