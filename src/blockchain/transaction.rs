@@ -529,10 +529,16 @@ impl TxOut {
         })
     }
 
-    pub fn _is_user_account_output(&self, account: &str) -> Result<bool, NodoBitcoinError> {
-        let script = decode_base58(account)?;
-        let p2pkh_script = p2pkh_script_serialized(&script)?;
-        Ok(self.pk_script == p2pkh_script)
+    pub fn is_user_account_output(&self, account: &str) -> bool {
+        let script = match decode_base58(account) {
+            Ok(script) => script,
+            Err(_) => return false,
+        };
+        let p2pkh_script = match p2pkh_script_serialized(&script) {
+            Ok(script) => script,
+            Err(_) => return false,
+        };
+        self.pk_script == p2pkh_script
     }
 }
 

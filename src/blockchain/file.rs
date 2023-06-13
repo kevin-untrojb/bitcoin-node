@@ -40,7 +40,7 @@ pub fn leer_todos_blocks() -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
     Ok(todos)
 }
 
-pub fn leer_algunos_blocks(cantidad: u32) -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
+pub fn _leer_algunos_blocks(cantidad: u32) -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
     let mut algunos = vec![];
     let mut offset = 0;
     let block_file_len = get_file_blocks_size()?;

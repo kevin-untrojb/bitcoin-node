@@ -9,15 +9,15 @@ pub struct Utxo {
     pub tx_id: Uint256,
     pub output_index: u32,
     pub amount: u64,
-    pub recipient: Vec<u8>,
+    pub account: Vec<u8>,
 }
 
 impl fmt::Display for Utxo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(
             f,
-            "tx_id: {:?}\namount: {:?}\nrecipient: {:?}",
-            self.tx_id, self.amount, self.recipient
+            "tx_id: {:?}\namount: {:?}\naccount: {:?}",
+            self.tx_id, self.amount, self.account
         )
     }
 }
@@ -48,6 +48,7 @@ impl UTXOSet {
     pub fn build_from_transactions(
         &mut self,
         transactions: Vec<Transaction>,
+        accounts: Vec<String>,
     ) -> Result<(), NodoBitcoinError> {
         let mut spent_outputs: HashMap<Uint256, Vec<u32>> = HashMap::new();
 
@@ -65,6 +66,19 @@ impl UTXOSet {
         for transaction in transactions {
             let tx_id = transaction.txid()?;
             for (output_index, tx_out) in transaction.output.iter().enumerate() {
+                let mut is_user_account_output = false;
+                for account in accounts.iter() {
+                    if tx_out.is_user_account_output(account) {
+                        is_user_account_output = true;
+                        continue;
+                    }
+                }
+
+                if !is_user_account_output {
+                    // si no es una de las cuentas, no me importa
+                    continue;
+                }
+
                 if spent_outputs.contains_key(&tx_id)
                     && spent_outputs[&tx_id].contains(&(output_index as u32))
                 {
@@ -76,7 +90,7 @@ impl UTXOSet {
                     tx_id,
                     output_index: output_index as u32,
                     amount: tx_out.value,
-                    recipient: tx_out.pk_script.clone(),
+                    account: tx_out.pk_script.clone(),
                 };
 
                 let utxos_for_tx = self.utxos.entry(tx_id).or_insert(Vec::new());
@@ -89,22 +103,40 @@ impl UTXOSet {
 
 #[cfg(test)]
 mod tests {
-    use crate::blockchain::transaction::{Outpoint, TxIn, TxOut};
+    use crate::{
+        blockchain::transaction::{Outpoint, TxIn, TxOut},
+        common::decoder::{decode_base58, p2pkh_script_serialized},
+    };
 
     use super::*;
 
+    fn get_pk_script_from_account(account: &str) -> Vec<u8> {
+        let script = match decode_base58(account) {
+            Ok(script) => script,
+            Err(e) => return vec![],
+        };
+
+        let p2pkh_script = match p2pkh_script_serialized(&script) {
+            Ok(p2pkh_script) => return p2pkh_script,
+            Err(e) => return vec![],
+        };
+    }
+
     #[test]
     fn test_build_from_transactions() {
+        let account = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun";
+        let p2pkh_script = get_pk_script_from_account(account);
+
         let tx_out1 = TxOut {
             value: 100,
             pk_len: 0,
-            pk_script: vec![],
+            pk_script: p2pkh_script.clone(),
             pk_len_bytes: 0,
         };
         let tx_out2 = TxOut {
             value: 200,
             pk_len: 0,
-            pk_script: vec![],
+            pk_script: p2pkh_script,
             pk_len_bytes: 0,
         };
 
@@ -148,7 +180,7 @@ mod tests {
         let transactions = vec![transaction1.clone(), transaction2.clone()];
 
         let mut utxo_set = UTXOSet::new();
-        let result = utxo_set.build_from_transactions(transactions);
+        let result = utxo_set.build_from_transactions(transactions, vec![account.to_string()]);
         assert!(result.is_ok());
 
         assert_eq!(utxo_set.utxos.len(), 2);
@@ -166,13 +198,16 @@ mod tests {
 
     #[test]
     fn test_build_from_transactions_for_spent_outputs() {
+        let account = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun";
+        let p2pkh_script = get_pk_script_from_account(account);
+
         let mut utxo_set = UTXOSet::new();
 
         let transaction1 = Transaction {
             input: vec![],
             output: vec![TxOut {
                 value: 5,
-                pk_script: vec![],
+                pk_script: p2pkh_script,
                 pk_len: 0,
                 pk_len_bytes: 0,
             }],
@@ -208,8 +243,8 @@ mod tests {
         };
 
         utxo_set
-            .build_from_transactions(vec![transaction1, transaction2])
+            .build_from_transactions(vec![transaction1, transaction2], vec![account.to_string()])
             .unwrap();
-        assert_eq!(utxo_set.utxos.len(), 1);
+        assert_eq!(utxo_set.utxos.len(), 0);
     }
 }

@@ -27,6 +27,7 @@ use gtk::{
 };
 
 use crate::wallet::uxto_set::UTXOSet;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     _ = config::inicializar(args);
@@ -47,7 +48,7 @@ fn main() {
         let window = ApplicationWindow::builder()
             .application(app)
             .default_width(460)
-            .default_height(200)
+            .default_height(400)
             .title(&title)
             .build();
 
@@ -73,19 +74,6 @@ fn main() {
 
         button_build_utxo_set.connect_clicked(|_| {
             thread::spawn(move || {
-                click_build_utxo_set();
-            });
-        });
-
-        let button_read_blocks = Button::builder()
-            .label("Leer Bloques")
-            .halign(Align::Center)
-            .valign(Align::Center)
-            .build();
-
-        button_read_blocks.connect_clicked(|_| {
-            thread::spawn(move || {
-                println!("Leyendo!");
                 click_build_utxo_set();
             });
         });
@@ -128,6 +116,7 @@ fn main() {
 
         let box_layout = gtk::Box::new(gtk::Orientation::Vertical, 20);
         box_layout.add(&button_download_blockchain);
+        box_layout.add(&button_build_utxo_set);
         box_layout.add(&button_new_basic_tx);
         box_layout.add(&button_signature);
         box_layout.add(&button_new_tx_signed);
@@ -343,11 +332,10 @@ fn new_tx_signed() {
 }
 
 fn click_build_utxo_set() {
-    //let args: Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
-        //config::inicializar(args)?;
-        let cantidad_bloques: u32 = 2;
-        let bloques = SerializedBlock::read_n_blocks_from_file(cantidad_bloques)?;
+        config::inicializar(args)?;
+        let bloques = SerializedBlock::read_blocks_from_file()?;
         println!("Bloques totales: {:?}", bloques.len());
 
         let txns = bloques
@@ -356,12 +344,17 @@ fn click_build_utxo_set() {
             .collect::<Vec<_>>();
         println!("Txns totales: {:?}", txns.len());
 
-        for txn in &txns {
-            println!("Txn: {}", txn);
-        }
+        // for txn in &txns {
+        //     println!("Txn: {}", txn);
+        // }
+
+        let accounts = vec![
+            //"mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string(),
+            "mtm4vS3WH7pg13pjFEmqGq2TSPDcUN6k7a".to_string(),
+        ];
 
         let mut utxo_set = UTXOSet::new();
-        utxo_set.build_from_transactions(txns)?;
+        utxo_set.build_from_transactions(txns, accounts)?;
 
         println!("UTXO Set len: {}", utxo_set.utxos.len());
         println!("UTXO Set:\n{}", utxo_set);
