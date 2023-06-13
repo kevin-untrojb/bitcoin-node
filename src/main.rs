@@ -9,7 +9,7 @@ mod messages;
 mod parse_args;
 mod protocol;
 mod wallet;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc;
 use std::{env, println, thread};
 
 use crate::blockchain::block::SerializedBlock;
@@ -21,7 +21,7 @@ use crate::{
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
 };
 use errores::NodoBitcoinError;
-use interface::view::{ViewObject, self};
+use interface::view::{self, ViewObject};
 
 use crate::interface::view::{end_loading, start_loading};
 use crate::wallet::uxto_set::UTXOSet;
