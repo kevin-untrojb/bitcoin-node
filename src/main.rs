@@ -2,6 +2,7 @@ mod blockchain;
 mod common;
 mod config;
 mod errores;
+mod interface;
 mod log;
 mod merkle_tree;
 mod messages;
@@ -20,121 +21,36 @@ use crate::{
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
 };
 use errores::NodoBitcoinError;
-use gtk::{
-    prelude::{ApplicationExt, ApplicationExtManual},
-    traits::{ButtonExt, ContainerExt, WidgetExt},
-    Align, Application, ApplicationWindow, Button,
-};
+use interface::view::{ViewObject, self};
 
+use crate::interface::view::{end_loading, start_loading};
 use crate::wallet::uxto_set::UTXOSet;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     _ = config::inicializar(args);
-    let nombre_grupo = match config::get_valor("NOMBRE_GRUPO".to_string()) {
-        Ok(valor) => valor,
-        Err(e) => {
-            println!("{}", e);
-            return;
-        }
-    };
 
-    let title = format!("Nodo Bitcoin - {}", nombre_grupo);
-    let app = Application::builder()
-        .application_id("nodo_bitcoin")
-        .build();
+    gtk::init().expect("No se pudo inicializar GTK.");
+    let sender = view::create_view();
 
-    app.connect_activate(move |app| {
-        let window = ApplicationWindow::builder()
-            .application(app)
-            .default_width(460)
-            .default_height(400)
-            .title(&title)
-            .build();
-
-        let button_download_blockchain = Button::builder()
-            .label("Descargar Bloques")
-            .halign(Align::Center)
-            .valign(Align::Center)
-            .build();
-
-        button_download_blockchain.connect_clicked(|_| {
-            thread::spawn(move || {
-                click_download_blockchain(create_logger_actor(config::get_valor(
-                    "LOG_FILE".to_string(),
-                )));
-            });
-        });
-
-        let button_build_utxo_set = Button::builder()
-            .label("Configurar UTXO Set")
-            .halign(Align::Center)
-            .valign(Align::Center)
-            .build();
-
-        button_build_utxo_set.connect_clicked(|_| {
-            thread::spawn(move || {
-                click_build_utxo_set();
-            });
-        });
-
-        let button_new_basic_tx = Button::builder()
-            .label("Leer Bloques")
-            .halign(Align::Center)
-            .valign(Align::Center)
-            .build();
-
-        button_new_basic_tx.connect_clicked(|_| {
-            thread::spawn(move || {
-                new_tx();
-            });
-        });
-
-        let button_signature = Button::builder()
-            .label("Firmar Bloques")
-            .halign(Align::Center)
-            .valign(Align::Center)
-            .build();
-
-        button_signature.connect_clicked(|_| {
-            thread::spawn(move || {
-                signature();
-            });
-        });
-
-        let button_new_tx_signed = Button::builder()
-            .label("Crear Tx")
-            .halign(Align::Center)
-            .valign(Align::Center)
-            .build();
-
-        button_new_tx_signed.connect_clicked(|_| {
-            thread::spawn(move || {
-                new_tx_signed();
-            });
-        });
-
-        let box_layout = gtk::Box::new(gtk::Orientation::Vertical, 20);
-        box_layout.add(&button_download_blockchain);
-        box_layout.add(&button_build_utxo_set);
-        box_layout.add(&button_new_basic_tx);
-        box_layout.add(&button_signature);
-        box_layout.add(&button_new_tx_signed);
-        box_layout.add(&button_build_utxo_set);
-
-        window.set_child(Some(&box_layout));
-        window.show_all();
+    thread::spawn(move || {
+        download_blockchain(
+            create_logger_actor(config::get_valor("LOG_FILE".to_string())),
+            sender.clone(),
+        );
     });
 
-    app.run();
+    gtk::main();
 }
 
-fn click_download_blockchain(logger: Sender<LogMessages>) {
-    let args: Vec<String> = env::args().collect();
+fn download_blockchain(logger: mpsc::Sender<LogMessages>, sender: glib::Sender<ViewObject>) {
     let do_steps = || -> Result<(), NodoBitcoinError> {
-        config::inicializar(args)?;
+        start_loading(sender.clone(), "Connecting to peers... ".to_string());
         let admin_connections = connect(logger.clone())?;
+        end_loading(sender.clone());
+        start_loading(sender.clone(), "Obteniendo blockchain... ".to_string());
         get_full_blockchain(logger.clone(), admin_connections.clone())?;
+        end_loading(sender.clone());
         init_block_broadcasting(logger.clone(), admin_connections)?;
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);

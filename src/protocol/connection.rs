@@ -15,7 +15,10 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 
-pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitcoinError> {
+pub fn connect(
+    logger: Sender<LogMessages>,
+) -> Result<AdminConnections, NodoBitcoinError> {
+
     let mut admin_connections = AdminConnections::new();
     let addresses = get_address();
     let mut id: i32 = 0;
@@ -37,6 +40,7 @@ pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitc
             Err(_) => continue,
         };
     }
+
     Ok(admin_connections)
 }
 

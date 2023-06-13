@@ -1,3 +1,4 @@
+use std::sync::mpsc;
 use super::admin_connections::{AdminConnections, Connection};
 use super::connection::connect;
 use crate::blockchain::block::SerializedBlock;
@@ -107,8 +108,16 @@ fn read_bytes_header(
             } else if intento < total_reintentos() {
                 log_info_message(logger.clone(), "Reintentando leer header".to_string());
                 let (admin_connections, (connection, _id)) =
-                    buscar_conexion_libre_o_nuevas_conexiones(logger.clone(), admin_connections)?;
-                return read_bytes_header(logger, &connection, admin_connections, intento + 1);
+                    buscar_conexion_libre_o_nuevas_conexiones(
+                        logger.clone(),
+                        admin_connections,
+                    )?;
+                return read_bytes_header(
+                    logger,
+                    &connection,
+                    admin_connections,
+                    intento + 1,
+                );
             };
             log_error_message(
                 logger,
@@ -449,7 +458,7 @@ fn thread_data(
 }
 
 pub fn get_full_blockchain(
-    logger: Sender<LogMessages>,
+    logger: mpsc::Sender<LogMessages>,
     admin_connections: AdminConnections,
 ) -> Result<(), NodoBitcoinError> {
     log_info_message(logger.clone(), "Obteniendo blockchain completa".to_string());
@@ -466,7 +475,12 @@ pub fn get_full_blockchain(
     let mut reintentos: usize = 0;
 
     loop {
-        let buffer = read_bytes_header(logger.clone(), &connection, admin_connections.clone(), 0)?;
+        let buffer = read_bytes_header(
+            logger.clone(),
+            &connection,
+            admin_connections.clone(),
+            0,
+        )?;
 
         let valid_command: bool;
         let (_command, headers) = match check_header(&buffer) {
