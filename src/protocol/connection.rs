@@ -1,7 +1,6 @@
 use super::admin_connections::AdminConnections;
 use crate::config;
 use crate::errores::NodoBitcoinError;
-use crate::interface::view::{ViewObject, ViewObjectData, ViewObjectStatus};
 use crate::log::{log_info_message, LogMessages};
 use crate::messages::messages_header::check_header;
 use crate::messages::messages_header::make_header;
@@ -18,18 +17,7 @@ use std::time::Duration;
 
 pub fn connect(
     logger: Sender<LogMessages>,
-    sender: glib::Sender<ViewObject>,
 ) -> Result<AdminConnections, NodoBitcoinError> {
-    let viewObjectData = ViewObjectData {
-        id: "connecting_message".to_string(),
-        text: "Connecting to peers...".to_string(),
-    };
-    sender.send(ViewObject::Label(viewObjectData));
-    let viewObjectStatus = ViewObjectStatus {
-        id: "connecting_spinner".to_string(),
-        active: true,
-    };
-    sender.send(ViewObject::Spinner(viewObjectStatus));
 
     let mut admin_connections = AdminConnections::new();
     let addresses = get_address();
@@ -52,16 +40,6 @@ pub fn connect(
             Err(_) => continue,
         };
     }
-    let viewObjectData = ViewObjectData {
-        id: "connecting_message".to_string(),
-        text: "".to_string(),
-    };
-    sender.send(ViewObject::Label(viewObjectData));
-    let viewObjectStatus = ViewObjectStatus {
-        id: "connecting_spinner".to_string(),
-        active: false,
-    };
-    sender.send(ViewObject::Spinner(viewObjectStatus));
 
     Ok(admin_connections)
 }

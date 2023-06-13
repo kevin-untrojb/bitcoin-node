@@ -9,7 +9,6 @@ use crate::blockchain::file::{
 use crate::common::utils_timestamp::{_timestamp_to_datetime, obtener_timestamp_dia};
 use crate::config;
 use crate::errores::NodoBitcoinError;
-use crate::interface::view::{ViewObject, ViewObjectData};
 use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::messages::getdata::GetDataMessage;
 use crate::messages::getheaders::GetHeadersMessage;
@@ -81,14 +80,13 @@ fn total_reintentos() -> usize {
 
 fn buscar_conexion_libre_o_nuevas_conexiones(
     logger: Sender<LogMessages>,
-    sender: glib::Sender<ViewObject>,
     mut admin_connections: AdminConnections,
 ) -> Result<(AdminConnections, (Connection, i32)), NodoBitcoinError> {
     let result = match admin_connections.find_free_connection() {
         Ok(res) => res,
         Err(_) => {
             log_error_message(logger.clone(), "No se encuentra conexion libre".to_string());
-            admin_connections = connect(logger, sender)?; // actualizo la lista de conexiones
+            admin_connections = connect(logger)?; // actualizo la lista de conexiones
             admin_connections.find_free_connection()?
         }
     };
@@ -97,7 +95,6 @@ fn buscar_conexion_libre_o_nuevas_conexiones(
 
 fn read_bytes_header(
     logger: Sender<LogMessages>,
-    sender: glib::Sender<ViewObject>,
     connection: &Connection,
     admin_connections: AdminConnections,
     intento: usize,
@@ -113,12 +110,10 @@ fn read_bytes_header(
                 let (admin_connections, (connection, _id)) =
                     buscar_conexion_libre_o_nuevas_conexiones(
                         logger.clone(),
-                        sender.clone(),
                         admin_connections,
                     )?;
                 return read_bytes_header(
                     logger,
-                    sender,
                     &connection,
                     admin_connections,
                     intento + 1,
@@ -130,7 +125,7 @@ fn read_bytes_header(
             );
             Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
         }
-        None => read_bytes_header(logger, sender, connection, admin_connections, intento + 1),
+        None => read_bytes_header(logger, connection, admin_connections, intento + 1),
     }
 }
 
@@ -464,14 +459,8 @@ fn thread_data(
 
 pub fn get_full_blockchain(
     logger: mpsc::Sender<LogMessages>,
-    sender: glib::Sender<ViewObject>,
     admin_connections: AdminConnections,
 ) -> Result<(), NodoBitcoinError> {
-    //send_view_message(sender);
-    //let object_type = Arc::new(Mutex::new(ViewObjectType::Label(Label::new(None).clone())));
-    //let view_object = ViewObject{ id: "id_prueba".to_string(), text: "full blockchain".to_string(), object_type };
-    //sender.send(view_object);
-
     log_info_message(logger.clone(), "Obteniendo blockchain completa".to_string());
     log_info_message(
         logger.clone(),
@@ -480,20 +469,6 @@ pub fn get_full_blockchain(
             chrono::offset::Local::now().format("%F %T")
         ),
     );
-    let viewObjectData = ViewObjectData {
-        id: "logs".to_string(),
-        text: "Obteniendo blockchain completa. ".to_string(),
-    };
-    sender.send(ViewObject::TextView(viewObjectData));
-
-    let viewObjectData = ViewObjectData {
-        id: "logs".to_string(),
-        text: format!(
-            "Comienza la descarga a las {}",
-            chrono::offset::Local::now().format("%F %T")
-        ),
-    };
-    sender.send(ViewObject::TextView(viewObjectData));
 
     let (mut connection, mut _id) = write_header_message_new_connection(admin_connections.clone())?;
 
@@ -503,7 +478,6 @@ pub fn get_full_blockchain(
     loop {
         let buffer = read_bytes_header(
             logger.clone(),
-            sender.clone(),
             &connection,
             admin_connections.clone(),
             0,
