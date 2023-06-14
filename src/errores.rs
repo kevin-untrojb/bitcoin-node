@@ -28,6 +28,9 @@ pub enum NodoBitcoinError {
 
     // decode base58 error
     DecodeError,
+
+    // mensajes
+    NoEsTransaccion,
 }
 
 impl Error for NodoBitcoinError {}
@@ -107,6 +110,9 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::DecodeError => {
                 write!(f, "ERROR: No se pudo decodificar.")
+            }
+            NodoBitcoinError::NoEsTransaccion => {
+                write!(f, "ERROR: El mensaje no contiene una transacción.")
             }
         }
     }
