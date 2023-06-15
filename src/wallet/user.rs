@@ -23,17 +23,15 @@ impl Account {
         }
     }
 
-    pub fn save(&self) -> Result<(), NodoBitcoinError> {
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(ACCOUNT_FILENAME)
-            .expect("No se pudo abrir el archivo");
-
-        self.save_attributes(&mut file)
+    pub fn save_all_accounts(accounts: Vec<Account>) -> Result<(), NodoBitcoinError> {
+        let mut file = File::create(ACCOUNT_FILENAME).expect("No se pudo crear el archivo");
+        for account in accounts {
+            account.save(&mut &file)?;
+        }
+        Ok(())
     }
 
-    fn save_attributes(&self, file: &mut dyn Write) -> Result<(), NodoBitcoinError> {
+    fn save(&self, file: &mut dyn Write) -> Result<(), NodoBitcoinError> {
         Account::save_len_bytes(file, self.secret_key.clone())?;
         Account::save_len_bytes(file, self.public_key.clone())?;
         Account::save_len_bytes(file, self.wallet_name.clone())
@@ -146,7 +144,7 @@ mod tests {
 
         let mut mock_write = vec![];
 
-        let save = account.save_attributes(&mut mock_write);
+        let save = account.save(&mut mock_write);
         assert!(save.is_ok());
 
         let read = Account::parse_accounts(mock_write);
@@ -169,7 +167,7 @@ mod tests {
 
         let mut mock_write = vec![];
 
-        let save = account1.save_attributes(&mut mock_write);
+        let save = account1.save(&mut mock_write);
         assert!(save.is_ok());
 
         let read = Account::parse_accounts(mock_write.clone());
@@ -187,7 +185,7 @@ mod tests {
             "wallet1".to_string(),
         );
 
-        let save = account2.save_attributes(&mut mock_write);
+        let save = account2.save(&mut mock_write);
         assert!(save.is_ok());
 
         let read = Account::parse_accounts(mock_write);
@@ -202,4 +200,26 @@ mod tests {
         assert_eq!(accounts[1].public_key, account2.public_key);
         assert_eq!(accounts[1].wallet_name, account2.wallet_name);
     }
+
+    // #[test]
+    // fn test_file() {
+    //     let secret_key = "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw".to_string();
+    //     let public_key = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
+    //     let wallet_name = "wallet1".to_string();
+    //     let account = Account::new(secret_key.clone(), public_key.clone(), wallet_name.clone());
+
+    //     let accounts = vec![account];
+
+    //     let saved = Account::save_all_accounts(accounts);
+    //     assert!(saved.is_ok());
+
+    //     let read = Account::get_all_accounts();
+    //     assert!(read.is_ok());
+
+    //     let accounts = read.unwrap();
+    //     assert_eq!(accounts.len(), 1);
+    //     assert_eq!(accounts[0].secret_key, secret_key);
+    //     assert_eq!(accounts[0].public_key, public_key);
+    //     assert_eq!(accounts[0].wallet_name, wallet_name);
+    // }
 }
