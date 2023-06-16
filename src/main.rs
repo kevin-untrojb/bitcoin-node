@@ -260,20 +260,47 @@ fn click_build_utxo_set() {
             .collect::<Vec<_>>();
         println!("Txns totales: {:?}", txns.len());
 
-        // for txn in &txns {
-        //     println!("Txn: {}", txn);
-        // }
+        // separar las txns en 2 vectores, las primeras y las demas
+        let primeras_txs = txns.iter().take(515575).cloned().collect::<Vec<_>>();
+        let otras_txs = txns.iter().skip(515575).cloned().collect::<Vec<_>>();
 
         let accounts = vec![
-            //"mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string(),
+            "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string(),
             "mtm4vS3WH7pg13pjFEmqGq2TSPDcUN6k7a".to_string(),
         ];
 
         let mut utxo_set = UTXOSet::new();
-        utxo_set.build_from_transactions(txns, accounts)?;
+        println!(
+            "Verificar las primeras {:?} transacciones",
+            primeras_txs.len()
+        );
 
-        println!("UTXO Set len: {}", utxo_set.utxos.len());
+        utxo_set.update_from_transactions(primeras_txs, accounts.clone())?;
+
+        println!("UTXO Set len: {}", utxo_set.account_for_txid_index.len());
+        for account in accounts.clone() {
+            println!(
+                "UTXO Set for account {}: {}",
+                account,
+                utxo_set.get_available(&account)?
+            );
+        }
         println!("UTXO Set:\n{}", utxo_set);
+
+        println!("Verificar las ultimas {:?} transacciones", otras_txs.len());
+
+        utxo_set.update_from_transactions(otras_txs, accounts.clone())?;
+
+        println!("UTXO Set len: {}", utxo_set.account_for_txid_index.len());
+        for account in accounts {
+            println!(
+                "UTXO Set for account {}: {}",
+                account,
+                utxo_set.get_available(&account)?
+            );
+        }
+        println!("UTXO Set:\n{}", utxo_set);
+
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())

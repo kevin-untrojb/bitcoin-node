@@ -1,4 +1,6 @@
-use crate::blockchain::transaction::Transaction;
+use bitcoin_hashes::hash160::Hash;
+
+use crate::blockchain::transaction::{Transaction, TxOut};
 use crate::common::uint256::Uint256;
 use crate::errores::NodoBitcoinError;
 use std::collections::HashMap;
@@ -8,8 +10,8 @@ use std::fmt;
 pub struct Utxo {
     pub tx_id: Uint256,
     pub output_index: u32,
-    pub amount: u64,
-    pub account: Vec<u8>,
+    pub tx_out: TxOut,
+    pub pk_script: Vec<u8>,
 }
 
 impl fmt::Display for Utxo {
@@ -17,20 +19,21 @@ impl fmt::Display for Utxo {
         writeln!(
             f,
             "tx_id: {:?}\namount: {:?}\naccount: {:?}",
-            self.tx_id, self.amount, self.account
+            self.tx_id, self.tx_out.value, self.pk_script
         )
     }
 }
 
 #[derive(Debug)]
 pub struct UTXOSet {
-    pub utxos: HashMap<Uint256, Vec<Utxo>>,
+    pub utxos_for_account: HashMap<String, Vec<Utxo>>,
+    pub account_for_txid_index: HashMap<(Uint256, u32), String>,
 }
 
 impl fmt::Display for UTXOSet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut utxos = Vec::new();
-        for (key, utxos_for_tx) in &self.utxos {
+        for (key, utxos_for_tx) in &self.utxos_for_account {
             let format_string = format!("key: {:?}\nutxos_for_tx: {:?}", key, utxos_for_tx);
             utxos.push(format_string);
         }
@@ -41,63 +44,90 @@ impl fmt::Display for UTXOSet {
 impl UTXOSet {
     pub fn new() -> Self {
         UTXOSet {
-            utxos: HashMap::new(),
+            utxos_for_account: HashMap::new(),
+            account_for_txid_index: HashMap::new(),
         }
     }
 
-    pub fn build_from_transactions(
+    fn agregar_utxo(
+        &mut self,
+        current_account: String,
+        tx_id: Uint256,
+        output_index: u32,
+        tx_out: &TxOut,
+    ) {
+        let utxo = Utxo {
+            tx_id,
+            output_index: output_index,
+            tx_out: tx_out.clone(),
+            pk_script: tx_out.pk_script.clone(),
+        };
+        let utxos_for_account = self
+            .utxos_for_account
+            .entry(current_account.clone())
+            .or_insert(Vec::new());
+        utxos_for_account.push(utxo);
+
+        self.account_for_txid_index
+            .insert((tx_id, output_index), current_account);
+    }
+
+    fn eliminar_utxo(&mut self, previous_tx_id: Uint256, output_index: u32, key: (Uint256, u32)) {
+        let account = self.account_for_txid_index[&key].clone();
+        let utxos_for_account = self.utxos_for_account.entry(account.clone()).or_default();
+        utxos_for_account
+            .retain(|utxo| !(utxo.tx_id == previous_tx_id && utxo.output_index == output_index));
+        self.account_for_txid_index.remove(&key);
+    }
+
+    fn validar_output(accounts: Vec<String>, tx_out: &TxOut) -> Result<String, NodoBitcoinError> {
+        for account in accounts.iter() {
+            if tx_out.is_user_account_output(account) {
+                return Ok(account.clone());
+            }
+        }
+        Err(NodoBitcoinError::InvalidAccount)
+    }
+
+    pub fn update_from_transactions(
         &mut self,
         transactions: Vec<Transaction>,
         accounts: Vec<String>,
     ) -> Result<(), NodoBitcoinError> {
-        let mut spent_outputs: HashMap<Uint256, Vec<u32>> = HashMap::new();
+        let mut i = 0;
+        for tx in transactions.iter() {
+            let tx_id = tx.txid()?;
+            // recorro los output para identificar los que son mios
+            for (output_index, tx_out) in tx.output.iter().enumerate() {
+                let current_account = match UTXOSet::validar_output(accounts.clone(), tx_out) {
+                    Ok(account) => account,
+                    Err(_) => continue,
+                };
+                self.agregar_utxo(current_account.clone(), tx_id, output_index as u32, tx_out);
+            }
 
-        for transaction in transactions.iter().rev() {
-            for tx_in in &transaction.input {
+            for tx_in in tx.input.iter() {
                 let previous_tx_id = Uint256::from_be_bytes(tx_in.previous_output.hash);
                 let output_index = tx_in.previous_output.index;
+                let key = (previous_tx_id, output_index);
 
-                let spent_outputs_for_tx =
-                    spent_outputs.entry(previous_tx_id).or_insert(Vec::new());
-                spent_outputs_for_tx.push(output_index);
+                if self.account_for_txid_index.contains_key(&key) {
+                    self.eliminar_utxo(previous_tx_id, output_index, key);
+                }
             }
-        }
-
-        for transaction in transactions {
-            let tx_id = transaction.txid()?;
-            for (output_index, tx_out) in transaction.output.iter().enumerate() {
-                let mut is_user_account_output = false;
-                for account in accounts.iter() {
-                    if tx_out.is_user_account_output(account) {
-                        is_user_account_output = true;
-                        continue;
-                    }
-                }
-
-                if !is_user_account_output {
-                    // si no es una de las cuentas, no me importa
-                    continue;
-                }
-
-                if spent_outputs.contains_key(&tx_id)
-                    && spent_outputs[&tx_id].contains(&(output_index as u32))
-                {
-                    // si la salida de transacción está gastada no es un UXTO
-                    continue;
-                }
-
-                let utxo = Utxo {
-                    tx_id,
-                    output_index: output_index as u32,
-                    amount: tx_out.value,
-                    account: tx_out.pk_script.clone(),
-                };
-
-                let utxos_for_tx = self.utxos.entry(tx_id).or_insert(Vec::new());
-                utxos_for_tx.push(utxo);
-            }
+            i += 1;
         }
         Ok(())
+    }
+
+    pub fn get_available(&self, account: &str) -> Result<u64, NodoBitcoinError> {
+        let mut balance = 0;
+        if let Some(utxos) = self.utxos_for_account.get(account) {
+            for utxo in utxos.iter() {
+                balance += utxo.tx_out.value;
+            }
+        }
+        Ok(balance)
     }
 }
 
@@ -180,20 +210,19 @@ mod tests {
         let transactions = vec![transaction1.clone(), transaction2.clone()];
 
         let mut utxo_set = UTXOSet::new();
-        let result = utxo_set.build_from_transactions(transactions, vec![account.to_string()]);
+        let result = utxo_set.update_from_transactions(transactions, vec![account.to_string()]);
         assert!(result.is_ok());
 
-        assert_eq!(utxo_set.utxos.len(), 2);
-        assert!(utxo_set.utxos.contains_key(&transaction1.txid().unwrap()));
-        assert!(utxo_set.utxos.contains_key(&transaction2.txid().unwrap()));
+        assert_eq!(utxo_set.utxos_for_account.len(), 1);
+        assert!(utxo_set.utxos_for_account.contains_key(account));
+        let utxos_for_account = utxo_set.utxos_for_account.get(account).unwrap();
+        assert_eq!(utxos_for_account.len(), 2);
+        assert!(utxos_for_account[0].tx_id == transaction1.txid().unwrap());
+        assert!(utxos_for_account[1].tx_id == transaction2.txid().unwrap());
 
-        let utxos_tx1 = utxo_set.utxos.get(&transaction1.txid().unwrap()).unwrap();
-        assert_eq!(utxos_tx1.len(), 1);
-        assert_eq!(utxos_tx1[0].amount, tx_out1.value);
-
-        let utxos_tx2 = utxo_set.utxos.get(&transaction2.txid().unwrap()).unwrap();
-        assert_eq!(utxos_tx2.len(), 1);
-        assert_eq!(utxos_tx2[0].amount, tx_out2.value);
+        let balance = utxo_set.get_available(account);
+        assert!(balance.is_ok());
+        assert_eq!(balance.unwrap(), 300);
     }
 
     #[test]
@@ -243,8 +272,8 @@ mod tests {
         };
 
         utxo_set
-            .build_from_transactions(vec![transaction1, transaction2], vec![account.to_string()])
+            .update_from_transactions(vec![transaction1, transaction2], vec![account.to_string()])
             .unwrap();
-        assert_eq!(utxo_set.utxos.len(), 0);
+        assert_eq!(utxo_set.utxos_for_account[account].len(), 0);
     }
 }
