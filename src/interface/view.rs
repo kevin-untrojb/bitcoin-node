@@ -9,6 +9,8 @@ use std::{cmp, thread, vec};
 
 use std::{println};
 
+use crate::wallet::user::Account;
+
 pub enum ViewObject {
     Label(ViewObjectData),
     Button(ViewObjectData),
@@ -130,26 +132,38 @@ fn open_wallet_dialog(builder: &Builder) {
 
     let key_entry: Entry = builder.object("key").expect("Couldn't get key");
     let address_entry: Entry = builder.object("address").expect("Couldn't get address");
+    let name_entry: Entry = builder.object("name").expect("Couldn't get address");
 
     dialog.connect_response(move |dialog, response_id| {
         println!("RESPONSE {}", response_id);
 
         match response_id {
             ResponseType::Ok => {
-                let key = key_entry.text().to_string();
-                let address = address_entry.text().to_string();
+                let key = key_entry.text();
+                let address = address_entry.text();
+                let name = name_entry.text();
+
                 gtk::glib::idle_add(move || {
                     // Test: creo hilo para asegurar que sigue el proceso en segundo plano.
                     //       Al cerrar ventana general, finaliza.
                     //       En este hilo habria que guardar los datos
-                    /*let test_thread = thread::spawn(move || {
-                        let mut i = 0;
-                        loop {
-                            println!("VALOR {}", i);
-                            i = i + 1;
-                            if i == 1000000 {break}
-                        }
-                    });*/
+                    let key_clone = key.clone();
+                    let address_clone = address.clone();
+                    let name_clone = name.clone();
+
+                    let test_thread = thread::spawn(move || {
+                        let new_account = Account::new(
+                            key_clone.to_string(),
+                            address_clone.to_string(),
+                            name_clone.to_string(),
+                        );
+                        let accounts = vec![new_account];
+                        Account::save_all_accounts(accounts);
+                        let read = Account::get_all_accounts();
+                        
+                    });
+                    /* if test_thread.is_finished(){println!("LIIIISTO user")};
+                    test_thread.join(); */
 
                     Continue(false)
                 });
