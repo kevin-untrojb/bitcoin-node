@@ -58,7 +58,7 @@ pub fn init_block_broadcasting(
                 };
 
                 if socket.write_message(&pong_msg).is_err() {
-                    log_info_message(thread_logger, "Error al escribir el mensaje pong".to_string());
+                    log_error_message(thread_logger, "Error al escribir el mensaje pong".to_string());
                     return;
                 }
             }
@@ -108,6 +108,7 @@ pub fn init_block_broadcasting(
 
                 if command == "tx" {
                     let tx = Transaction::deserialize(&tx_read);
+                    // guardarlas en un vector con las pending
                 }
 
             }

@@ -15,6 +15,7 @@ use std::{env, println, thread};
 use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::uint256::Uint256;
 use crate::protocol::block_broadcasting::init_block_broadcasting;
+use crate::protocol::send_tx::send_tx;
 use crate::{
     log::{create_logger_actor, LogMessages},
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
@@ -39,6 +40,23 @@ fn main() {
     });
 
     gtk::main();
+}
+
+fn send_tx_main() {
+    let args: Vec<String> = env::args().collect();
+    let do_steps = || -> Result<(), NodoBitcoinError> {
+        config::inicializar(args)?;
+        let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+        let admin_connections = connect(logger.clone())?;
+        send_tx(admin_connections, logger)?;
+        let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
+        println!("Hello, Bitcoin! Somos {}", nombre_grupo);
+        Ok(())
+    };
+
+    if let Err(e) = do_steps() {
+        println!("{}", e);
+    }
 }
 
 fn download_blockchain(logger: mpsc::Sender<LogMessages>, sender: glib::Sender<ViewObject>) {
