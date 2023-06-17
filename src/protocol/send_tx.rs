@@ -3,14 +3,13 @@ use crate::{log::{LogMessages, log_error_message}, messages::messages_header::ma
 use super::admin_connections::AdminConnections;
 
 pub fn send_tx(mut admin_connections: AdminConnections, logger: mpsc::Sender<LogMessages>) -> Result<(), NodoBitcoinError>{
-    let previous_tx_id_bytes = [
-            4, 231, 18, 2, 177, 152, 255, 108, 11, 117, 224, 66, 60, 155, 18, 22, 191, 172, 128,
-            111, 212, 221, 10, 170, 184, 104, 181, 127, 64, 0, 251, 27,
+    let previous_tx_id_bytes = [134, 46, 136, 248, 208, 37, 180, 182, 25, 67, 20, 53, 244, 
+        66, 208, 74, 237, 139, 218, 2, 27, 116, 240, 156, 232, 77, 21, 1, 12, 206, 51, 97
     ];
     let previous_tx_id = Uint256::from_be_bytes(previous_tx_id_bytes);
     let previous_tx = Transaction::get_tx_from_file(previous_tx_id)?;
 
-    let prev_index: usize = 0;
+    let prev_index: usize = 1;
 
     let private_key_wif = "cU7dbzeBRgMEZ5BUst2CFydGRm9gt8uQbNoojWPRRuHb2xk5q5h2";
 
@@ -18,7 +17,7 @@ pub fn send_tx(mut admin_connections: AdminConnections, logger: mpsc::Sender<Log
     let target_amount: usize = 100000;
 
     let change_address = "mtm4vS3WH7pg13pjFEmqGq2TSPDcUN6k7a";
-    let change_amount: usize = 800000;
+    let change_amount: usize = 600000;
 
     let mut tx_ins = vec![];
     let tx_in = TxIn::new(previous_tx.txid()?, prev_index);
@@ -38,10 +37,13 @@ pub fn send_tx(mut admin_connections: AdminConnections, logger: mpsc::Sender<Log
     let tx_obj_bytes = tx_obj.serialize()?;
     println!("tx_obj_bytes: {:02X?}", tx_obj_bytes);
 
-    for connection in admin_connections.get_connections() {
-        let payload: Vec<u8> = tx_obj_bytes.clone();
-        let tx_msg = make_header("tx".to_string(), &payload)?;
+    let payload: Vec<u8> = tx_obj_bytes.clone();
+    let header = make_header("tx".to_string(), &payload)?;
+    let mut tx_msg = Vec::new();
+    tx_msg.extend_from_slice(&header);
+    tx_msg.extend_from_slice(&payload);
 
+    for connection in admin_connections.get_connections() {
         if connection.write_message(&tx_msg).is_err() {
             log_error_message(logger, "Error al enviar la nueva transacción a un peer.".to_string());
             return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
