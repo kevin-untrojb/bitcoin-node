@@ -1,14 +1,15 @@
-use glib::{Sender};
+use glib::Sender;
+use gtk::prelude::Continue;
 use gtk::{
     prelude::*,
     traits::{ButtonExt, WidgetExt},
-    Builder, Button, Label, Window, TextView, Spinner, Dialog, Entry, ResponseType,
+    Builder, Button, Dialog, Entry, Label, ResponseType, Spinner, TextView, Window,
 };
-use gtk::prelude::Continue;
 use std::{cmp, thread, vec};
 
-use std::{println};
+use std::println;
 
+use crate::app_manager::ApplicationManager;
 use crate::wallet::user::Account;
 
 pub enum ViewObject {
@@ -30,11 +31,13 @@ pub struct ViewObjectStatus {
 
 // CAMBIAR EXPECTS !!!!!!!!
 
-pub fn create_view()-> Sender<ViewObject>{
+pub fn create_view() -> Sender<ViewObject> {
     let title = "Nodo Bitcoin - Los Rustybandidos".to_string();
     let glade_src = include_str!("window.glade");
 
     let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+
+    let app_manager = ApplicationManager::new(sender.clone());
 
     let builder = Builder::from_string(glade_src);
     let window: Window = builder
@@ -47,7 +50,9 @@ pub fn create_view()-> Sender<ViewObject>{
     receiver.attach(None, move |view_object: ViewObject| {
         match view_object {
             ViewObject::Label(data) => {
-                let label: Label = builder_receiver_clone.object(&String::from(data.id)).expect("error");
+                let label: Label = builder_receiver_clone
+                    .object(&String::from(data.id))
+                    .expect("error");
                 label.set_text(&data.text.to_string());
             }
             ViewObject::Button(data) => {
@@ -56,15 +61,21 @@ pub fn create_view()-> Sender<ViewObject>{
                     String::from(&data.id),
                     data.text.to_string()
                 );
-                let button: Button = builder_receiver_clone.object(&String::from(data.id)).expect("error");
+                let button: Button = builder_receiver_clone
+                    .object(&String::from(data.id))
+                    .expect("error");
                 button.set_label(&data.text.to_string());
             }
             ViewObject::Spinner(data) => {
-                let button: Spinner = builder_receiver_clone.object(&String::from(data.id)).expect("error");
+                let button: Spinner = builder_receiver_clone
+                    .object(&String::from(data.id))
+                    .expect("error");
                 button.set_active(data.active);
             }
             ViewObject::TextView(data) => {
-                let text_view: TextView = builder_receiver_clone.object(&String::from(data.id)).expect("error");
+                let text_view: TextView = builder_receiver_clone
+                    .object(&String::from(data.id))
+                    .expect("error");
                 let buffer = text_view.buffer().unwrap();
                 buffer.insert_at_cursor(&data.text.to_string());
             }
@@ -73,13 +84,17 @@ pub fn create_view()-> Sender<ViewObject>{
     });
 
     let builder_wallet_clone = builder.clone();
-    let new_wallet_button: Button = builder.object("new_wallet_button").expect("Couldn't get open_modal_button");
+    let new_wallet_button: Button = builder
+        .object("new_wallet_button")
+        .expect("Couldn't get open_modal_button");
     new_wallet_button.connect_clicked(move |_| {
         open_wallet_dialog(&builder_wallet_clone);
     });
 
     let builder_send_clone = builder.clone();
-    let send_btc_button: Button = builder.object("send_btc_button").expect("Couldn't get open_modal_button");
+    let send_btc_button: Button = builder
+        .object("send_btc_button")
+        .expect("Couldn't get open_modal_button");
     send_btc_button.connect_clicked(move |_| {
         println!("Create transaction");
     });
@@ -96,10 +111,7 @@ pub fn create_view()-> Sender<ViewObject>{
 pub fn start_loading(sender: Sender<ViewObject>, text: String) {
     let id: String = "loading_message".to_string();
 
-    let view_object_data = ViewObjectData {
-        id,
-        text,
-    };
+    let view_object_data = ViewObjectData { id, text };
 
     let view_object_status = ViewObjectStatus {
         id: "loading_spinner".to_string(),
@@ -115,7 +127,7 @@ pub fn end_loading(sender: Sender<ViewObject>) {
 
     let view_object_data = ViewObjectData {
         id,
-        text: "".to_string()
+        text: "".to_string(),
     };
 
     let view_object_status = ViewObjectStatus {
@@ -128,7 +140,9 @@ pub fn end_loading(sender: Sender<ViewObject>) {
 }
 
 fn open_wallet_dialog(builder: &Builder) {
-    let dialog: Dialog = builder.object("wallet_dialog").expect("Couldn't get wallet_dialog");
+    let dialog: Dialog = builder
+        .object("wallet_dialog")
+        .expect("Couldn't get wallet_dialog");
 
     let key_entry: Entry = builder.object("key").expect("Couldn't get key");
     let address_entry: Entry = builder.object("address").expect("Couldn't get address");
@@ -160,7 +174,6 @@ fn open_wallet_dialog(builder: &Builder) {
                         let accounts = vec![new_account];
                         Account::save_all_accounts(accounts);
                         let read = Account::get_all_accounts();
-                        
                     });
                     /* if test_thread.is_finished(){println!("LIIIISTO user")};
                     test_thread.join(); */

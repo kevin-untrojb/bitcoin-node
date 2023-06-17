@@ -1,3 +1,4 @@
+pub mod app_manager;
 pub mod blockchain;
 pub mod common;
 pub mod config;

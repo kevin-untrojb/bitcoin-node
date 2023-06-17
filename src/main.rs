@@ -1,3 +1,4 @@
+mod app_manager;
 mod blockchain;
 mod common;
 mod config;
@@ -35,12 +36,12 @@ fn main() {
     gtk::init().expect("No se pudo inicializar GTK.");
     let sender = view::create_view();
 
-    thread::spawn(move || {
-        download_blockchain(
-            create_logger_actor(config::get_valor("LOG_FILE".to_string())),
-            sender.clone(),
-        );
-    });
+    // thread::spawn(move || {
+    //     download_blockchain(
+    //         create_logger_actor(config::get_valor("LOG_FILE".to_string())),
+    //         sender.clone(),
+    //     );
+    // });
 
     gtk::main();
 }
