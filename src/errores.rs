@@ -29,8 +29,9 @@ pub enum NodoBitcoinError {
     // decode base58 error
     DecodeError,
 
-    // wallet
+    // mensajes
     InvalidAccount,
+    NoEsTransaccion,
 }
 
 impl Error for NodoBitcoinError {}
@@ -113,6 +114,9 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::InvalidAccount => {
                 write!(f, "ERROR: La TxOut no pertenece a la cuenta.")
+            }
+            NodoBitcoinError::NoEsTransaccion => {
+                write!(f, "ERROR: El mensaje no contiene una transacción.")
             }
         }
     }
