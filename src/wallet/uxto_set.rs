@@ -6,7 +6,7 @@ use crate::errores::NodoBitcoinError;
 use std::collections::HashMap;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Utxo {
     pub tx_id: Uint256,
     pub output_index: u32,
@@ -24,7 +24,7 @@ impl fmt::Display for Utxo {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UTXOSet {
     pub utxos_for_account: HashMap<String, Vec<Utxo>>,
     pub account_for_txid_index: HashMap<(Uint256, u32), String>,

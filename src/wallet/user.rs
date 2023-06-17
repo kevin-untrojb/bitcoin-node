@@ -6,6 +6,7 @@ use std::{
 
 use crate::errores::NodoBitcoinError;
 
+#[derive(Clone)]
 pub struct Account {
     pub secret_key: String,
     pub public_key: String,
