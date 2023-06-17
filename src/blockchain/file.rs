@@ -40,6 +40,20 @@ pub fn leer_todos_blocks() -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
     Ok(todos)
 }
 
+pub fn _leer_algunos_blocks(cantidad: u32) -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
+    let mut algunos = vec![];
+    let mut offset = 0;
+    let block_file_len = get_file_blocks_size()?;
+    let mut i = 0;
+    while offset < block_file_len && i < cantidad {
+        let (bytes, new_offset) = leer_bloque(offset)?;
+        algunos.push(bytes);
+        offset = new_offset;
+        i += 1;
+    }
+    Ok(algunos)
+}
+
 pub fn _leer_primer_block() -> Result<Vec<u8>, NodoBitcoinError> {
     let (bytes, _) = leer_bloque(0)?;
     Ok(bytes)

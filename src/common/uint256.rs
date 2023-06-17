@@ -48,6 +48,11 @@ impl Uint256 {
         Uint256(bytes)
     }
 
+    pub fn _reverse_endian(&mut self) -> Uint256 {
+        let bytes = self.get_bytes();
+        Uint256::from_le_bytes(bytes)
+    }
+
     pub fn from_le_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
         let mut bytes = bytes;
         bytes.reverse();
@@ -181,6 +186,8 @@ impl fmt::Display for Uint256 {
 mod tests {
     use crate::common::uint256::Uint256;
 
+    use super::NUM_BYTES;
+
     #[test]
     fn test_nulti() {
         let a = Uint256([
@@ -255,5 +262,14 @@ mod tests {
         let a = Uint256::_from_u64(123456789);
         let format = "Uint256([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 5B, CD, 15])".to_string();
         assert_eq!(format!("{:X?}", a), format);
+    }
+
+    #[test]
+    fn test_reverse_endian() {
+        let mut a = Uint256::_from_u64(123456789);
+        let b = a._reverse_endian();
+        for i in 0..NUM_BYTES {
+            assert_eq!(a.0[i], b.0[NUM_BYTES - i - 1]);
+        }
     }
 }

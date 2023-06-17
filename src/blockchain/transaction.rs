@@ -5,7 +5,7 @@ use crate::common::utils_bytes;
 use crate::common::{decoder::p2pkh_script_serialized, uint256::Uint256};
 use crate::errores::NodoBitcoinError;
 use bitcoin_hashes::{sha256d, Hash};
-use std::{collections::HashMap, io::Write, vec};
+use std::{collections::HashMap, fmt, io::Write, vec};
 
 use super::block::SerializedBlock;
 
@@ -28,6 +28,19 @@ pub struct Transaction {
     pub lock_time: u32,
     pub tx_in_count: usize,
     pub tx_out_count: usize,
+}
+
+impl fmt::Display for Transaction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f,
+            "Transaction:\ninput: {:?}\noutput: {:?}\nlock_time: {:?}\ntxid: {:?}",
+            self.input,
+            self.output,
+            self.lock_time,
+            self.txid()
+        )
+    }
 }
 
 impl Transaction {
@@ -287,6 +300,16 @@ pub struct TxIn {
     pub script_bytes_amount: usize,
 }
 
+impl fmt::Display for TxIn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f,
+            "TxIn:\nprevious_output: {:?}\nscript_bytes: {:?}\nsignature_script: {:?}\nsequence: {:?}\nscript_bytes_amount: {:?}",
+            self.previous_output, self.script_bytes, self.signature_script, self.sequence, self.script_bytes_amount
+        )
+    }
+}
+
 impl TxIn {
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
@@ -379,6 +402,17 @@ pub struct Outpoint {
     pub hash: [u8; 32],
     pub index: u32,
 }
+
+impl fmt::Display for Outpoint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f,
+            "Outpoint:\nHash: {:?}\nIndex: {:?}",
+            self.hash, self.index
+        )
+    }
+}
+
 impl Outpoint {
     pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
@@ -429,6 +463,16 @@ pub struct TxOut {
     pub pk_len: usize,
     pub pk_script: Vec<u8>,
     pub pk_len_bytes: usize,
+}
+
+impl fmt::Display for TxOut {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f,
+            "TxOut\nvalue: {:?}\npk_script: {:?})",
+            self.value, self.pk_script
+        )
+    }
 }
 
 impl TxOut {
@@ -485,10 +529,16 @@ impl TxOut {
         })
     }
 
-    pub fn _is_user_account_output(&self, account: &str) -> Result<bool, NodoBitcoinError> {
-        let script = decode_base58(account)?;
-        let p2pkh_script = p2pkh_script_serialized(&script)?;
-        Ok(self.pk_script == p2pkh_script)
+    pub fn is_user_account_output(&self, account: &str) -> bool {
+        let script = match decode_base58(account) {
+            Ok(script) => script,
+            Err(_) => return false,
+        };
+        let p2pkh_script = match p2pkh_script_serialized(&script) {
+            Ok(script) => script,
+            Err(_) => return false,
+        };
+        self.pk_script == p2pkh_script
     }
 }
 

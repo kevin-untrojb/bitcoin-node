@@ -13,6 +13,7 @@ mod wallet;
 use std::sync::mpsc;
 use std::{env, println, thread};
 
+use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::uint256::Uint256;
 use crate::protocol::block_broadcasting::init_block_broadcasting;
@@ -25,6 +26,7 @@ use errores::NodoBitcoinError;
 use interface::view::{self, ViewObject};
 
 use crate::interface::view::{end_loading, start_loading};
+use crate::wallet::uxto_set::UTXOSet;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -253,6 +255,70 @@ fn new_tx_signed() {
 
         let tx_obj_bytes = tx_obj.serialize()?;
         println!("tx_obj_bytes: {:02X?}", tx_obj_bytes);
+
+        let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
+        println!("Hello, Bitcoin! Somos {}", nombre_grupo);
+        Ok(())
+    };
+
+    if let Err(e) = do_steps() {
+        println!("{}", e);
+    }
+}
+
+fn click_build_utxo_set() {
+    let args: Vec<String> = env::args().collect();
+    let do_steps = || -> Result<(), NodoBitcoinError> {
+        config::inicializar(args)?;
+        let bloques = SerializedBlock::read_blocks_from_file()?;
+        println!("Bloques totales: {:?}", bloques.len());
+
+        let txns = bloques
+            .iter()
+            .flat_map(|bloque| bloque.txns.clone())
+            .collect::<Vec<_>>();
+        println!("Txns totales: {:?}", txns.len());
+
+        // separar las txns en 2 vectores, las primeras y las demas
+        let primeras_txs = txns.iter().take(515575).cloned().collect::<Vec<_>>();
+        let otras_txs = txns.iter().skip(515575).cloned().collect::<Vec<_>>();
+
+        let accounts = vec![
+            "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string(),
+            "mtm4vS3WH7pg13pjFEmqGq2TSPDcUN6k7a".to_string(),
+        ];
+
+        let mut utxo_set = UTXOSet::new();
+        println!(
+            "Verificar las primeras {:?} transacciones",
+            primeras_txs.len()
+        );
+
+        utxo_set.update_from_transactions(primeras_txs, accounts.clone())?;
+
+        println!("UTXO Set len: {}", utxo_set.account_for_txid_index.len());
+        for account in accounts.clone() {
+            println!(
+                "UTXO Set for account {}: {}",
+                account,
+                utxo_set.get_available(&account)?
+            );
+        }
+        println!("UTXO Set:\n{}", utxo_set);
+
+        println!("Verificar las ultimas {:?} transacciones", otras_txs.len());
+
+        utxo_set.update_from_transactions(otras_txs, accounts.clone())?;
+
+        println!("UTXO Set len: {}", utxo_set.account_for_txid_index.len());
+        for account in accounts {
+            println!(
+                "UTXO Set for account {}: {}",
+                account,
+                utxo_set.get_available(&account)?
+            );
+        }
+        println!("UTXO Set:\n{}", utxo_set);
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
