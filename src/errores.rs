@@ -29,6 +29,9 @@ pub enum NodoBitcoinError {
     // decode base58 error
     DecodeError,
 
+    // transaccion
+    NoHaySuficientesUtxos,
+
     // mensajes
     InvalidAccount,
     NoEsTransaccion,
@@ -117,6 +120,12 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::NoEsTransaccion => {
                 write!(f, "ERROR: El mensaje no contiene una transacción.")
+            }
+            NodoBitcoinError::NoHaySuficientesUtxos => {
+                write!(
+                    f,
+                    "ERROR: No hay suficientes UTXO para crear la transacción."
+                )
             }
         }
     }

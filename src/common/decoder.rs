@@ -30,7 +30,7 @@ pub fn signature_der(secret_key_hexa_bytes: &[u8], message: &[u8]) -> Signature 
 /// Private Key WIF Compressed 52 characters base58, starts with a 'K' or 'L'
 /// a
 /// Private Key Hexadecimal Format (64 characters [0-9A-F])
-pub fn _wif_to_hex(wif: &str) -> Result<Vec<u8>, NodoBitcoinError> {
+pub fn wif_to_hex(wif: &str) -> Result<Vec<u8>, NodoBitcoinError> {
     // Decode the base58-encoded WIF compressed private key
     let decoded = bs58::decode(wif).into_vec().unwrap();
 
@@ -100,7 +100,7 @@ pub fn p2pkh_script_serialized(pubkey_hash: &[u8]) -> Result<Vec<u8>, NodoBitcoi
 
 #[cfg(test)]
 mod tests {
-    use crate::common::decoder::{_wif_to_hex, point_sec, signature_der};
+    use crate::common::decoder::{point_sec, signature_der, wif_to_hex};
 
     use super::{decode_base58, p2pkh_script_serialized};
 
@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn test_wif_to_hex() {
         let wif = "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw";
-        let hex = _wif_to_hex(wif);
+        let hex = wif_to_hex(wif);
         assert!(hex.is_ok());
 
         let hex = hex.unwrap();

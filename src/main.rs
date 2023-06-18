@@ -11,67 +11,35 @@ mod parse_args;
 mod protocol;
 mod wallet;
 
-use std::sync::mpsc;
-use std::{env, println, thread};
+use std::{env, println};
 
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::uint256::Uint256;
-use crate::protocol::block_broadcasting::init_block_broadcasting;
 use crate::protocol::send_tx::send_tx;
-use crate::{
-    log::{create_logger_actor, LogMessages},
-    protocol::{connection::connect, initial_block_download::get_full_blockchain},
-};
+use crate::{log::create_logger_actor, protocol::connection::connect};
 use errores::NodoBitcoinError;
-use interface::view::{self, ViewObject};
+use interface::view::{self};
 
-use crate::interface::view::{end_loading, start_loading};
 use crate::wallet::uxto_set::UTXOSet;
 
-fn main() {
+fn no_main() {
     let args: Vec<String> = env::args().collect();
     _ = config::inicializar(args);
 
     gtk::init().expect("No se pudo inicializar GTK.");
-    let sender = view::create_view();
-
-    // thread::spawn(move || {
-    //     download_blockchain(
-    //         create_logger_actor(config::get_valor("LOG_FILE".to_string())),
-    //         sender.clone(),
-    //     );
-    // });
+    _ = view::create_view();
 
     gtk::main();
 }
 
-fn send_tx_main() {
+fn main() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         let admin_connections = connect(logger.clone())?;
         send_tx(admin_connections, logger)?;
-        let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
-        println!("Hello, Bitcoin! Somos {}", nombre_grupo);
-        Ok(())
-    };
-
-    if let Err(e) = do_steps() {
-        println!("{}", e);
-    }
-}
-
-fn download_blockchain(logger: mpsc::Sender<LogMessages>, sender: glib::Sender<ViewObject>) {
-    let do_steps = || -> Result<(), NodoBitcoinError> {
-        start_loading(sender.clone(), "Connecting to peers... ".to_string());
-        let admin_connections = connect(logger.clone())?;
-        end_loading(sender.clone());
-        start_loading(sender.clone(), "Obteniendo blockchain... ".to_string());
-        get_full_blockchain(logger.clone(), admin_connections.clone())?;
-        end_loading(sender.clone());
-        init_block_broadcasting(logger.clone(), admin_connections)?;
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())
@@ -234,10 +202,10 @@ fn new_tx_signed() {
         let private_key_wif = "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw";
 
         let target_address = "mtm4vS3WH7pg13pjFEmqGq2TSPDcUN6k7a";
-        let target_amount: usize = 1000000;
+        let target_amount: u64 = 1000000;
 
         let change_address = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun";
-        let change_amount: usize = 100000;
+        let change_amount: u64 = 100000;
 
         let mut tx_ins = vec![];
         let tx_in = TxIn::new(previous_tx.txid()?, prev_index);

@@ -1,9 +1,11 @@
 use crate::common::decoder::{
-    _wif_to_hex, decode_base58, point_sec, script_serialized, signature_der,
+    decode_base58, point_sec, script_serialized, signature_der, wif_to_hex,
 };
 use crate::common::utils_bytes;
 use crate::common::{decoder::p2pkh_script_serialized, uint256::Uint256};
 use crate::errores::NodoBitcoinError;
+use crate::wallet::user::Account;
+use crate::wallet::uxto_set::Utxo;
 use bitcoin_hashes::{sha256d, Hash};
 use std::{collections::HashMap, fmt, io::Write, vec};
 
@@ -192,7 +194,7 @@ impl Transaction {
         }
     }
 
-    pub fn sig_hash(
+    fn sig_hash(
         &self,
         index: usize,
         previous_tx: Transaction,
@@ -257,7 +259,7 @@ impl Transaction {
         private_key_hexa: Vec<u8>,
         previous_tx: Transaction,
     ) -> Result<(), NodoBitcoinError> {
-        let sign_hash = self.sig_hash(0, previous_tx)?;
+        let sign_hash = self.sig_hash(input_index, previous_tx)?;
         let signature_der = signature_der(&private_key_hexa, &sign_hash);
         let signature_der_bytes = signature_der.serialize_der().clone().as_ref().to_vec();
 
@@ -278,9 +280,73 @@ impl Transaction {
         private_key_compresed: &str,
         previous_tx: Transaction,
     ) -> Result<(), NodoBitcoinError> {
-        let private_key_hexa = _wif_to_hex(private_key_compresed)?;
+        let private_key_hexa = wif_to_hex(private_key_compresed)?;
         self.sign_with_hexa_key(input_index, private_key_hexa, previous_tx)
     }
+}
+
+pub fn create_tx_to_send(
+    account: Account,
+    target_public_key: String,
+    value: u64,
+    fee: u64,
+    utxos: Vec<Utxo>,
+) -> Result<Transaction, NodoBitcoinError> {
+    let private_key_wif = account.clone().secret_key;
+    let (utxos, tx_in_value_sum) = get_utxos_for_value(utxos, value + fee)?;
+    let (tx_ins, previous_txs) = crear_tx_ins(utxos)?;
+    let tx_out_target = TxOut::new(value, &target_public_key)?;
+    let change_value = tx_in_value_sum - value - fee;
+    let tx_out_change = crear_change_txout(account, change_value)?;
+    let tx_outs = vec![tx_out_target, tx_out_change];
+    let mut tx_obj = Transaction::new(tx_ins, tx_outs, 0)?;
+    for (index, previous_tx) in previous_txs.iter().enumerate() {
+        tx_obj.sign_with_wif_compressed_key(index, &private_key_wif, previous_tx.clone())?;
+    }
+    Ok(tx_obj)
+}
+
+fn crear_tx_outs(
+    target_public_key: String,
+    value: u64,
+    fee: u64,
+) -> Result<Vec<TxOut>, NodoBitcoinError> {
+    let tx_out_target = TxOut::new(value, &target_public_key)?;
+    let tx_out_fee = TxOut::new(fee, &target_public_key)?;
+    Ok(vec![tx_out_target, tx_out_fee])
+}
+
+fn crear_tx_ins(utxos: Vec<Utxo>) -> Result<(Vec<TxIn>, Vec<Transaction>), NodoBitcoinError> {
+    let mut tx_in_vec = Vec::new();
+    let mut previous_tx_vec = Vec::new();
+    for utxo in utxos {
+        let tx_in = TxIn::new(utxo.tx_id, utxo.output_index as usize);
+        tx_in_vec.push(tx_in);
+        previous_tx_vec.push(utxo.tx.clone());
+    }
+    Ok((tx_in_vec, previous_tx_vec))
+}
+
+fn crear_change_txout(account: Account, value: u64) -> Result<TxOut, NodoBitcoinError> {
+    let change_address = account.public_key;
+    let tx_out_change = TxOut::new(value, &change_address)?;
+    Ok(tx_out_change)
+}
+
+fn get_utxos_for_value(utxos: Vec<Utxo>, value: u64) -> Result<(Vec<Utxo>, u64), NodoBitcoinError> {
+    let mut utxos_for_value = Vec::new();
+    let mut value_sum = 0;
+    for utxo in utxos {
+        value_sum += utxo.tx_out.value;
+        utxos_for_value.push(utxo);
+        if value_sum >= value {
+            break;
+        }
+    }
+    if value_sum < value {
+        return Err(NodoBitcoinError::NoHaySuficientesUtxos);
+    }
+    Ok((utxos_for_value, value_sum))
 }
 
 /// A struct representing an input transaction for a Bitcoin transaction
@@ -516,13 +582,13 @@ impl TxOut {
         8 + self.pk_len_bytes + self.pk_script.len()
     }
 
-    pub fn new(amount: usize, account: &str) -> Result<TxOut, NodoBitcoinError> {
+    pub fn new(amount: u64, account: &str) -> Result<TxOut, NodoBitcoinError> {
         let script = decode_base58(account)?;
         let p2pkh_script = p2pkh_script_serialized(&script)?;
         let pk_len = p2pkh_script.len();
         let pk_len_bytes = utils_bytes::from_amount_bytes_to_prefix(pk_len);
         Ok(TxOut {
-            value: amount as u64,
+            value: amount,
             pk_len,
             pk_script: p2pkh_script,
             pk_len_bytes: pk_len_bytes.into(),
@@ -1214,10 +1280,10 @@ mod tests {
         //let _bytes_previous_id = _tx_id._get_le_bytes();
 
         let target_address = "mwJn1YPMq7y5F8J3LkC5Hxg9PHyZ5K4cFv";
-        let target_amount: usize = 1000000;
+        let target_amount: u64 = 1000000;
 
         let change_address = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2";
-        let change_amount: usize = 900000;
+        let change_amount: u64 = 900000;
 
         let mut tx_ins = vec![];
         let previous_tx_id = previous_tx.txid();

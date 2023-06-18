@@ -12,6 +12,7 @@ pub struct Utxo {
     pub output_index: u32,
     pub tx_out: TxOut,
     pub pk_script: Vec<u8>,
+    pub tx: Transaction,
 }
 
 impl fmt::Display for Utxo {
@@ -55,12 +56,14 @@ impl UTXOSet {
         tx_id: Uint256,
         output_index: u32,
         tx_out: &TxOut,
+        tx: &Transaction,
     ) {
         let utxo = Utxo {
             tx_id,
             output_index: output_index,
             tx_out: tx_out.clone(),
             pk_script: tx_out.pk_script.clone(),
+            tx: tx.clone(),
         };
         let utxos_for_account = self
             .utxos_for_account
@@ -103,7 +106,13 @@ impl UTXOSet {
                     Ok(account) => account,
                     Err(_) => continue,
                 };
-                self.agregar_utxo(current_account.clone(), tx_id, output_index as u32, tx_out);
+                self.agregar_utxo(
+                    current_account.clone(),
+                    tx_id,
+                    output_index as u32,
+                    tx_out,
+                    &tx,
+                );
             }
 
             for tx_in in tx.input.iter() {
