@@ -4,18 +4,16 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::log::{log_error_message,LogMessages};
-use crate::wallet::uxto_set::{UtxoSetTrait,Utxo,UTXOSet};
+use crate::wallet::uxto_set::{Utxo,UTXOSet};
 use crate::blockchain::transaction::{Transaction, TxOut};
-use crate::common::uint256::Uint256;
 use crate::errores::NodoBitcoinError;
-use std::collections::HashMap;
 
 pub struct TransactionManager {
-    uxtos: dyn UtxoSetTrait
+    uxtos: UTXOSet
 }
 
-enum TransactionMessages {
-    GetAvailable(( &str ,Sender<Result<(), NodoBitcoinError>>)),
+pub enum TransactionMessages {
+    GetAvailable(( &'static str ,Sender<Result<u64, NodoBitcoinError>>)),
     UpdateFromTransactions((Vec<Transaction>,Vec<String>, Sender<Result<(), NodoBitcoinError>>)),
     ShutDown,
 }
@@ -57,40 +55,29 @@ pub fn update_from_transactions(logger: Sender<LogMessages>, manager: Sender<Tra
     manager.send(TransactionMessages::UpdateFromTransactions((transactions,accounts,sender)));
 
     match receiver.recv() {
-        Ok(result) => match result {
-            Ok(()) => {
-                result
-            }
-            Err(error) => {
-                error
-            }
+        Ok(result) => {
+            result
         }
         Err(_) => {
             // todo log error
             // handle error
-            log_error_message(logger,"");
+            log_error_message(logger,"".to_string());
             Err(NodoBitcoinError::InvalidAccount)
         }
     }
 
 }
-pub fn get_available(logger: Sender<LogMessages>, manager: Sender<TransactionMessages>,account: &str) ->Result<u64, NodoBitcoinError> {
+pub fn get_available(logger: Sender<LogMessages>, manager: Sender<TransactionMessages>,account: &'static str) ->Result<u64, NodoBitcoinError> {
     let (sender, receiver)= channel();
-    manager.send(TransactionMessages::GetAvailable((account,sender)));
-
+    manager.send(TransactionMessages::GetAvailable((account, sender)));
     match receiver.recv() {
-        Ok(result) => match result {
-            Ok((balance)) => {
-                OK(balance)
-            }
-            Err(error) => {
-                Err(error)
-            }
+        Ok(result) => {
+            result
         }
         Err(_) => {
             // todo log error
             // handle error
-            log_error_message(logger,"");
+            log_error_message(logger,"".to_string());
             Err(NodoBitcoinError::InvalidAccount)
         }
     }
