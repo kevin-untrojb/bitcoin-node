@@ -23,7 +23,7 @@ use interface::view::{self};
 
 use crate::wallet::uxto_set::UTXOSet;
 
-fn no_main() {
+fn main() {
     let args: Vec<String> = env::args().collect();
     _ = config::inicializar(args);
 
@@ -33,7 +33,7 @@ fn no_main() {
     gtk::main();
 }
 
-fn main() {
+fn send_tx_main() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
