@@ -50,11 +50,12 @@ impl ApplicationManager {
     }
 
     pub fn get_available_amount(&self) -> Result<u64, NodoBitcoinError> {
-        let current_account = match &self.current_account {
+        let option_current_account = self.current_account.clone();
+        let current_account = match option_current_account {
             Some(account) => account,
             None => return Err(NodoBitcoinError::NoHayCuentaSeleccionada),
         };
-        let public_key = &current_account.public_key;
+        let public_key = current_account.public_key.clone();
         let logger = self.logger.clone();
         let tx_manager = self.tx_manager.clone();
 
