@@ -202,14 +202,14 @@ mod tests {
         assert_eq!(accounts[1].wallet_name, account2.wallet_name);
     }
 
-    #[test]
-    fn test_read() {
-        // Para probar si se creo bien desde interfaz
-        let read = Account::get_all_accounts().unwrap();
-        println!("{}", read[0].secret_key);
-        println!("{}", read[0].public_key);
-        println!("{}", read[0].wallet_name);
-    }
+    // #[test]
+    // fn test_read() {
+    //     // Para probar si se creo bien desde interfaz
+    //     let read = Account::get_all_accounts().unwrap();
+    //     println!("{}", read[0].secret_key);
+    //     println!("{}", read[0].public_key);
+    //     println!("{}", read[0].wallet_name);
+    // }
 
     // #[test]
     // fn test_file() {

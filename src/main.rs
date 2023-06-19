@@ -17,6 +17,7 @@ use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::uint256::Uint256;
 use crate::protocol::send_tx::send_tx;
+use crate::wallet::user::Account;
 use crate::{log::create_logger_actor, protocol::connection::connect};
 use errores::NodoBitcoinError;
 use interface::view::{self};
@@ -252,10 +253,17 @@ fn click_build_utxo_set() {
         let primeras_txs = txns.iter().take(515575).cloned().collect::<Vec<_>>();
         let otras_txs = txns.iter().skip(515575).cloned().collect::<Vec<_>>();
 
-        let accounts = vec![
-            "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string(),
-            "mtm4vS3WH7pg13pjFEmqGq2TSPDcUN6k7a".to_string(),
-        ];
+        let private_key1 = "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw".to_string();
+        let public_key1 = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
+        let account_name1 = "test".to_string();
+        let account1 = Account::new(private_key1, public_key1.clone(), account_name1);
+
+        let private_key2 = "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw".to_string();
+        let public_key2 = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
+        let account_name2 = "test".to_string();
+        let account2 = Account::new(private_key2, public_key2.clone(), account_name2);
+
+        let accounts = vec![account1, account2];
 
         let mut utxo_set = UTXOSet::new();
         println!(
@@ -269,8 +277,8 @@ fn click_build_utxo_set() {
         for account in accounts.clone() {
             println!(
                 "UTXO Set for account {}: {}",
-                account.clone(),
-                utxo_set.get_available(account)?
+                account.public_key.clone(),
+                utxo_set.get_available(account.public_key)?
             );
         }
         println!("UTXO Set:\n{}", utxo_set);
@@ -283,8 +291,8 @@ fn click_build_utxo_set() {
         for account in accounts {
             println!(
                 "UTXO Set for account {}: {}",
-                account.clone(),
-                utxo_set.get_available(account)?
+                account.public_key.clone(),
+                utxo_set.get_available(account.public_key)?
             );
         }
         println!("UTXO Set:\n{}", utxo_set);

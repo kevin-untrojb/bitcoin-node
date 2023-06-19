@@ -4,6 +4,8 @@ use crate::errores::NodoBitcoinError;
 use std::collections::HashMap;
 use std::fmt;
 
+use super::user::Account;
+
 #[derive(Debug, Clone)]
 pub struct Utxo {
     pub tx_id: Uint256,
@@ -81,9 +83,9 @@ impl UTXOSet {
         self.account_for_txid_index.remove(&key);
     }
 
-    fn validar_output(accounts: Vec<String>, tx_out: &TxOut) -> Result<String, NodoBitcoinError> {
+    fn validar_output(accounts: Vec<Account>, tx_out: &TxOut) -> Result<Account, NodoBitcoinError> {
         for account in accounts.iter() {
-            if tx_out.is_user_account_output(account.clone()) {
+            if tx_out.is_user_account_output(account.clone().public_key) {
                 return Ok(account.clone());
             }
         }
@@ -93,7 +95,7 @@ impl UTXOSet {
     pub fn update_from_transactions(
         &mut self,
         transactions: Vec<Transaction>,
-        accounts: Vec<String>,
+        accounts: Vec<Account>,
     ) -> Result<(), NodoBitcoinError> {
         let mut i = 0;
         for tx in transactions.iter() {
@@ -104,8 +106,9 @@ impl UTXOSet {
                     Ok(account) => account,
                     Err(_) => continue,
                 };
+
                 self.agregar_utxo(
-                    current_account.clone(),
+                    current_account.public_key.clone(),
                     tx_id,
                     output_index as u32,
                     tx_out,
@@ -161,8 +164,11 @@ mod tests {
 
     #[test]
     fn test_build_from_transactions() {
-        let account = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
-        let p2pkh_script = get_pk_script_from_account(account.clone());
+        let private_key = "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw".to_string();
+        let public_key = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
+        let account_name = "test".to_string();
+        let account = Account::new(private_key, public_key.clone(), account_name);
+        let p2pkh_script = get_pk_script_from_account(public_key.clone());
 
         let tx_out1 = TxOut {
             value: 100,
@@ -217,25 +223,29 @@ mod tests {
         let transactions = vec![transaction1.clone(), transaction2.clone()];
 
         let mut utxo_set = UTXOSet::new();
-        let result = utxo_set.update_from_transactions(transactions, vec![account.to_string()]);
+        let result = utxo_set.update_from_transactions(transactions, vec![account]);
         assert!(result.is_ok());
 
         assert_eq!(utxo_set.utxos_for_account.len(), 1);
-        assert!(utxo_set.utxos_for_account.contains_key(&account));
-        let utxos_for_account = utxo_set.utxos_for_account.get(&account).unwrap();
+        assert!(utxo_set.utxos_for_account.contains_key(&public_key));
+        let utxos_for_account = utxo_set.utxos_for_account.get(&public_key).unwrap();
         assert_eq!(utxos_for_account.len(), 2);
         assert!(utxos_for_account[0].tx_id == transaction1.txid().unwrap());
         assert!(utxos_for_account[1].tx_id == transaction2.txid().unwrap());
 
-        let balance = utxo_set.get_available(account);
+        let balance = utxo_set.get_available(public_key);
         assert!(balance.is_ok());
         assert_eq!(balance.unwrap(), 300);
     }
 
     #[test]
     fn test_build_from_transactions_for_spent_outputs() {
-        let account = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
-        let p2pkh_script = get_pk_script_from_account(account.clone());
+        let private_key = "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw".to_string();
+        let public_key = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
+        let account_name = "test".to_string();
+        let account = Account::new(private_key, public_key.clone(), account_name);
+
+        let p2pkh_script = get_pk_script_from_account(public_key.clone());
 
         let mut utxo_set = UTXOSet::new();
 
@@ -281,6 +291,6 @@ mod tests {
         utxo_set
             .update_from_transactions(vec![transaction1, transaction2], vec![account.clone()])
             .unwrap();
-        assert_eq!(utxo_set.utxos_for_account[&account].len(), 0);
+        assert_eq!(utxo_set.utxos_for_account[&account.public_key].len(), 0);
     }
 }

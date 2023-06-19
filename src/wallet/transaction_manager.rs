@@ -7,7 +7,7 @@ use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::Transaction;
 use crate::errores::NodoBitcoinError;
 use crate::log::{log_error_message, LogMessages};
-use crate::protocol::admin_connections::{AdminConnections, self};
+use crate::protocol::admin_connections::{self, AdminConnections};
 use crate::protocol::block_broadcasting::init_block_broadcasting;
 use crate::wallet::uxto_set::UTXOSet;
 
@@ -25,11 +25,17 @@ pub enum TransactionMessages {
     UpdateFromTransactions(
         (
             Vec<Transaction>,
-            Vec<String>,
+            Vec<Account>,
             Sender<Result<(), NodoBitcoinError>>,
         ),
     ),
-    InitBlockBroadcasting((AdminConnections, Sender<LogMessages>, Sender<TransactionMessages>)),
+    InitBlockBroadcasting(
+        (
+            AdminConnections,
+            Sender<LogMessages>,
+            Sender<TransactionMessages>,
+        ),
+    ),
     NewBlock(SerializedBlock),
     NewTx(Transaction),
     ShutDown,
@@ -44,14 +50,19 @@ impl TransactionManager {
             TransactionMessages::UpdateFromTransactions((transactions, accounts, result)) => {
                 result.send(self.uxtos.update_from_transactions(transactions, accounts));
             }
-            TransactionMessages::InitBlockBroadcasting ((admin_connections, logger, sender_tx_manager))=> {
+            TransactionMessages::InitBlockBroadcasting((
+                admin_connections,
+                logger,
+                sender_tx_manager,
+            )) => {
                 thread::spawn(move || {
                     init_block_broadcasting(logger, admin_connections, sender_tx_manager);
                 });
             }
             TransactionMessages::NewBlock(block) => {
-                let txns = block.txns;
-                self.uxtos.update_from_transactions(txns, self.accounts);
+                let txns = block.txns.clone();
+                self.uxtos
+                    .update_from_transactions(txns.clone(), self.accounts.clone());
                 for tx in txns {
                     self.update_pendings(tx);
                 }
@@ -74,7 +85,7 @@ pub fn create_transaction_manager(accounts: Vec<Account>) -> Sender<TransactionM
     let transaction_manager = Arc::new(Mutex::new(TransactionManager {
         uxtos: UTXOSet::new(),
         tx_pendings: Vec::new(),
-        accounts
+        accounts,
     }));
 
     thread::spawn(move || {
@@ -92,7 +103,7 @@ pub fn update_from_transactions(
     logger: Sender<LogMessages>,
     manager: Sender<TransactionMessages>,
     transactions: Vec<Transaction>,
-    accounts: Vec<String>,
+    accounts: Vec<Account>,
 ) -> Result<(), NodoBitcoinError> {
     let (sender, receiver) = channel();
     manager.send(TransactionMessages::UpdateFromTransactions((

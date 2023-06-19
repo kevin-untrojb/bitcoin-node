@@ -66,7 +66,7 @@ fn mock_tx_obj() -> Result<Transaction, NodoBitcoinError> {
         .collect::<Vec<_>>();
 
     let mut utxo_set = UTXOSet::new();
-    utxo_set.update_from_transactions(txns, vec![public_key.clone()])?;
+    utxo_set.update_from_transactions(txns, vec![account.clone()])?;
 
     let utxos_by_account = utxo_set.utxos_for_account;
     let utxos = utxos_by_account.get(&public_key).unwrap().clone();
