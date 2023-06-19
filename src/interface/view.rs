@@ -3,20 +3,20 @@ use gtk::prelude::Continue;
 use gtk::{
     prelude::*,
     traits::{ButtonExt, WidgetExt},
-    Builder, Button, Dialog, Entry, Label, ResponseType, Spinner, TextView, Window,
+    Builder, Button, Dialog, Entry, Label, ResponseType, Spinner, Window,
 };
+use gtk::{CellRendererText, ComboBox, ListStore};
 use std::{thread, vec};
 
 use std::println;
 
-use crate::app_manager::ApplicationManager;
+use crate::app_manager::{self, ApplicationManager};
 use crate::wallet::user::Account;
 
 pub enum ViewObject {
     Label(ViewObjectData),
-    Button(ViewObjectData),
     Spinner(ViewObjectStatus),
-    TextView(ViewObjectData),
+    NewAccount(Account)
 }
 
 pub struct ViewObjectData {
@@ -29,8 +29,6 @@ pub struct ViewObjectStatus {
     pub active: bool,
 }
 
-// CAMBIAR EXPECTS !!!!!!!!
-
 pub fn create_view() -> Sender<ViewObject> {
     let title = "Nodo Bitcoin - Los Rustybandidos".to_string();
     let glade_src = include_str!("window.glade");
@@ -40,71 +38,83 @@ pub fn create_view() -> Sender<ViewObject> {
     let app_manager = ApplicationManager::new(sender.clone());
 
     let builder = Builder::from_string(glade_src);
-    let window: Window = builder
-        .object("window")
-        .expect("Error: No encuentra objeto 'window'");
-    window.set_title(&title);
-    window.show_all();
+    let window: Window;
+    if let Some(res) = builder.object("window") {
+        window = res;
+        window.set_title(&title);
+        window.show_all();
+
+        let app_manager_clone = app_manager.clone();
+        window.connect_delete_event(move |_, _| {
+            app_manager_clone.close();
+            gtk::main_quit();
+            Inhibit(false)
+        });
+    };
+
+    create_combobox_wallet_list(&builder, &app_manager.accounts);
 
     let builder_receiver_clone = builder.clone();
     receiver.attach(None, move |view_object: ViewObject| {
         match view_object {
             ViewObject::Label(data) => {
-                let label: Label = builder_receiver_clone
-                    .object(&String::from(data.id))
-                    .expect("error");
-                label.set_text(&data.text.to_string());
-            }
-            ViewObject::Button(data) => {
-                println!(
-                    "RECEIVER BUTTON {} {}",
-                    String::from(&data.id),
-                    data.text.to_string()
-                );
-                let button: Button = builder_receiver_clone
-                    .object(&String::from(data.id))
-                    .expect("error");
-                button.set_label(&data.text.to_string());
+                if let Some(label) = builder_receiver_clone.object::<Label>(&String::from(data.id))
+                {
+                    label.set_text(&data.text.to_string());
+                }
             }
             ViewObject::Spinner(data) => {
-                let button: Spinner = builder_receiver_clone
-                    .object(&String::from(data.id))
-                    .expect("error");
-                button.set_active(data.active);
+                if let Some(spinner) =
+                    builder_receiver_clone.object::<Spinner>(&String::from(data.id))
+                {
+                    spinner.set_active(data.active);
+                }
             }
-            ViewObject::TextView(data) => {
-                let text_view: TextView = builder_receiver_clone
-                    .object(&String::from(data.id))
-                    .expect("error");
-                let buffer = text_view.buffer().unwrap();
-                buffer.insert_at_cursor(&data.text.to_string());
+            ViewObject::NewAccount(account) => {
+                add_wallet_combobox(&builder_receiver_clone, &account)
             }
         }
         glib::Continue(true)
     });
 
-    let builder_wallet_clone = builder.clone();
-    let new_wallet_button: Button = builder
-        .object("new_wallet_button")
-        .expect("Couldn't get open_modal_button");
-    new_wallet_button.connect_clicked(move |_| {
-        open_wallet_dialog(&builder_wallet_clone);
-    });
-
-    let builder_send_clone = builder.clone();
+    /*let builder_send_clone = builder.clone();
     let send_btc_button: Button = builder
         .object("send_btc_button")
         .expect("Couldn't get open_modal_button");
     send_btc_button.connect_clicked(move |_| {
         println!("Create transaction");
-    });
+    });*/
 
-    window.connect_delete_event(|_, _| {
-        // Corta ejecucion al cerrar la ventana, aca cerrariamos hilos
-        gtk::main_quit();
-        Inhibit(false)
-    });
+    let builder_wallet_clone = builder.clone();
+    if let Some(dialog) = builder.object::<Dialog>("wallet_dialog") {
+        let dialog_clone = dialog.clone();
+        if let Some(new_wallet_button) = builder_wallet_clone.object::<Button>("new_wallet_button") {
+            new_wallet_button.connect_clicked(move |_| {
+                open_wallet_dialog(&dialog_clone, &builder_wallet_clone, app_manager.clone());
+            });
+        }
+    }
 
+    
+    if let Some(combobox_wallet) = builder.object::<ComboBox>("combobox_wallet"){
+        combobox_wallet.connect_changed(|combobox| {
+            if let Some(active_iter) = combobox.active_iter() {
+                match combobox.model() {
+                    Some(model) => {
+                        let value: String = match model.value(&active_iter, 0).get(){
+                            Ok(res) => res,
+                            Err(_) => todo!(),
+                        };
+                        //app_manager.clone().select_current_account(value);
+                        println!("Opción seleccionada: {}", value);
+
+                    },
+                    None => todo!(),
+                };
+            }
+        });
+    }
+    
     sender
 }
 
@@ -139,49 +149,43 @@ pub fn end_loading(sender: Sender<ViewObject>) {
     let _ = sender.send(ViewObject::Label(view_object_data));
 }
 
-fn open_wallet_dialog(builder: &Builder) {
-    let dialog: Dialog = builder
-        .object("wallet_dialog")
-        .expect("Couldn't get wallet_dialog");
+fn open_wallet_dialog(dialog: &Dialog, builder: &Builder, app_manager: ApplicationManager) {
+    let key_entry: Entry;
+    if let Some(res) = builder.object::<Entry>("key") {
+        key_entry = res;
+    } else {
+        return;
+    }
 
-    let key_entry: Entry = builder.object("key").expect("Couldn't get key");
-    let address_entry: Entry = builder.object("address").expect("Couldn't get address");
-    let name_entry: Entry = builder.object("name").expect("Couldn't get address");
+    let address_entry: Entry;
+    if let Some(res) = builder.object::<Entry>("address") {
+        address_entry = res;
+    } else {
+        return;
+    }
+
+    let name_entry: Entry;
+    if let Some(res) = builder.object::<Entry>("name") {
+        name_entry = res;
+    } else {
+        return;
+    }
 
     dialog.connect_response(move |dialog, response_id| {
-        println!("RESPONSE {}", response_id);
-
         match response_id {
             ResponseType::Ok => {
-                let key = key_entry.text();
-                let address = address_entry.text();
-                let name = name_entry.text();
-
-                gtk::glib::idle_add(move || {
-                    // Test: creo hilo para asegurar que sigue el proceso en segundo plano.
-                    //       Al cerrar ventana general, finaliza.
-                    //       En este hilo habria que guardar los datos
-                    let key_clone = key.clone();
-                    let address_clone = address.clone();
-                    let name_clone = name.clone();
-
-                    let test_thread = thread::spawn(move || {
-                        let new_account = Account::new(
-                            key_clone.to_string(),
-                            address_clone.to_string(),
-                            name_clone.to_string(),
-                        );
-                        let accounts = vec![new_account];
-                        Account::save_all_accounts(accounts);
-                        let read = Account::get_all_accounts();
-                    });
-                    /* if test_thread.is_finished(){println!("LIIIISTO user")};
-                    test_thread.join(); */
-
-                    Continue(false)
-                });
+                let key = key_entry.text().to_string();
+                let address = address_entry.text().to_string();
+                let name = name_entry.text().to_string();
+                if !key.is_empty() && !address.is_empty() && !name.is_empty(){
+                    app_manager.create_account(key, address, name);
+                }
+                key_entry.set_text("");
+                address_entry.set_text("");
+                name_entry.set_text("");
 
                 dialog.hide();
+
             }
             ResponseType::Close => dialog.hide(),
             _ => dialog.hide(),
@@ -190,4 +194,43 @@ fn open_wallet_dialog(builder: &Builder) {
 
     dialog.show_all();
     dialog.run();
+}
+
+fn create_combobox_wallet_list(builder: &Builder, accounts: &Vec<Account>) {
+    let combobox_wallet: ComboBox;
+    if let Some(res) = builder.object::<ComboBox>("combobox_wallet") {
+        combobox_wallet = res;
+    } else {
+        return;
+    };
+
+    let list_store: ListStore;
+    if let Some(res) = builder.object::<ListStore>("accounts") {
+        list_store = res;
+    } else {
+        return;
+    };
+
+    for account in accounts {
+        let name = &account.wallet_name as &dyn ToValue;
+        list_store.insert_with_values(None, &[(0, name)]);
+    }
+    list_store.insert_with_values(Some(0 as u32), &[(0, &"None".to_string() as &dyn ToValue)]);
+    
+    let cell_renderer = CellRendererText::new();
+    combobox_wallet.pack_start(&cell_renderer, true);
+    combobox_wallet.add_attribute(&cell_renderer, "text", 0);
+    combobox_wallet.set_active(Some(0));
+}
+
+fn add_wallet_combobox(builder: &Builder, account: &Account){
+    let list_store: ListStore;
+    if let Some(res) = builder.object::<ListStore>("accounts") {
+        list_store = res;
+    } else {
+        return;
+    };
+
+    let name = &account.wallet_name as &dyn ToValue;
+    list_store.insert_with_values(None, &[(0, name)]);
 }

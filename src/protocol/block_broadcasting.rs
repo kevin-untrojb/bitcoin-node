@@ -3,7 +3,8 @@ use crate::{
         block::SerializedBlock,
         blockheader::BlockHeader,
         file::{escribir_archivo, escribir_archivo_bloque},
-        proof_of_work::pow_validation, transaction::Transaction,
+        proof_of_work::pow_validation,
+        transaction::Transaction,
     },
     errores::NodoBitcoinError,
     log::{log_error_message, log_info_message, LogMessages},
@@ -33,14 +34,20 @@ pub fn init_block_broadcasting(
         threads.push(thread::spawn(move || loop {
             let mut buffer = [0u8; 24];
             if socket.read_message(&mut buffer).is_err() {
-                log_error_message(thread_logger, "Error al leer el header del mensaje en broadcasting".to_string());
+                log_error_message(
+                    thread_logger,
+                    "Error al leer el header del mensaje en broadcasting".to_string(),
+                );
                 return;
             }
             let (command, header) = match check_header(&buffer) {
                 Ok((command, payload_len)) => {
                     let mut header = vec![0u8; payload_len];
                     if socket.read_exact_message(&mut header).is_err() {
-                        log_error_message(thread_logger, "Error al leer el mensaje en broadcasting".to_string());
+                        log_error_message(
+                            thread_logger,
+                            "Error al leer el mensaje en broadcasting".to_string(),
+                        );
                         return;
                     }
                     (command, header)
@@ -58,13 +65,16 @@ pub fn init_block_broadcasting(
                 };
 
                 if socket.write_message(&pong_msg).is_err() {
-                    log_error_message(thread_logger, "Error al escribir el mensaje pong".to_string());
+                    log_error_message(
+                        thread_logger,
+                        "Error al escribir el mensaje pong".to_string(),
+                    );
                     return;
                 }
             }
 
             if command == "inv" {
-                let get_data = match GetDataMessage::new_for_tx(&header){
+                let get_data = match GetDataMessage::new_for_tx(&header) {
                     Ok(get_data) => get_data,
                     Err(_) => continue,
                 };
@@ -81,13 +91,19 @@ pub fn init_block_broadcasting(
                 };
 
                 if socket.write_message(&get_data_message).is_err() {
-                    log_error_message(thread_logger, "Error al escribir el mensaje get_data".to_string());
+                    log_error_message(
+                        thread_logger,
+                        "Error al escribir el mensaje get_data".to_string(),
+                    );
                     return;
                 }
 
                 let mut buffer = [0u8; 24];
                 if socket.read_exact_message(&mut buffer).is_err() {
-                    log_error_message(thread_logger, "Error al leer el header mensaje en broadcasting.".to_string());
+                    log_error_message(
+                        thread_logger,
+                        "Error al leer el header mensaje en broadcasting.".to_string(),
+                    );
                     return;
                 }
 
@@ -95,7 +111,10 @@ pub fn init_block_broadcasting(
                     Ok((command, payload_len)) => {
                         let mut tx_read = vec![0u8; payload_len];
                         if socket.read_exact_message(&mut tx_read).is_err() {
-                            log_error_message(thread_logger, "Error al leer el mensaje en broadcasting.".to_string());
+                            log_error_message(
+                                thread_logger,
+                                "Error al leer el mensaje en broadcasting.".to_string(),
+                            );
                             return;
                         }
                         (command, tx_read)
@@ -110,7 +129,6 @@ pub fn init_block_broadcasting(
                     let tx = Transaction::deserialize(&tx_read);
                     // guardarlas en un vector con las pending
                 }
-
             }
 
             if command == "headers" {
@@ -143,13 +161,19 @@ pub fn init_block_broadcasting(
                 };
 
                 if socket.write_message(&get_data_message).is_err() {
-                    log_error_message(thread_logger, "Error al escribir el mensaje get data en broadcasting".to_string());
+                    log_error_message(
+                        thread_logger,
+                        "Error al escribir el mensaje get data en broadcasting".to_string(),
+                    );
                     return;
                 }
 
                 let mut buffer = [0u8; 24];
                 if socket.read_exact_message(&mut buffer).is_err() {
-                    log_error_message(thread_logger, "Error al leer el header mensaje en broadcasting.".to_string());
+                    log_error_message(
+                        thread_logger,
+                        "Error al leer el header mensaje en broadcasting.".to_string(),
+                    );
                     return;
                 }
 
@@ -157,7 +181,10 @@ pub fn init_block_broadcasting(
                     Ok((command, payload_len)) => {
                         let mut block_read = vec![0u8; payload_len];
                         if socket.read_exact_message(&mut block_read).is_err() {
-                            log_error_message(thread_logger, "Error al leer el mensaje en broadcasting.".to_string());
+                            log_error_message(
+                                thread_logger,
+                                "Error al leer el mensaje en broadcasting.".to_string(),
+                            );
                             return;
                         }
                         (command, block_read)
