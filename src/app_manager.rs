@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     config,
-    errores::NodoBitcoinError,
+    errores::{NodoBitcoinError, InterfaceError},
     interface::view::{end_loading, start_loading, ViewObject},
     log::{create_logger_actor, LogMessages},
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
@@ -102,23 +102,18 @@ impl ApplicationManager {
         key: String,
         address: String,
         name: String,
-    ) -> Result<(), NodoBitcoinError> {
+    ) -> Account {
         println!("Create account!!!!!!");
         let new_account = Account::new(key, address, name);
 
         let is_valid =
             ApplicationManager::account_validator(new_account.clone(), self.accounts.clone());
         if !is_valid {
-            return Err(NodoBitcoinError::ErrorAlCrearLaCuenta);
+            self.sender_frontend.send(ViewObject::Error(InterfaceError::CreateAccount));
         }
 
         self.accounts.push(new_account.clone());
-
-        // let _ = self
-        //     .sender_frontend
-        //     .send(ViewObject::NewAccount(new_account));
-
-        Ok(())
+        new_account.clone()
     }
 
     fn account_validator(new_account: Account, accounts: Vec<Account>) -> bool {
