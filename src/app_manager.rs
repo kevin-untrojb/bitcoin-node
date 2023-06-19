@@ -43,8 +43,9 @@ impl ApplicationManager {
         app_manager
     }
 
-    pub fn close(&mut self) {
+    pub fn close(&self) {
         // TODO: cerrar los threads abiertos
+        println!("Close");
         _ = Account::save_all_accounts(self.accounts.clone());
         _ = self.tx_manager.send(TransactionMessages::ShutDown);
     }
@@ -95,4 +96,20 @@ impl ApplicationManager {
         end_loading(sender_frontend.clone());
         Ok(())
     }
+
+    pub fn create_account(&self, key: String, address: String, name: String) {
+        println!("Create account!!!!!!");
+        let new_account = Account::new(
+            key,
+            address,
+            name,
+        );
+        // Actualizar app manager
+
+        let _ = self.sender_frontend.send(ViewObject::NewAccount(new_account));
+    }
+
+    /*pub fn select_current_account(&self, name: String){
+        self.accounts.
+    }*/
 }
