@@ -10,7 +10,7 @@ use crate::{
     messages::{
         getdata::GetDataMessage, headers::deserealize_sin_guardar, messages_header::check_header,
         ping_pong::make_pong,
-    },
+    }, wallet::transaction_manager::TransactionMessages,
 };
 use std::sync::mpsc::Sender;
 use std::{
@@ -23,12 +23,14 @@ use super::admin_connections::AdminConnections;
 pub fn init_block_broadcasting(
     logger: Sender<LogMessages>,
     mut admin_connections: AdminConnections,
+    sender_tx_manager: Sender<TransactionMessages>
 ) -> Result<(), NodoBitcoinError> {
     let blocks = Arc::new(Mutex::new(SerializedBlock::read_blocks_from_file()?));
     let mut threads = vec![];
     for connection in admin_connections.get_connections() {
         let socket = connection.clone();
         let thread_logger = logger.clone();
+        let thread_sender_tx_manager = sender_tx_manager.clone();
         let shared_blocks = blocks.clone();
         threads.push(thread::spawn(move || loop {
             let mut buffer = [0u8; 24];
@@ -107,8 +109,15 @@ pub fn init_block_broadcasting(
                 };
 
                 if command == "tx" {
-                    let tx = Transaction::deserialize(&tx_read);
-                    // guardarlas en un vector con las pending
+                    let tx = match Transaction::deserialize(&tx_read){
+                        Ok(tx) => tx,
+                        Err(_) => {
+                            log_error_message(thread_logger, "No se pudo guardar la nueva transacción recibida en block broadcasting.".to_string());
+                            return;
+                        }
+                    };
+
+                    thread_sender_tx_manager.send(TransactionMessages::NewTx(tx));
                 }
 
             }
@@ -178,7 +187,8 @@ pub fn init_block_broadcasting(
 
                     let cloned_result = shared_blocks.lock();
                     if let Ok(cloned) = cloned_result {
-                        guardar_header_y_bloque(thread_logger.clone(), block, cloned, header[0]);
+                        guardar_header_y_bloque(thread_logger.clone(), block.clone(), cloned, header[0]);
+                        thread_sender_tx_manager.send(TransactionMessages::NewBlock(block));
                     } else {
                         log_error_message(
                             thread_logger,

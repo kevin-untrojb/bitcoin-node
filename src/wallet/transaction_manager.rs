@@ -3,14 +3,21 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
+use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::Transaction;
 use crate::errores::NodoBitcoinError;
 use crate::log::{log_error_message, LogMessages};
+use crate::protocol::admin_connections::{AdminConnections, self};
+use crate::protocol::block_broadcasting::init_block_broadcasting;
 use crate::wallet::uxto_set::UTXOSet;
+
+use super::user::Account;
 
 #[derive(Clone)]
 pub struct TransactionManager {
     uxtos: UTXOSet,
+    tx_pendings: Vec<Transaction>,
+    accounts: Vec<Account>,
 }
 
 pub enum TransactionMessages {
@@ -22,6 +29,9 @@ pub enum TransactionMessages {
             Sender<Result<(), NodoBitcoinError>>,
         ),
     ),
+    InitBlockBroadcasting((AdminConnections, Sender<LogMessages>, Sender<TransactionMessages>)),
+    NewBlock(SerializedBlock),
+    NewTx(Transaction),
     ShutDown,
 }
 
@@ -34,16 +44,37 @@ impl TransactionManager {
             TransactionMessages::UpdateFromTransactions((transactions, accounts, result)) => {
                 result.send(self.uxtos.update_from_transactions(transactions, accounts));
             }
+            TransactionMessages::InitBlockBroadcasting ((admin_connections, logger, sender_tx_manager))=> {
+                thread::spawn(move || {
+                    init_block_broadcasting(logger, admin_connections, sender_tx_manager);
+                });
+            }
+            TransactionMessages::NewBlock(block) => {
+                let txns = block.txns;
+                self.uxtos.update_from_transactions(txns, self.accounts);
+                for tx in txns {
+                    self.update_pendings(tx);
+                }
+            }
+            TransactionMessages::NewTx(tx) => {
+                self.tx_pendings.push(tx);
+            }
             TransactionMessages::ShutDown => return,
         }
     }
+
+    fn update_pendings(&mut self, new_tx: Transaction) {
+        self.tx_pendings.retain(|tx| tx.txid() != new_tx.txid());
+    }
 }
 
-pub fn create_transaction_manager() -> Sender<TransactionMessages> {
+pub fn create_transaction_manager(accounts: Vec<Account>) -> Sender<TransactionMessages> {
     let (sender, receiver) = channel();
 
     let transaction_manager = Arc::new(Mutex::new(TransactionManager {
         uxtos: UTXOSet::new(),
+        tx_pendings: Vec::new(),
+        accounts
     }));
 
     thread::spawn(move || {

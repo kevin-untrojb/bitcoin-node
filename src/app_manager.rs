@@ -8,7 +8,7 @@ use crate::{
     errores::NodoBitcoinError,
     interface::view::{end_loading, start_loading, ViewObject},
     log::{create_logger_actor, LogMessages},
-    protocol::{connection::connect, initial_block_download::get_full_blockchain},
+    protocol::{connection::connect, initial_block_download::get_full_blockchain, admin_connections::{AdminConnections, self}},
     wallet::{
         transaction_manager::{create_transaction_manager, get_available, TransactionMessages},
         user::Account,
@@ -30,7 +30,7 @@ impl ApplicationManager {
             Ok(accounts) => accounts,
             Err(_) => Vec::new(),
         };
-        let tx_manager = create_transaction_manager();
+        let tx_manager = create_transaction_manager(accounts.clone());
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         let mut app_manager = ApplicationManager {
             current_account: None,
@@ -40,6 +40,7 @@ impl ApplicationManager {
             tx_manager,
         };
         app_manager.thread_download_blockchain();
+
         app_manager
     }
 
@@ -64,22 +65,25 @@ impl ApplicationManager {
     fn thread_download_blockchain(&mut self) {
         let logger = self.logger.clone();
         let sender_frontend = self.sender_frontend.clone();
+        let sender_tx_manager = self.tx_manager.clone();
         thread::spawn(move || {
-            let downloaded =
-                ApplicationManager::download_blockchain(sender_frontend.clone(), logger);
-            if downloaded.is_err() {
-                start_loading(
-                    sender_frontend,
-                    "Error al descargar la blockchain".to_string(),
-                );
-            }
+            let admin_connections = match ApplicationManager::download_blockchain(sender_frontend.clone(), logger.clone()){
+                Ok(admin_connections) => admin_connections,
+                Err(_) => {
+                    start_loading(sender_frontend,"Error al descargar la blockchain".to_string());
+                    return;
+                }
+            };
+
+            let _ = sender_tx_manager.send(TransactionMessages::InitBlockBroadcasting((admin_connections, logger, sender_tx_manager.clone())));
+            
         });
     }
 
     fn download_blockchain(
         sender_frontend: glib::Sender<ViewObject>,
         logger: mpsc::Sender<LogMessages>,
-    ) -> Result<(), NodoBitcoinError> {
+    ) -> Result<AdminConnections, NodoBitcoinError> {
         start_loading(
             sender_frontend.clone(),
             "Connecting to peers... ".to_string(),
@@ -92,6 +96,6 @@ impl ApplicationManager {
         );
         get_full_blockchain(logger.clone(), admin_connections.clone())?;
         end_loading(sender_frontend.clone());
-        Ok(())
+        Ok(admin_connections)
     }
 }
