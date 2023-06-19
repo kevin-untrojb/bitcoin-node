@@ -35,6 +35,9 @@ pub enum NodoBitcoinError {
     // mensajes
     InvalidAccount,
     NoEsTransaccion,
+
+    // wallet
+    NoHayCuentaSeleccionada,
 }
 
 impl Error for NodoBitcoinError {}
@@ -126,6 +129,9 @@ impl fmt::Display for NodoBitcoinError {
                     f,
                     "ERROR: No hay suficientes UTXO para crear la transacción."
                 )
+            }
+            NodoBitcoinError::NoHayCuentaSeleccionada => {
+                write!(f, "ERROR: No hay ninguna cuenta seleccionada.")
             }
         }
     }

@@ -295,7 +295,7 @@ pub fn create_tx_to_send(
     let private_key_wif = account.clone().secret_key;
     let (utxos, tx_in_value_sum) = get_utxos_for_value(utxos, value + fee)?;
     let (tx_ins, previous_txs) = crear_tx_ins(utxos)?;
-    let tx_out_target = TxOut::new(value, &target_public_key)?;
+    let tx_out_target = TxOut::new(value, target_public_key.clone())?;
     let change_value = tx_in_value_sum - value - fee;
     let tx_out_change = crear_change_txout(account, change_value)?;
     let tx_outs = vec![tx_out_target, tx_out_change];
@@ -311,8 +311,8 @@ fn crear_tx_outs(
     value: u64,
     fee: u64,
 ) -> Result<Vec<TxOut>, NodoBitcoinError> {
-    let tx_out_target = TxOut::new(value, &target_public_key)?;
-    let tx_out_fee = TxOut::new(fee, &target_public_key)?;
+    let tx_out_target = TxOut::new(value, target_public_key.clone())?;
+    let tx_out_fee = TxOut::new(fee, target_public_key.clone())?;
     Ok(vec![tx_out_target, tx_out_fee])
 }
 
@@ -329,7 +329,7 @@ fn crear_tx_ins(utxos: Vec<Utxo>) -> Result<(Vec<TxIn>, Vec<Transaction>), NodoB
 
 fn crear_change_txout(account: Account, value: u64) -> Result<TxOut, NodoBitcoinError> {
     let change_address = account.public_key;
-    let tx_out_change = TxOut::new(value, &change_address)?;
+    let tx_out_change = TxOut::new(value, change_address.clone())?;
     Ok(tx_out_change)
 }
 
@@ -582,7 +582,7 @@ impl TxOut {
         8 + self.pk_len_bytes + self.pk_script.len()
     }
 
-    pub fn new(amount: u64, account: &str) -> Result<TxOut, NodoBitcoinError> {
+    pub fn new(amount: u64, account: String) -> Result<TxOut, NodoBitcoinError> {
         let script = decode_base58(account)?;
         let p2pkh_script = p2pkh_script_serialized(&script)?;
         let pk_len = p2pkh_script.len();
@@ -595,7 +595,7 @@ impl TxOut {
         })
     }
 
-    pub fn is_user_account_output(&self, account: &str) -> bool {
+    pub fn is_user_account_output(&self, account: String) -> bool {
         let script = match decode_base58(account) {
             Ok(script) => script,
             Err(_) => return false,
@@ -1016,13 +1016,13 @@ mod tests {
         let tx_in = TxIn::new(prev_tx, prev_index);
 
         let change_amount = 33000000;
-        let public_account = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2";
+        let public_account = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2".to_string();
         let txout = TxOut::new(change_amount, public_account);
         assert!(txout.is_ok());
         let txout = txout.unwrap();
 
         let target_amount = 10000000;
-        let target_account = "mnrVtF8DWjMu839VW3rBfgYaAfKk8983Xf";
+        let target_account = "mnrVtF8DWjMu839VW3rBfgYaAfKk8983Xf".to_string();
         let tx_out_change = TxOut::new(target_amount, target_account);
         assert!(tx_out_change.is_ok());
         let tx_out_change = tx_out_change.unwrap();
@@ -1279,10 +1279,10 @@ mod tests {
         let _tx_id = previous_tx.txid();
         //let _bytes_previous_id = _tx_id._get_le_bytes();
 
-        let target_address = "mwJn1YPMq7y5F8J3LkC5Hxg9PHyZ5K4cFv";
+        let target_address = "mwJn1YPMq7y5F8J3LkC5Hxg9PHyZ5K4cFv".to_string();
         let target_amount: u64 = 1000000;
 
-        let change_address = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2";
+        let change_address = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2".to_string();
         let change_amount: u64 = 900000;
 
         let mut tx_ins = vec![];

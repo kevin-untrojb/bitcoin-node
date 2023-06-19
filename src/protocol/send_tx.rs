@@ -2,9 +2,8 @@ use super::admin_connections::AdminConnections;
 use crate::{
     blockchain::{
         block::SerializedBlock,
-        transaction::{create_tx_to_send, Transaction, TxIn, TxOut},
+        transaction::{create_tx_to_send, Transaction},
     },
-    common::uint256::Uint256,
     errores::NodoBitcoinError,
     log::{log_error_message, LogMessages},
     messages::messages_header::make_header,

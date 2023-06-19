@@ -48,7 +48,7 @@ pub fn wif_to_hex(wif: &str) -> Result<Vec<u8>, NodoBitcoinError> {
     Ok(hex)
 }
 
-pub fn decode_base58(input: &str) -> Result<Vec<u8>, NodoBitcoinError> {
+pub fn decode_base58(input: String) -> Result<Vec<u8>, NodoBitcoinError> {
     let base_58 = bs58::decode(input);
     if let Ok(base_vec) = base_58.into_vec() {
         // quitar el primer byte
@@ -149,7 +149,7 @@ mod tests {
             0x6f, 0xbc, 0x40, 0xcd, 0xf2, 0x6f,
         ];
 
-        let source = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2";
+        let source = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2".to_string();
         let result = decode_base58(source);
 
         assert_eq!(result.is_ok(), true);
@@ -166,7 +166,7 @@ mod tests {
             0x6f, 0xbc, 0x40, 0xcd, 0xf2, 0x6c,
         ];
 
-        let source = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2";
+        let source = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2".to_string();
         let result = decode_base58(source);
 
         assert_eq!(result.is_ok(), true);

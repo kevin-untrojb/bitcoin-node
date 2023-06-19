@@ -1,5 +1,3 @@
-use bitcoin_hashes::hash160::Hash;
-
 use crate::blockchain::transaction::{Transaction, TxOut};
 use crate::common::uint256::Uint256;
 use crate::errores::NodoBitcoinError;
@@ -85,7 +83,7 @@ impl UTXOSet {
 
     fn validar_output(accounts: Vec<String>, tx_out: &TxOut) -> Result<String, NodoBitcoinError> {
         for account in accounts.iter() {
-            if tx_out.is_user_account_output(account) {
+            if tx_out.is_user_account_output(account.clone()) {
                 return Ok(account.clone());
             }
         }
@@ -129,9 +127,9 @@ impl UTXOSet {
         Ok(())
     }
 
-    pub fn get_available(&self, account: &str) -> Result<u64, NodoBitcoinError> {
+    pub fn get_available(&self, account: String) -> Result<u64, NodoBitcoinError> {
         let mut balance = 0;
-        if let Some(utxos) = self.utxos_for_account.get(account) {
+        if let Some(utxos) = self.utxos_for_account.get(&account) {
             for utxo in utxos.iter() {
                 balance += utxo.tx_out.value;
             }
@@ -149,7 +147,7 @@ mod tests {
 
     use super::*;
 
-    fn get_pk_script_from_account(account: &str) -> Vec<u8> {
+    fn get_pk_script_from_account(account: String) -> Vec<u8> {
         let script = match decode_base58(account) {
             Ok(script) => script,
             Err(e) => return vec![],
@@ -163,8 +161,8 @@ mod tests {
 
     #[test]
     fn test_build_from_transactions() {
-        let account = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun";
-        let p2pkh_script = get_pk_script_from_account(account);
+        let account = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
+        let p2pkh_script = get_pk_script_from_account(account.clone());
 
         let tx_out1 = TxOut {
             value: 100,
@@ -223,8 +221,8 @@ mod tests {
         assert!(result.is_ok());
 
         assert_eq!(utxo_set.utxos_for_account.len(), 1);
-        assert!(utxo_set.utxos_for_account.contains_key(account));
-        let utxos_for_account = utxo_set.utxos_for_account.get(account).unwrap();
+        assert!(utxo_set.utxos_for_account.contains_key(&account));
+        let utxos_for_account = utxo_set.utxos_for_account.get(&account).unwrap();
         assert_eq!(utxos_for_account.len(), 2);
         assert!(utxos_for_account[0].tx_id == transaction1.txid().unwrap());
         assert!(utxos_for_account[1].tx_id == transaction2.txid().unwrap());
@@ -236,8 +234,8 @@ mod tests {
 
     #[test]
     fn test_build_from_transactions_for_spent_outputs() {
-        let account = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun";
-        let p2pkh_script = get_pk_script_from_account(account);
+        let account = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
+        let p2pkh_script = get_pk_script_from_account(account.clone());
 
         let mut utxo_set = UTXOSet::new();
 
@@ -281,8 +279,8 @@ mod tests {
         };
 
         utxo_set
-            .update_from_transactions(vec![transaction1, transaction2], vec![account.to_string()])
+            .update_from_transactions(vec![transaction1, transaction2], vec![account.clone()])
             .unwrap();
-        assert_eq!(utxo_set.utxos_for_account[account].len(), 0);
+        assert_eq!(utxo_set.utxos_for_account[&account].len(), 0);
     }
 }

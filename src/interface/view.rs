@@ -5,7 +5,7 @@ use gtk::{
     traits::{ButtonExt, WidgetExt},
     Builder, Button, Dialog, Entry, Label, ResponseType, Spinner, TextView, Window,
 };
-use std::{cmp, thread, vec};
+use std::{thread, vec};
 
 use std::println;
 

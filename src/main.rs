@@ -64,11 +64,11 @@ fn new_tx() {
         let tx_in = TxIn::new(prev_tx, prev_index);
 
         let change_amount = 33000000;
-        let public_account = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2";
+        let public_account = "mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2".to_string();
         let txout = TxOut::new(change_amount, public_account)?;
 
         let target_amount = 10000000;
-        let target_account = "mnrVtF8DWjMu839VW3rBfgYaAfKk8983Xf";
+        let target_account = "mnrVtF8DWjMu839VW3rBfgYaAfKk8983Xf".to_string();
         let tx_out_change = TxOut::new(target_amount, target_account)?;
 
         let tx_obj = Transaction::new(vec![tx_in], vec![txout, tx_out_change], 0)?;
@@ -201,10 +201,10 @@ fn new_tx_signed() {
 
         let private_key_wif = "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw";
 
-        let target_address = "mtm4vS3WH7pg13pjFEmqGq2TSPDcUN6k7a";
+        let target_address = "mtm4vS3WH7pg13pjFEmqGq2TSPDcUN6k7a".to_string();
         let target_amount: u64 = 1000000;
 
-        let change_address = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun";
+        let change_address = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
         let change_amount: u64 = 100000;
 
         let mut tx_ins = vec![];
@@ -269,8 +269,8 @@ fn click_build_utxo_set() {
         for account in accounts.clone() {
             println!(
                 "UTXO Set for account {}: {}",
-                account,
-                utxo_set.get_available(&account)?
+                account.clone(),
+                utxo_set.get_available(account)?
             );
         }
         println!("UTXO Set:\n{}", utxo_set);
@@ -283,8 +283,8 @@ fn click_build_utxo_set() {
         for account in accounts {
             println!(
                 "UTXO Set for account {}: {}",
-                account,
-                utxo_set.get_available(&account)?
+                account.clone(),
+                utxo_set.get_available(account)?
             );
         }
         println!("UTXO Set:\n{}", utxo_set);
