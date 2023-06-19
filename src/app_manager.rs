@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::{
+    blockchain::transaction::Transaction,
     config,
     errores::{NodoBitcoinError, InterfaceError},
     interface::view::{end_loading, start_loading, ViewObject},
@@ -125,7 +126,35 @@ impl ApplicationManager {
         return true;
     }
 
-    /*pub fn select_current_account(&self, name: String){
-        self.accounts.
-    }*/
+    pub fn select_current_account(&mut self, name: String) -> Result<(), NodoBitcoinError> {
+        let accounts = self.accounts.clone();
+        let mut current_account = None;
+        for account in accounts.iter() {
+            if account.wallet_name == name {
+                current_account = Some(account.clone());
+                continue;
+            }
+        }
+        // cambio el current_account
+        self.current_account = current_account;
+
+        // llamar al tx_manager para que me devuelva un Vec<Transaction> y con eso llamar a la vista
+        let txs_current_account = Vec::<Transaction>::new();
+
+        // let _ = self
+        //     .sender_frontend
+        //     .send(ViewObject::NewAccount(new_account));
+        let available_amount = self.get_available_amount()?;
+
+        // pedirle al tx manager los saldos de las utxos del nuevo account seleccionado y con eso llamar a la vista
+        // tambien devolver los pending
+
+        // let _ = self
+        //     .sender_frontend
+        //     .send(ViewObject::NewAccount(new_account));
+
+        let pending_amount: u64 = 0;
+
+        Ok(())
+    }
 }
