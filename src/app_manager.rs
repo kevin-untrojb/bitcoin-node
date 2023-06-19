@@ -97,16 +97,37 @@ impl ApplicationManager {
         Ok(())
     }
 
-    pub fn create_account(&self, key: String, address: String, name: String) {
+    pub fn create_account(
+        &mut self,
+        key: String,
+        address: String,
+        name: String,
+    ) -> Result<(), NodoBitcoinError> {
         println!("Create account!!!!!!");
-        let new_account = Account::new(
-            key,
-            address,
-            name,
-        );
-        // Actualizar app manager
+        let new_account = Account::new(key, address, name);
 
-        let _ = self.sender_frontend.send(ViewObject::NewAccount(new_account));
+        let is_valid =
+            ApplicationManager::account_validator(new_account.clone(), self.accounts.clone());
+        if !is_valid {
+            return Err(NodoBitcoinError::ErrorAlCrearLaCuenta);
+        }
+
+        self.accounts.push(new_account.clone());
+
+        // let _ = self
+        //     .sender_frontend
+        //     .send(ViewObject::NewAccount(new_account));
+
+        Ok(())
+    }
+
+    fn account_validator(new_account: Account, accounts: Vec<Account>) -> bool {
+        for account in accounts.iter() {
+            if account.wallet_name == new_account.wallet_name {
+                return false;
+            }
+        }
+        return true;
     }
 
     /*pub fn select_current_account(&self, name: String){

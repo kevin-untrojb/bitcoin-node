@@ -6,17 +6,20 @@ use gtk::{
     Builder, Button, Dialog, Entry, Label, ResponseType, Spinner, Window,
 };
 use gtk::{CellRendererText, ComboBox, ListStore};
+use std::sync::{Arc, Mutex};
 use std::{thread, vec};
 
 use std::println;
 
 use crate::app_manager::{self, ApplicationManager};
+use crate::errores::NodoBitcoinError;
 use crate::wallet::user::Account;
 
 pub enum ViewObject {
     Label(ViewObjectData),
     Spinner(ViewObjectStatus),
-    NewAccount(Account)
+    NewAccount(Account),
+    ErrorPopup(NodoBitcoinError),
 }
 
 pub struct ViewObjectData {
@@ -73,6 +76,9 @@ pub fn create_view() -> Sender<ViewObject> {
             ViewObject::NewAccount(account) => {
                 add_wallet_combobox(&builder_receiver_clone, &account)
             }
+            ViewObject::ErrorPopup(error) => {
+                // TODO: popup con el error
+            }
         }
         glib::Continue(true)
     });
@@ -88,33 +94,32 @@ pub fn create_view() -> Sender<ViewObject> {
     let builder_wallet_clone = builder.clone();
     if let Some(dialog) = builder.object::<Dialog>("wallet_dialog") {
         let dialog_clone = dialog.clone();
-        if let Some(new_wallet_button) = builder_wallet_clone.object::<Button>("new_wallet_button") {
+        if let Some(new_wallet_button) = builder_wallet_clone.object::<Button>("new_wallet_button")
+        {
             new_wallet_button.connect_clicked(move |_| {
                 open_wallet_dialog(&dialog_clone, &builder_wallet_clone, app_manager.clone());
             });
         }
     }
 
-    
-    if let Some(combobox_wallet) = builder.object::<ComboBox>("combobox_wallet"){
+    if let Some(combobox_wallet) = builder.object::<ComboBox>("combobox_wallet") {
         combobox_wallet.connect_changed(|combobox| {
             if let Some(active_iter) = combobox.active_iter() {
                 match combobox.model() {
                     Some(model) => {
-                        let value: String = match model.value(&active_iter, 0).get(){
+                        let value: String = match model.value(&active_iter, 0).get() {
                             Ok(res) => res,
                             Err(_) => todo!(),
                         };
                         //app_manager.clone().select_current_account(value);
                         println!("Opción seleccionada: {}", value);
-
-                    },
+                    }
                     None => todo!(),
                 };
             }
         });
     }
-    
+
     sender
 }
 
@@ -149,7 +154,7 @@ pub fn end_loading(sender: Sender<ViewObject>) {
     let _ = sender.send(ViewObject::Label(view_object_data));
 }
 
-fn open_wallet_dialog(dialog: &Dialog, builder: &Builder, app_manager: ApplicationManager) {
+fn open_wallet_dialog(dialog: &Dialog, builder: &Builder, mut app_manager: ApplicationManager) {
     let key_entry: Entry;
     if let Some(res) = builder.object::<Entry>("key") {
         key_entry = res;
@@ -171,25 +176,35 @@ fn open_wallet_dialog(dialog: &Dialog, builder: &Builder, app_manager: Applicati
         return;
     }
 
-    dialog.connect_response(move |dialog, response_id| {
-        match response_id {
-            ResponseType::Ok => {
-                let key = key_entry.text().to_string();
-                let address = address_entry.text().to_string();
-                let name = name_entry.text().to_string();
-                if !key.is_empty() && !address.is_empty() && !name.is_empty(){
-                    app_manager.create_account(key, address, name);
+    let app_manager_mutex = Arc::new(Mutex::new(app_manager));
+    dialog.connect_response(move |dialog, response_id| match response_id {
+        ResponseType::Ok => {
+            let app_manager_clone = app_manager_mutex.clone();
+
+            let key = key_entry.text().to_string();
+            let address = address_entry.text().to_string();
+            let name = name_entry.text().to_string();
+            if !key.is_empty() && !address.is_empty() && !name.is_empty() {
+                let mut app_manager_thread = match app_manager_clone.lock() {
+                    Ok(res) => res,
+                    Err(_) => return,
+                };
+                let account_added = app_manager_thread.create_account(key, address, name);
+                drop(app_manager_thread);
+                if account_added.is_ok() {
+                    // mostrar popup de cuenta creada ok
+                } else {
+                    // mostrar popup de cuenta no creada
                 }
-                key_entry.set_text("");
-                address_entry.set_text("");
-                name_entry.set_text("");
-
-                dialog.hide();
-
             }
-            ResponseType::Close => dialog.hide(),
-            _ => dialog.hide(),
+            key_entry.set_text("");
+            address_entry.set_text("");
+            name_entry.set_text("");
+
+            dialog.hide();
         }
+        ResponseType::Close => dialog.hide(),
+        _ => dialog.hide(),
     });
 
     dialog.show_all();
@@ -216,14 +231,14 @@ fn create_combobox_wallet_list(builder: &Builder, accounts: &Vec<Account>) {
         list_store.insert_with_values(None, &[(0, name)]);
     }
     list_store.insert_with_values(Some(0 as u32), &[(0, &"None".to_string() as &dyn ToValue)]);
-    
+
     let cell_renderer = CellRendererText::new();
     combobox_wallet.pack_start(&cell_renderer, true);
     combobox_wallet.add_attribute(&cell_renderer, "text", 0);
     combobox_wallet.set_active(Some(0));
 }
 
-fn add_wallet_combobox(builder: &Builder, account: &Account){
+fn add_wallet_combobox(builder: &Builder, account: &Account) {
     let list_store: ListStore;
     if let Some(res) = builder.object::<ListStore>("accounts") {
         list_store = res;

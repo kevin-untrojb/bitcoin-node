@@ -38,6 +38,7 @@ pub enum NodoBitcoinError {
 
     // wallet
     NoHayCuentaSeleccionada,
+    ErrorAlCrearLaCuenta,
 }
 
 impl Error for NodoBitcoinError {}
@@ -132,6 +133,9 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::NoHayCuentaSeleccionada => {
                 write!(f, "ERROR: No hay ninguna cuenta seleccionada.")
+            }
+            NodoBitcoinError::ErrorAlCrearLaCuenta => {
+                write!(f, "ERROR: No se puede crear la cuenta.")
             }
         }
     }
