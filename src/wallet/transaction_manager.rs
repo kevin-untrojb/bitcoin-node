@@ -6,7 +6,7 @@ use std::thread;
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::Transaction;
 use crate::errores::NodoBitcoinError;
-use crate::log::{log_error_message, LogMessages};
+use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::protocol::admin_connections::{self, AdminConnections};
 use crate::protocol::block_broadcasting::init_block_broadcasting;
 use crate::wallet::uxto_set::UTXOSet;
@@ -15,7 +15,7 @@ use super::user::Account;
 
 #[derive(Clone)]
 pub struct TransactionManager {
-    uxtos: UTXOSet,
+    pub uxtos: UTXOSet,
     tx_pendings: Vec<Transaction>,
     accounts: Vec<Account>,
 }
@@ -55,6 +55,21 @@ impl TransactionManager {
                 logger,
                 sender_tx_manager,
             )) => {
+                log_info_message(logger.clone(), "Actualizando UTXOS ...".to_string());
+                let uxos_updated =
+                    match initialize_utxos_from_file(self.uxtos.clone(), self.accounts.clone()) {
+                        Ok(uxtos) => uxtos,
+                        Err(e) => {
+                            log_error_message(
+                                logger.clone(),
+                                "Error al inicializar UTXOS".to_string(),
+                            );
+                            return;
+                        }
+                    };
+                self.uxtos = uxos_updated;
+                log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
+
                 thread::spawn(move || {
                     init_block_broadcasting(logger, admin_connections, sender_tx_manager);
                 });
@@ -97,6 +112,20 @@ pub fn create_transaction_manager(accounts: Vec<Account>) -> Sender<TransactionM
     });
 
     sender
+}
+
+fn initialize_utxos_from_file(
+    mut utxo_set: UTXOSet,
+    accounts: Vec<Account>,
+) -> Result<UTXOSet, NodoBitcoinError> {
+    let blocks = SerializedBlock::read_blocks_from_file()?;
+    let txns = blocks
+        .iter()
+        .flat_map(|bloque| bloque.txns.clone())
+        .collect::<Vec<_>>();
+
+    utxo_set.update_from_transactions(txns, accounts.clone())?;
+    Ok(utxo_set)
 }
 
 pub fn update_from_transactions(
