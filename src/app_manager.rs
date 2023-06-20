@@ -57,6 +57,37 @@ impl ApplicationManager {
         app_manager
     }
 
+    pub fn send_transaction(
+        &self,
+        target_address: String,
+        target_amount_string: String,
+        fee_string: String,
+    ) {
+        let target_amount = match target_amount_string.parse::<f64>() {
+            Ok(target_amount) => (target_amount * 100_000_000.0) as u64,
+            Err(_) => {
+                _ = self
+                    .sender_frontend
+                    .send(ViewObject::Error(InterfaceError::TargetAmountNotValid));
+                return;
+            }
+        };
+        let fee: u64 = match fee_string.parse::<f64>() {
+            Ok(fee) => (fee * 100_000_000.0) as u64,
+            Err(_) => {
+                _ = self
+                    .sender_frontend
+                    .send(ViewObject::Error(InterfaceError::FeeNotValid));
+                return;
+            }
+        };
+        let message = format!(
+            "Transacción enviada a {:?}. Monto: {:?}. Fee: {:?}",
+            target_address, target_amount, fee
+        );
+        log_info_message(self.logger.clone(), message);
+    }
+
     pub fn close(&self) {
         // TODO: cerrar los threads abiertos
         start_loading(

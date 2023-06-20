@@ -95,10 +95,13 @@ impl TransactionManager {
                 self.sender_block_broadcasting = Some(sender_block_broadcasting);
             }
             TransactionMessages::ShutDown(sender_app_manager) => {
-                self.sender_app_manager = Some(sender_app_manager);
+                self.sender_app_manager = Some(sender_app_manager.clone());
                 match &self.sender_block_broadcasting {
                     Some(sender) => sender.send(BlockBroadcastingMessages::ShutDown),
-                    None => return,
+                    None => {
+                        sender_app_manager.send(ApplicationManagerMessages::ShutDowned);
+                        return;
+                    }
                 };
             }
             TransactionMessages::Shutdowned() => {

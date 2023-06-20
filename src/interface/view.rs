@@ -251,7 +251,7 @@ fn send_transaction(
             Ok(res) => res,
             Err(_) => return,
         };
-        //&app_manager_thread.send_transaction(...);
+        &app_manager_thread.send_transaction(to_address, transaction_amount, transaction_fee);
         drop(app_manager_thread);
     }
 }
