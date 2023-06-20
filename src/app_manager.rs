@@ -6,8 +6,8 @@ use std::{
 use crate::{
     blockchain::transaction::Transaction,
     config,
-    errores::NodoBitcoinError,
-    interface::view::{end_loading, start_loading, ViewObject},
+    errores::{InterfaceError, NodoBitcoinError},
+    interface::{view::{ViewObject}, public::{start_loading, end_loading}},
     log::{create_logger_actor, LogMessages},
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
     wallet::{
@@ -98,30 +98,24 @@ impl ApplicationManager {
         Ok(())
     }
 
-    pub fn create_account(
-        &mut self,
-        key: String,
-        address: String,
-        name: String,
-    ) -> Result<(), NodoBitcoinError> {
-        println!("Create account!!!!!!");
+    pub fn create_account(&mut self, key: String, address: String, name: String) -> Account {
         let new_account = Account::new(key, address, name);
 
         let is_valid =
             ApplicationManager::account_validator(new_account.clone(), self.accounts.clone());
         if !is_valid {
-            return Err(NodoBitcoinError::ErrorAlCrearLaCuenta);
+            self.sender_frontend
+                .send(ViewObject::Error(InterfaceError::CreateAccount));
         }
 
         self.accounts.push(new_account.clone());
-
+        new_account.clone()
         // avisarle al tx_manager que se acaba de crear una cuenta
 
         // let _ = self
         //     .sender_frontend
         //     .send(ViewObject::NewAccount(new_account));
 
-        Ok(())
     }
 
     fn account_validator(new_account: Account, accounts: Vec<Account>) -> bool {
@@ -147,20 +141,18 @@ impl ApplicationManager {
 
         // llamar al tx_manager para que me devuelva un Vec<Transaction> y con eso llamar a la vista
         let txs_current_account = Vec::<Transaction>::new();
-
-        // let _ = self
-        //     .sender_frontend
-        //     .send(ViewObject::NewAccount(new_account));
-        let available_amount = self.get_available_amount()?;
+        let _ = self
+            .sender_frontend
+            .send(ViewObject::UploadTransactions(txs_current_account));
 
         // pedirle al tx manager los saldos de las utxos del nuevo account seleccionado y con eso llamar a la vista
         // tambien devolver los pending
-
-        // let _ = self
-        //     .sender_frontend
-        //     .send(ViewObject::NewAccount(new_account));
-
-        let pending_amount: u64 = 0;
+        let available_amount = 10000; //self.get_available_amount()?;
+        let pending_amount: u64 = 500000;
+        let _ = self.sender_frontend.send(ViewObject::UploadAmounts((
+            available_amount,
+            pending_amount,
+        )));
 
         Ok(())
     }
