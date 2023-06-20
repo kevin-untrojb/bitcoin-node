@@ -11,9 +11,10 @@ use crate::{
     messages::{
         getdata::GetDataMessage, headers::deserealize_sin_guardar, messages_header::check_header,
         ping_pong::make_pong,
-    }, wallet::transaction_manager::TransactionMessages,
+    },
+    wallet::transaction_manager::TransactionMessages,
 };
-use std::sync::mpsc::{Sender, channel};
+use std::sync::mpsc::{channel, Sender};
 use std::{
     sync::{Arc, Mutex, MutexGuard},
     thread,
@@ -28,7 +29,7 @@ pub enum BlockBroadcastingMessages {
 pub fn init_block_broadcasting(
     logger: Sender<LogMessages>,
     mut admin_connections: AdminConnections,
-    sender_tx_manager: Sender<TransactionMessages>
+    sender_tx_manager: Sender<TransactionMessages>,
 ) -> Result<(), NodoBitcoinError> {
     let blocks = Arc::new(Mutex::new(SerializedBlock::read_blocks_from_file()?));
     let mut threads = vec![];
@@ -43,7 +44,7 @@ pub fn init_block_broadcasting(
         while let Ok(message) = receiver.recv() {
             match message {
                 BlockBroadcastingMessages::ShutDown => {
-                    let mut senders_locked = match sender_mutex_clone.lock(){
+                    let mut senders_locked = match sender_mutex_clone.lock() {
                         Ok(senders_locked) => senders_locked,
                         Err(_) => return,
                     };
@@ -67,7 +68,6 @@ pub fn init_block_broadcasting(
         let thread_logger = logger.clone();
         let thread_sender_tx_manager = sender_tx_manager.clone();
         let shared_blocks = blocks.clone();
-        
         let sender_mutex_connection = sender_mutex.clone();
         threads.push(thread::spawn(move || {
             let (sender_thread, receiver_thread) = channel();
@@ -299,6 +299,8 @@ pub fn init_block_broadcasting(
     for thread in threads {
         let _ = thread.join();
     }
+
+    _ = sender_tx_manager.send(TransactionMessages::Shutdowned());
 
     Ok(())
 }

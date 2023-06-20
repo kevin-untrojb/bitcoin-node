@@ -144,7 +144,9 @@ impl fmt::Display for NodoBitcoinError {
 #[derive(Debug, PartialEq)]
 pub enum InterfaceError {
     CreateAccount,
-    EmptyFields
+    EmptyFields,
+    TargetAmountNotValid,
+    FeeNotValid,
 }
 
 impl Error for InterfaceError {}
@@ -157,6 +159,12 @@ impl fmt::Display for InterfaceError {
             }
             InterfaceError::EmptyFields => {
                 write!(f, "Debe completar todos los campos para continuar.")
+            }
+            InterfaceError::TargetAmountNotValid => {
+                write!(f, "El Target Amount debe ser numérico.")
+            }
+            InterfaceError::FeeNotValid => {
+                write!(f, "El Fee debe ser numérico.")
             }
         }
     }

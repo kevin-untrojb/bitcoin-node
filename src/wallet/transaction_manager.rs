@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
+use crate::app_manager::ApplicationManagerMessages;
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::Transaction;
 use crate::errores::NodoBitcoinError;
@@ -18,6 +19,7 @@ pub struct TransactionManager {
     pub uxtos: UTXOSet,
     tx_pendings: Vec<Transaction>,
     accounts: Vec<Account>,
+    sender_app_manager: Option<Sender<ApplicationManagerMessages>>,
     sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
     // TODO guardar hilos abiertos para despues cerrarlos (block broadcasting)
 }
@@ -41,7 +43,8 @@ pub enum TransactionMessages {
     NewBlock(SerializedBlock),
     NewTx(Transaction),
     SenderBlockBroadcasting(Sender<BlockBroadcastingMessages>),
-    ShutDown,
+    ShutDown(Sender<ApplicationManagerMessages>),
+    Shutdowned(),
 }
 
 impl TransactionManager {
@@ -91,12 +94,22 @@ impl TransactionManager {
             TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
                 self.sender_block_broadcasting = Some(sender_block_broadcasting);
             }
-            TransactionMessages::ShutDown => {
+            TransactionMessages::ShutDown(sender_app_manager) => {
+                self.sender_app_manager = Some(sender_app_manager.clone());
                 match &self.sender_block_broadcasting {
                     Some(sender) => sender.send(BlockBroadcastingMessages::ShutDown),
-                    None => return
+                    None => {
+                        sender_app_manager.send(ApplicationManagerMessages::ShutDowned);
+                        return;
+                    }
                 };
-            },
+            }
+            TransactionMessages::Shutdowned() => {
+                match &self.sender_app_manager {
+                    Some(sender) => sender.send(ApplicationManagerMessages::ShutDowned),
+                    None => return,
+                };
+            }
         }
     }
 
@@ -112,7 +125,8 @@ pub fn create_transaction_manager(accounts: Vec<Account>) -> Sender<TransactionM
         uxtos: UTXOSet::new(),
         tx_pendings: Vec::new(),
         accounts,
-        sender_block_broadcasting: None
+        sender_block_broadcasting: None,
+        sender_app_manager: None,
     }));
 
     thread::spawn(move || {

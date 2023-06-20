@@ -13,7 +13,7 @@ use crate::errores::{InterfaceError, InterfaceMessage};
 use crate::wallet::user::Account;
 use crate::{app_manager::ApplicationManager, blockchain::transaction::Transaction};
 
-use super::public::open_message_dialog;
+use super::public::{open_message_dialog, start_loading};
 
 pub enum ViewObject {
     Label(ViewObjectData),
@@ -50,8 +50,11 @@ pub fn create_view() -> Sender<ViewObject> {
         window.set_title(&title);
         window.show_all();
 
+        let sender_clone = sender.clone();
+
         let manager_close_app = app_manager_mutex.clone();
         window.connect_delete_event(move |_, _| {
+            start_loading(sender_clone.clone(), "Cerrando aplicación...".to_string());
             close(manager_close_app.clone());
             gtk::main_quit();
             Inhibit(false)
@@ -248,7 +251,7 @@ fn send_transaction(
             Ok(res) => res,
             Err(_) => return,
         };
-        //&app_manager_thread.send_transaction(...);
+        &app_manager_thread.send_transaction(to_address, transaction_amount, transaction_fee);
         drop(app_manager_thread);
     }
 }
