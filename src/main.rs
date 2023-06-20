@@ -28,10 +28,13 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     _ = config::inicializar(args);
 
-    gtk::init().expect("No se pudo inicializar GTK.");
-    _ = view::create_view();
-
-    gtk::main();
+    match gtk::init() {
+        Ok(_) => {
+            _ = view::create_view();
+            gtk::main();
+        }
+        Err(_) => println!("No se pudo inicializar GTK."),
+    }
 }
 
 fn send_tx_main() {

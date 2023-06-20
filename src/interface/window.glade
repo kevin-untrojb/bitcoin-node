@@ -1,8 +1,94 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.38.2 -->
+<!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
-  <object class="GtkListStore" id="liststore1"/>
+  <object class="GtkAboutDialog" id="about_dialog">
+    <property name="can-focus">False</property>
+    <property name="window-position">center</property>
+    <property name="default-height">150</property>
+    <property name="type-hint">dialog</property>
+    <property name="program-name">Grupo Los Rustybandidos</property>
+    <property name="version">Entrega Final</property>
+    <property name="website">https://github.com/taller-1-fiuba-rust/23C1-Los-Rustybandidos</property>
+    <property name="website-label" translatable="yes">Repositorio GIthub</property>
+    <property name="authors">Schmidt Agustina
+Spacek Daniel
+Fraccaro Agustina
+Untrojb Kevin</property>
+    <property name="logo-icon-name">emblem-documents</property>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can-focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can-focus">False</property>
+            <property name="layout-style">end</property>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkListStore" id="accounts">
+    <columns>
+      <!-- column-name name -->
+      <column type="gchararray"/>
+    </columns>
+  </object>
+  <object class="GtkMessageDialog" id="message_dialog">
+    <property name="can-focus">False</property>
+    <property name="type">popup</property>
+    <property name="window-position">center</property>
+    <property name="default-width">400</property>
+    <property name="type-hint">dialog</property>
+    <property name="gravity">center</property>
+    <property name="message-type">other</property>
+    <property name="buttons">close</property>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can-focus">False</property>
+        <property name="valign">baseline</property>
+        <property name="hexpand">True</property>
+        <property name="vexpand">True</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">20</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can-focus">False</property>
+            <property name="homogeneous">True</property>
+            <property name="layout-style">spread</property>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkListStore" id="transactions"/>
   <object class="GtkWindow" id="window">
     <property name="width-request">700</property>
     <property name="height-request">500</property>
@@ -152,12 +238,11 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <child>
-                      <object class="GtkImageMenuItem">
-                        <property name="label">gtk-about</property>
+                      <object class="GtkMenuItem" id="about_item_menu">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">About</property>
                         <property name="use-underline">True</property>
-                        <property name="use-stock">True</property>
                       </object>
                     </child>
                   </object>
@@ -195,10 +280,15 @@
               </packing>
             </child>
             <child>
-              <object class="GtkComboBox">
+              <object class="GtkComboBox" id="combobox_wallet">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="hexpand">True</property>
+                <property name="model">accounts</property>
+                <property name="column-span-column">0</property>
+                <property name="active">0</property>
+                <property name="button-sensitivity">on</property>
+                <property name="id-column">0</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -268,13 +358,13 @@
                       <object class="GtkBox">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="margin-start">10</property>
                         <property name="homogeneous">True</property>
                         <child>
-                          <object class="GtkLabel" id="id_prueba">
+                          <object class="GtkLabel">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <property name="halign">start</property>
-                            <property name="margin-left">10</property>
                             <property name="margin-start">10</property>
                             <property name="label" translatable="yes">Available:</property>
                             <property name="ellipsize">start</property>
@@ -309,13 +399,13 @@
                       <object class="GtkBox">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="margin-start">10</property>
                         <property name="homogeneous">True</property>
                         <child>
                           <object class="GtkLabel">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <property name="halign">start</property>
-                            <property name="margin-left">10</property>
                             <property name="margin-start">10</property>
                             <property name="label" translatable="yes">Pending:</property>
                             <property name="ellipsize">start</property>
@@ -349,54 +439,13 @@
                       <object class="GtkBox">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
-                        <property name="spacing">2</property>
+                        <property name="margin-start">10</property>
                         <property name="homogeneous">True</property>
                         <child>
                           <object class="GtkLabel">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <property name="halign">start</property>
-                            <property name="margin-left">10</property>
-                            <property name="margin-start">10</property>
-                            <property name="label" translatable="yes">Immature:</property>
-                            <property name="ellipsize">start</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkLabel" id="immature">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="label" translatable="yes">0 BTC</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">3</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkBox">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="homogeneous">True</property>
-                        <child>
-                          <object class="GtkLabel">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="halign">start</property>
-                            <property name="margin-left">10</property>
                             <property name="margin-start">10</property>
                             <property name="label" translatable="yes">Total:</property>
                             <property name="ellipsize">start</property>
@@ -411,7 +460,7 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkLabel" id="total_balances">
+                          <object class="GtkLabel" id="total">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <property name="label" translatable="yes">0 BTC</property>
@@ -623,7 +672,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry">
+                      <object class="GtkEntry" id="to_address">
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="hexpand">True</property>
@@ -667,11 +716,12 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkEntry">
+                          <object class="GtkEntry" id="transaction_amount">
                             <property name="width-request">200</property>
                             <property name="visible">True</property>
                             <property name="can-focus">True</property>
                             <property name="placeholder-text" translatable="yes">0.000000000</property>
+                            <property name="input-purpose">number</property>
                           </object>
                           <packing>
                             <property name="left-attach">1</property>
@@ -718,11 +768,12 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkEntry">
+                          <object class="GtkEntry" id="transaction_fee">
                             <property name="width-request">200</property>
                             <property name="visible">True</property>
                             <property name="can-focus">True</property>
                             <property name="placeholder-text" translatable="yes">0.000000000</property>
+                            <property name="input-purpose">number</property>
                           </object>
                           <packing>
                             <property name="left-attach">1</property>
@@ -755,7 +806,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButton" id="send_btc_button">
+                  <object class="GtkButton" id="send_transaction_button">
                     <property name="label" translatable="yes">Send</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
@@ -788,39 +839,22 @@
               </packing>
             </child>
             <child>
-              <object class="GtkColorButton">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-              </object>
-              <packing>
-                <property name="position">2</property>
-              </packing>
+              <placeholder/>
             </child>
             <child type="tab">
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Receive</property>
-              </object>
-              <packing>
-                <property name="position">2</property>
-                <property name="tab-fill">False</property>
-              </packing>
+              <placeholder/>
             </child>
             <child>
               <object class="GtkTreeView">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="margin-top">15</property>
-                <property name="model">liststore1</property>
+                <property name="model">transactions</property>
                 <property name="search-column">0</property>
                 <property name="enable-grid-lines">both</property>
                 <property name="tooltip-column">0</property>
                 <child internal-child="selection">
-                  <object class="GtkTreeSelection">
-                    <property name="mode">multiple</property>
-                  </object>
+                  <object class="GtkTreeSelection"/>
                 </child>
                 <child>
                   <object class="GtkTreeViewColumn">
@@ -952,7 +986,6 @@
       </object>
     </child>
   </object>
-  <object class="GtkListStore" id="liststore2"/>
   <object class="GtkDialog" id="wallet_dialog">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Add wallet</property>
@@ -1066,7 +1099,7 @@
                     <property name="can-focus">False</property>
                     <property name="halign">start</property>
                     <property name="margin-end">45</property>
-                    <property name="label" translatable="yes">Key:</property>
+                    <property name="label" translatable="yes">Secret Key:</property>
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
@@ -1104,7 +1137,7 @@
                     <property name="can-focus">False</property>
                     <property name="halign">start</property>
                     <property name="margin-end">15</property>
-                    <property name="label" translatable="yes">Address:</property>
+                    <property name="label" translatable="yes">Public Address:</property>
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
