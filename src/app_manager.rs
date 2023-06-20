@@ -7,8 +7,11 @@ use crate::{
     blockchain::transaction::Transaction,
     config,
     errores::{InterfaceError, NodoBitcoinError},
-    interface::{view::{ViewObject}, public::{start_loading, end_loading}},
-    log::{create_logger_actor, LogMessages},
+    interface::{
+        public::{end_loading, start_loading},
+        view::ViewObject,
+    },
+    log::{create_logger_actor, log_info_message, LogMessages},
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
     wallet::{
         transaction_manager::{create_transaction_manager, get_available, TransactionMessages},
@@ -46,12 +49,18 @@ impl ApplicationManager {
 
     pub fn close(&self) {
         // TODO: cerrar los threads abiertos
+        log_info_message(self.logger.clone(), "Cerrando aplicación...".to_string());
         println!("Close");
         _ = Account::save_all_accounts(self.accounts.clone());
         _ = self.tx_manager.send(TransactionMessages::ShutDown);
+
+        log_info_message(
+            self.logger.clone(),
+            "Aplicación cerrada exitosamente.".to_string(),
+        );
     }
 
-    pub fn get_available_amount(&self) -> Result<u64, NodoBitcoinError> {
+    fn get_available_amount(&self) -> Result<u64, NodoBitcoinError> {
         let option_current_account = self.current_account.clone();
         let current_account = match option_current_account {
             Some(account) => account,
@@ -98,24 +107,21 @@ impl ApplicationManager {
         Ok(())
     }
 
-    pub fn create_account(&mut self, key: String, address: String, name: String) -> Account {
-        let new_account = Account::new(key, address, name);
+    pub fn create_account(&mut self, secret_key: String, address: String, name: String) -> Account {
+        let new_account = Account::new(secret_key, address, name);
 
         let is_valid =
             ApplicationManager::account_validator(new_account.clone(), self.accounts.clone());
         if !is_valid {
-            self.sender_frontend
+            _ = self
+                .sender_frontend
                 .send(ViewObject::Error(InterfaceError::CreateAccount));
         }
 
         self.accounts.push(new_account.clone());
-        new_account.clone()
         // avisarle al tx_manager que se acaba de crear una cuenta
 
-        // let _ = self
-        //     .sender_frontend
-        //     .send(ViewObject::NewAccount(new_account));
-
+        new_account.clone()
     }
 
     fn account_validator(new_account: Account, accounts: Vec<Account>) -> bool {

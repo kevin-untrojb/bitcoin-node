@@ -2,20 +2,16 @@ use glib::Sender;
 use gtk::{
     prelude::*,
     traits::{ButtonExt, WidgetExt},
-    Builder, Button, Dialog, Entry, Label, ResponseType, Spinner, Window, MenuItem,
+    Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, Window,
 };
-use gtk::{CellRendererText, ComboBox, ListStore, MessageType};
+use gtk::{CellRendererText, ComboBox, ListStore};
 use std::sync::{Arc, Mutex};
-use std::{thread, vec};
 
 use std::println;
 
-use crate::{errores::{InterfaceError, InterfaceMessage}, blockchain::transaction};
+use crate::errores::{InterfaceError, InterfaceMessage};
 use crate::wallet::user::Account;
-use crate::{
-    app_manager::{self, ApplicationManager},
-    blockchain::transaction::Transaction,
-};
+use crate::{app_manager::ApplicationManager, blockchain::transaction::Transaction};
 
 use super::public::open_message_dialog;
 
@@ -91,12 +87,22 @@ pub fn create_view() -> Sender<ViewObject> {
                 println!("Actualizar transactions");
             }
             ViewObject::UploadAmounts((available, pending)) => {
+                let mut total: u64 = 0;
                 if let Some(label) = builder_receiver_clone.object::<Label>("available") {
-                    label.set_text(&available.to_string());
+                    total += available;
+                    let btc_available = satoshis_to_btc_string(available);
+                    label.set_text(&btc_available);
                 }
 
                 if let Some(label) = builder_receiver_clone.object::<Label>("pending") {
-                    label.set_text(&pending.to_string());
+                    total += pending;
+                    let btc_pending = satoshis_to_btc_string(pending);
+                    label.set_text(&btc_pending);
+                }
+
+                if let Some(label) = builder_receiver_clone.object::<Label>("total") {
+                    let btc_total = satoshis_to_btc_string(total);
+                    label.set_text(&btc_total);
                 }
             }
         }
@@ -108,34 +114,49 @@ pub fn create_view() -> Sender<ViewObject> {
 
     let manager_change_wallet: Arc<Mutex<ApplicationManager>> = app_manager_mutex.clone();
     let sender_combobox_clone = sender.clone();
-    handle_combobox(manager_change_wallet, sender_combobox_clone, builder.clone());
+    handle_combobox(
+        manager_change_wallet,
+        sender_combobox_clone,
+        builder.clone(),
+    );
 
     let manager_transaction: Arc<Mutex<ApplicationManager>> = app_manager_mutex.clone();
     let sender_transaction_clone = sender.clone();
-    handle_transaction(manager_transaction,sender_transaction_clone, builder.clone());
+    handle_transaction(
+        manager_transaction,
+        sender_transaction_clone,
+        builder.clone(),
+    );
 
     handle_modal_about(builder.clone());
 
     sender
 }
 
-fn handle_modal_wallet(manager_open_modal_wallet: Arc<Mutex<ApplicationManager>>, builder: Builder){
+fn satoshis_to_btc_string(satoshis: u64) -> String {
+    let btc = satoshis as f64 / 100_000_000.0;
+    format!("{:.8} BTC", btc)
+}
+
+fn handle_modal_wallet(
+    manager_open_modal_wallet: Arc<Mutex<ApplicationManager>>,
+    builder: Builder,
+) {
     if let Some(dialog) = builder.object::<Dialog>("wallet_dialog") {
         let dialog_clone = dialog.clone();
-        if let Some(new_wallet_button) = builder.object::<Button>("new_wallet_button")
-        {
+        if let Some(new_wallet_button) = builder.object::<Button>("new_wallet_button") {
             new_wallet_button.connect_clicked(move |_| {
-                open_wallet_dialog(
-                    &dialog_clone,
-                    &builder,
-                    manager_open_modal_wallet.clone(),
-                );
+                open_wallet_dialog(&dialog_clone, &builder, manager_open_modal_wallet.clone());
             });
         }
     }
 }
 
-fn handle_combobox(manager_change_wallet: Arc<Mutex<ApplicationManager>>, sender: Sender<ViewObject>, builder: Builder){
+fn handle_combobox(
+    manager_change_wallet: Arc<Mutex<ApplicationManager>>,
+    sender: Sender<ViewObject>,
+    builder: Builder,
+) {
     if let Some(combobox_wallet) = builder.object::<ComboBox>("combobox_wallet") {
         combobox_wallet.connect_changed(move |combobox| {
             if let Some(active_iter) = combobox.active_iter() {
@@ -158,34 +179,40 @@ fn handle_combobox(manager_change_wallet: Arc<Mutex<ApplicationManager>>, sender
     }
 }
 
-fn handle_transaction(manager_transaction: Arc<Mutex<ApplicationManager>>, sender: Sender<ViewObject>, builder: Builder){
-    if let Some(send_transaction_button) = builder.object::<Button>("send_transaction_button")
-        {
-            send_transaction_button.connect_clicked(move |_| {
-                send_transaction(manager_transaction.clone(), builder.clone(), sender.clone());
-            });
-        }
+fn handle_transaction(
+    manager_transaction: Arc<Mutex<ApplicationManager>>,
+    sender: Sender<ViewObject>,
+    builder: Builder,
+) {
+    if let Some(send_transaction_button) = builder.object::<Button>("send_transaction_button") {
+        send_transaction_button.connect_clicked(move |_| {
+            send_transaction(manager_transaction.clone(), builder.clone(), sender.clone());
+        });
+    }
 }
 
-fn handle_modal_about(builder: Builder){
-    if let Some(about_item_menu) = builder.object::<MenuItem>("about_item_menu")
-        {
-            about_item_menu.connect_activate(move |_| {
-                if let Some(dialog) = builder.object::<Dialog>("about_dialog") {
-                    dialog.show_all();
-            
-                    dialog.connect_response(move |dialog, response_id| match response_id {
-                        ResponseType::Close => dialog.hide(),
-                        _ => dialog.hide(),
-                    });
-            
-                    dialog.run();
-                }
-            });
-        }
+fn handle_modal_about(builder: Builder) {
+    if let Some(about_item_menu) = builder.object::<MenuItem>("about_item_menu") {
+        about_item_menu.connect_activate(move |_| {
+            if let Some(dialog) = builder.object::<Dialog>("about_dialog") {
+                dialog.show_all();
+
+                dialog.connect_response(move |dialog, response_id| match response_id {
+                    ResponseType::Close => dialog.hide(),
+                    _ => dialog.hide(),
+                });
+
+                dialog.run();
+            }
+        });
+    }
 }
 
-fn send_transaction(app_manager: Arc<Mutex<ApplicationManager>>, builder: Builder, sender: Sender<ViewObject>){
+fn send_transaction(
+    app_manager: Arc<Mutex<ApplicationManager>>,
+    builder: Builder,
+    sender: Sender<ViewObject>,
+) {
     let to_address_entry: Entry;
     if let Some(res) = builder.object::<Entry>("to_address") {
         to_address_entry = res;
@@ -213,8 +240,11 @@ fn send_transaction(app_manager: Arc<Mutex<ApplicationManager>>, builder: Builde
     if to_address.is_empty() || transaction_amount.is_empty() || transaction_fee.is_empty() {
         let _ = sender.send(ViewObject::Error(InterfaceError::EmptyFields));
     } else {
-        println!("DATA {} {} {}", to_address, transaction_amount, transaction_fee);
-        let mut app_manager_thread = match app_manager.lock() {
+        println!(
+            "DATA {} {} {}",
+            to_address, transaction_amount, transaction_fee
+        );
+        let app_manager_thread = match app_manager.lock() {
             Ok(res) => res,
             Err(_) => return,
         };
@@ -237,7 +267,7 @@ fn select_current_account(
         let _ = sender.send(ViewObject::UploadTransactions(txs_current_account));
         let _ = sender.send(ViewObject::UploadAmounts((0, 0)));
     } else {
-        &app_manager_thread.select_current_account(value);
+        let _ = &app_manager_thread.select_current_account(value);
     }
     drop(app_manager_thread);
 }
