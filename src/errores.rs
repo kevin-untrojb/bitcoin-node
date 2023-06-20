@@ -144,6 +144,7 @@ impl fmt::Display for NodoBitcoinError {
 #[derive(Debug, PartialEq)]
 pub enum InterfaceError {
     CreateAccount,
+    EmptyFields
 }
 
 impl Error for InterfaceError {}
@@ -153,6 +154,9 @@ impl fmt::Display for InterfaceError {
         match self {
             InterfaceError::CreateAccount => {
                 write!(f, "Hubo un error al crear la cuenta. Intente nuevamente.")
+            }
+            InterfaceError::EmptyFields => {
+                write!(f, "Debe completar todos los campos para continuar.")
             }
         }
     }
