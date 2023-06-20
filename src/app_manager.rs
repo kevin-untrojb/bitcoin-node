@@ -1,6 +1,6 @@
 use std::{
     sync::mpsc::{self},
-    thread,
+    thread::{self, sleep}, time::Duration,
 };
 
 use crate::{
@@ -12,7 +12,11 @@ use crate::{
         view::ViewObject,
     },
     log::{create_logger_actor, log_info_message, LogMessages},
-    protocol::{connection::connect, initial_block_download::get_full_blockchain, admin_connections::{AdminConnections, self}},
+    protocol::{
+        admin_connections::{self, AdminConnections},
+        connection::connect,
+        initial_block_download::get_full_blockchain,
+    },
     wallet::{
         transaction_manager::{create_transaction_manager, get_available, TransactionMessages},
         user::Account,
@@ -54,7 +58,7 @@ impl ApplicationManager {
         println!("Close");
         _ = Account::save_all_accounts(self.accounts.clone());
         _ = self.tx_manager.send(TransactionMessages::ShutDown);
-
+        sleep(Duration::new(40, 0));
         log_info_message(
             self.logger.clone(),
             "Aplicación cerrada exitosamente.".to_string(),
@@ -79,16 +83,25 @@ impl ApplicationManager {
         let sender_frontend = self.sender_frontend.clone();
         let sender_tx_manager = self.tx_manager.clone();
         thread::spawn(move || {
-            let admin_connections = match ApplicationManager::download_blockchain(sender_frontend.clone(), logger.clone()){
+            let admin_connections = match ApplicationManager::download_blockchain(
+                sender_frontend.clone(),
+                logger.clone(),
+            ) {
                 Ok(admin_connections) => admin_connections,
                 Err(_) => {
-                    start_loading(sender_frontend,"Error al descargar la blockchain".to_string());
+                    start_loading(
+                        sender_frontend,
+                        "Error al descargar la blockchain".to_string(),
+                    );
                     return;
                 }
             };
 
-            let _ = sender_tx_manager.send(TransactionMessages::InitBlockBroadcasting((admin_connections, logger, sender_tx_manager.clone())));
-            
+            let _ = sender_tx_manager.send(TransactionMessages::InitBlockBroadcasting((
+                admin_connections,
+                logger,
+                sender_tx_manager.clone(),
+            )));
         });
     }
 
@@ -157,7 +170,7 @@ impl ApplicationManager {
 
         // pedirle al tx manager los saldos de las utxos del nuevo account seleccionado y con eso llamar a la vista
         // tambien devolver los pending
-        let available_amount = 10000; //self.get_available_amount()?;
+        let available_amount = self.get_available_amount()?;
         let pending_amount: u64 = 500000;
         let _ = self.sender_frontend.send(ViewObject::UploadAmounts((
             available_amount,

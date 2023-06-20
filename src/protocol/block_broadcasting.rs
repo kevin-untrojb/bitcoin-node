@@ -47,16 +47,16 @@ pub fn init_block_broadcasting(
                         Ok(senders_locked) => senders_locked,
                         Err(_) => return,
                     };
-
-                    for sender in  senders_locked.iter() {
-                        log_info_message(
-                            thread_logger_shutdown.clone(),
-                            "Inicio cierre hilos block broadcasting.".to_string(),
-                        );
+                    log_info_message(
+                        thread_logger_shutdown.clone(),
+                        "Inicio cierre hilos block broadcasting.".to_string(),
+                    );
+                    for sender in senders_locked.iter() {
                         sender.send(BlockBroadcastingMessages::ShutDown);
                     }
 
                     drop(senders_locked);
+                    return;
                 }
             }
         }
@@ -68,114 +68,54 @@ pub fn init_block_broadcasting(
         let thread_sender_tx_manager = sender_tx_manager.clone();
         let shared_blocks = blocks.clone();
         
-        let (sender_thread, receiver_thread) = channel();
+        // let (sender_thread, receiver_thread) = channel();
+        // let sender_mutex_connection = sender_mutex.clone();
+        // let mut senders_locked = match sender_mutex_connection.lock(){
+        //     Ok(mut senders_locked) => senders_locked.push(sender_thread),
+        //     Err(_) => continue,
+        // };
+        // drop(senders_locked);
         let sender_mutex_connection = sender_mutex.clone();
-        let mut senders_locked = match sender_mutex_connection.lock(){
-            Ok(mut senders_locked) => senders_locked.push(sender_thread),
-            Err(_) => continue,
-        };
-        drop(senders_locked);
-        threads.push(thread::spawn(move || loop {
-            if let Ok(message) = receiver_thread.try_recv() {
-                match message {
-                    BlockBroadcastingMessages::ShutDown => {
-                        log_info_message(
-                            thread_logger.clone(),
-                            "Hilo block broadcasting cerrado correctamente.".to_string(),
-                        );
-                        return;
-                    }
-                }
-            }
-
-            let mut buffer = [0u8; 24];
-            if socket.read_message(&mut buffer).is_err() {
-                log_error_message(
-                    thread_logger.clone(),
-                    "Error al leer el header del mensaje en broadcasting".to_string(),
-                );
-                return;
-            }
-
-            let (command, header) = match check_header(&buffer) {
-                Ok((command, payload_len)) => {
-                    let mut header = vec![0u8; payload_len];
-                    if socket.read_exact_message(&mut header).is_err() {
-                        log_error_message(
-                            thread_logger,
-                            "Error al leer el mensaje en broadcasting".to_string(),
-                        );
-                        return;
-                    }
-                    (command, header)
-                }
-                Err(NodoBitcoinError::MagicNumberIncorrecto) => {
-                    continue;
-                }
-                Err(_) => continue,
+        threads.push(thread::spawn(move || {
+            let (sender_thread, receiver_thread) = channel();
+            let mut senders_locked = match sender_mutex_connection.lock(){
+                Ok(mut senders_locked) => senders_locked.push(sender_thread),
+                Err(_) => return,
             };
-
-            if command == "ping" {
-                let pong_msg = match make_pong(&header) {
-                    Ok(msg) => msg,
-                    Err(_) => continue,
-                };
-
-                if socket.write_message(&pong_msg).is_err() {
-                    log_error_message(
-                        thread_logger,
-                        "Error al escribir el mensaje pong".to_string(),
-                    );
-                    return;
-                }
-            }
-
-            if command == "inv" {
-                log_info_message(thread_logger.clone(), "Mensaje inv recibido".to_string());
-                let get_data = match GetDataMessage::new_for_tx(&header) {
-                    Ok(get_data) => get_data,
-                    Err(_) => continue,
-                };
-
-                let get_data_message = match get_data.serialize() {
-                    Ok(res) => res,
-                    Err(_) => {
-                        log_error_message(
-                            thread_logger.clone(),
-                            "Error al serializar el get_data.".to_string(),
-                        );
-                        continue;
-                    }
-                };
-
-                if socket.write_message(&get_data_message).is_err() {
-                    log_error_message(
-                        thread_logger,
-                        "Error al escribir el mensaje get_data".to_string(),
-                    );
-                    return;
-                }
-
-                let mut buffer = [0u8; 24];
-                if socket.read_exact_message(&mut buffer).is_err() {
-                    log_error_message(
-                        thread_logger,
-                        "Error al leer el header mensaje en broadcasting.".to_string(),
-                    );
-                    return;
-                }
-
-                let (command, tx_read) = match check_header(&buffer) {
-                    Ok((command, payload_len)) => {
-                        let mut tx_read = vec![0u8; payload_len];
-                        if socket.read_exact_message(&mut tx_read).is_err() {
-                            log_error_message(
-                                thread_logger,
-                                "Error al leer el mensaje en broadcasting.".to_string(),
+            drop(senders_locked);
+            loop {
+                if let Ok(message) = receiver_thread.try_recv() {
+                    match message {
+                        BlockBroadcastingMessages::ShutDown => {
+                            log_info_message(
+                                thread_logger.clone(),
+                                "Hilo block broadcasting cerrado correctamente.".to_string(),
                             );
                             return;
                         }
-                        (command, tx_read)
+                    }
+                }
+
+                let mut buffer = [0u8; 24];
+                if socket.read_message(&mut buffer).is_err() {
+                    log_error_message(
+                        thread_logger.clone(),
+                        "Error al leer el header del mensaje en broadcasting".to_string(),
+                    );
+                    return;
+                }
+
+                let (command, header) = match check_header(&buffer) {
+                    Ok((command, payload_len)) => {
+                        let mut header = vec![0u8; payload_len];
+                        if socket.read_exact_message(&mut header).is_err() {
+                            log_error_message(
+                                thread_logger,
+                                "Error al leer el mensaje en broadcasting".to_string(),
+                            );
+                            return;
+                        }
+                        (command, header)
                     }
                     Err(NodoBitcoinError::MagicNumberIncorrecto) => {
                         continue;
@@ -183,102 +123,171 @@ pub fn init_block_broadcasting(
                     Err(_) => continue,
                 };
 
-                if command == "tx" {
-                    log_info_message(thread_logger.clone(), "Tx recibido.".to_string());
-                    let tx = match Transaction::deserialize(&tx_read){
-                        Ok(tx) => tx,
-                        Err(_) => {
-                            log_error_message(thread_logger, "No se pudo guardar la nueva transacción recibida en block broadcasting.".to_string());
-                            return;
-                        }
-                    };
-
-                    thread_sender_tx_manager.send(TransactionMessages::NewTx(tx));
-                }
-            }
-
-            if command == "headers" {
-                let header = match deserealize_sin_guardar(header) {
-                    Ok(header) => header,
-                    Err(_) => continue,
-                };
-                let hash_header = match header[0].hash() {
-                    Ok(res) => res,
-                    Err(_) => {
-                        log_error_message(
-                            thread_logger,
-                            "Error al calcular el hash del header.".to_string(),
-                        );
-                        return;
-                    }
-                };
-
-                let get_data = GetDataMessage::new(1, hash_header);
-
-                let get_data_message = match get_data.serialize() {
-                    Ok(res) => res,
-                    Err(_) => {
-                        log_error_message(
-                            thread_logger.clone(),
-                            "Error al serializar el get_data.".to_string(),
-                        );
-                        continue;
-                    }
-                };
-
-                if socket.write_message(&get_data_message).is_err() {
-                    log_error_message(
-                        thread_logger,
-                        "Error al escribir el mensaje get data en broadcasting".to_string(),
-                    );
-                    return;
-                }
-
-                let mut buffer = [0u8; 24];
-                if socket.read_exact_message(&mut buffer).is_err() {
-                    log_error_message(
-                        thread_logger,
-                        "Error al leer el header mensaje en broadcasting.".to_string(),
-                    );
-                    return;
-                }
-
-                let (command, block_read) = match check_header(&buffer) {
-                    Ok((command, payload_len)) => {
-                        let mut block_read = vec![0u8; payload_len];
-                        if socket.read_exact_message(&mut block_read).is_err() {
-                            log_error_message(
-                                thread_logger,
-                                "Error al leer el mensaje en broadcasting.".to_string(),
-                            );
-                            return;
-                        }
-                        (command, block_read)
-                    }
-                    Err(NodoBitcoinError::MagicNumberIncorrecto) => {
-                        continue;
-                    }
-                    Err(_) => continue,
-                };
-
-                if command == "block" {
-                    let block = match SerializedBlock::deserialize(&block_read) {
-                        Ok(block) => block,
+                if command == "ping" {
+                    let pong_msg = match make_pong(&header) {
+                        Ok(msg) => msg,
                         Err(_) => continue,
                     };
 
-                    pow_poi_validation(thread_logger.clone(), block.clone());
-
-                    let cloned_result = shared_blocks.lock();
-                    if let Ok(cloned) = cloned_result {
-                        guardar_header_y_bloque(thread_logger.clone(), block.clone(), cloned, header[0]);
-                        thread_sender_tx_manager.send(TransactionMessages::NewBlock(block));
-                    } else {
+                    if socket.write_message(&pong_msg).is_err() {
                         log_error_message(
                             thread_logger,
-                            "Error al lockear el vector de bloques".to_string(),
+                            "Error al escribir el mensaje pong".to_string(),
                         );
                         return;
+                    }
+                }
+
+                if command == "inv" {
+                    log_info_message(thread_logger.clone(), "Mensaje inv recibido".to_string());
+                    let get_data = match GetDataMessage::new_for_tx(&header) {
+                        Ok(get_data) => get_data,
+                        Err(_) => continue,
+                    };
+
+                    let get_data_message = match get_data.serialize() {
+                        Ok(res) => res,
+                        Err(_) => {
+                            log_error_message(
+                                thread_logger.clone(),
+                                "Error al serializar el get_data.".to_string(),
+                            );
+                            continue;
+                        }
+                    };
+
+                    if socket.write_message(&get_data_message).is_err() {
+                        log_error_message(
+                            thread_logger,
+                            "Error al escribir el mensaje get_data".to_string(),
+                        );
+                        return;
+                    }
+
+                    let mut buffer = [0u8; 24];
+                    if socket.read_exact_message(&mut buffer).is_err() {
+                        log_error_message(
+                            thread_logger,
+                            "Error al leer el header mensaje en broadcasting.".to_string(),
+                        );
+                        return;
+                    }
+
+                    let (command, tx_read) = match check_header(&buffer) {
+                        Ok((command, payload_len)) => {
+                            let mut tx_read = vec![0u8; payload_len];
+                            if socket.read_exact_message(&mut tx_read).is_err() {
+                                log_error_message(
+                                    thread_logger,
+                                    "Error al leer el mensaje en broadcasting.".to_string(),
+                                );
+                                return;
+                            }
+                            (command, tx_read)
+                        }
+                        Err(NodoBitcoinError::MagicNumberIncorrecto) => {
+                            continue;
+                        }
+                        Err(_) => continue,
+                    };
+
+                    if command == "tx" {
+                        log_info_message(thread_logger.clone(), "Tx recibido.".to_string());
+                        let tx = match Transaction::deserialize(&tx_read){
+                            Ok(tx) => tx,
+                            Err(_) => {
+                                log_error_message(thread_logger, "No se pudo guardar la nueva transacción recibida en block broadcasting.".to_string());
+                                return;
+                            }
+                        };
+
+                        thread_sender_tx_manager.send(TransactionMessages::NewTx(tx));
+                    }
+                }
+
+                if command == "headers" {
+                    let header = match deserealize_sin_guardar(header) {
+                        Ok(header) => header,
+                        Err(_) => continue,
+                    };
+                    let hash_header = match header[0].hash() {
+                        Ok(res) => res,
+                        Err(_) => {
+                            log_error_message(
+                                thread_logger,
+                                "Error al calcular el hash del header.".to_string(),
+                            );
+                            return;
+                        }
+                    };
+
+                    let get_data = GetDataMessage::new(1, hash_header);
+
+                    let get_data_message = match get_data.serialize() {
+                        Ok(res) => res,
+                        Err(_) => {
+                            log_error_message(
+                                thread_logger.clone(),
+                                "Error al serializar el get_data.".to_string(),
+                            );
+                            continue;
+                        }
+                    };
+
+                    if socket.write_message(&get_data_message).is_err() {
+                        log_error_message(
+                            thread_logger,
+                            "Error al escribir el mensaje get data en broadcasting".to_string(),
+                        );
+                        return;
+                    }
+
+                    let mut buffer = [0u8; 24];
+                    if socket.read_exact_message(&mut buffer).is_err() {
+                        log_error_message(
+                            thread_logger,
+                            "Error al leer el header mensaje en broadcasting.".to_string(),
+                        );
+                        return;
+                    }
+
+                    let (command, block_read) = match check_header(&buffer) {
+                        Ok((command, payload_len)) => {
+                            let mut block_read = vec![0u8; payload_len];
+                            if socket.read_exact_message(&mut block_read).is_err() {
+                                log_error_message(
+                                    thread_logger,
+                                    "Error al leer el mensaje en broadcasting.".to_string(),
+                                );
+                                return;
+                            }
+                            (command, block_read)
+                        }
+                        Err(NodoBitcoinError::MagicNumberIncorrecto) => {
+                            continue;
+                        }
+                        Err(_) => continue,
+                    };
+
+                    if command == "block" {
+                        let block = match SerializedBlock::deserialize(&block_read) {
+                            Ok(block) => block,
+                            Err(_) => continue,
+                        };
+
+                        pow_poi_validation(thread_logger.clone(), block.clone());
+
+                        let cloned_result = shared_blocks.lock();
+                        if let Ok(cloned) = cloned_result {
+                            guardar_header_y_bloque(thread_logger.clone(), block.clone(), cloned, header[0]);
+                            thread_sender_tx_manager.send(TransactionMessages::NewBlock(block));
+                        } else {
+                            log_error_message(
+                                thread_logger,
+                                "Error al lockear el vector de bloques".to_string(),
+                            );
+                            return;
+                        }
                     }
                 }
             }

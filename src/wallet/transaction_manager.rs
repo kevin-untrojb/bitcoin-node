@@ -6,7 +6,7 @@ use std::thread;
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::Transaction;
 use crate::errores::NodoBitcoinError;
-use crate::log::{log_error_message, LogMessages, log_info_message};
+use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::protocol::admin_connections::{self, AdminConnections};
 use crate::protocol::block_broadcasting::{init_block_broadcasting, BlockBroadcastingMessages};
 use crate::wallet::uxto_set::UTXOSet;
@@ -15,7 +15,7 @@ use super::user::Account;
 
 #[derive(Clone)]
 pub struct TransactionManager {
-    uxtos: UTXOSet,
+    pub uxtos: UTXOSet,
     tx_pendings: Vec<Transaction>,
     accounts: Vec<Account>,
     sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
@@ -58,6 +58,20 @@ impl TransactionManager {
                 logger,
                 sender_tx_manager,
             )) => {
+                log_info_message(logger.clone(), "Actualizando UTXOS ...".to_string());
+                let uxos_updated =
+                    match initialize_utxos_from_file(self.uxtos.clone(), self.accounts.clone()) {
+                        Ok(uxtos) => uxtos,
+                        Err(e) => {
+                            log_error_message(
+                                logger.clone(),
+                                "Error al inicializar UTXOS".to_string(),
+                            );
+                            return;
+                        }
+                    };
+                self.uxtos = uxos_updated;
+                log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 thread::spawn(move || {
                     init_block_broadcasting(logger, admin_connections, sender_tx_manager);
@@ -77,7 +91,12 @@ impl TransactionManager {
             TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
                 self.sender_block_broadcasting = Some(sender_block_broadcasting);
             }
-            TransactionMessages::ShutDown => return,
+            TransactionMessages::ShutDown => {
+                match &self.sender_block_broadcasting {
+                    Some(sender) => sender.send(BlockBroadcastingMessages::ShutDown),
+                    None => return
+                };
+            },
         }
     }
 
@@ -105,6 +124,20 @@ pub fn create_transaction_manager(accounts: Vec<Account>) -> Sender<TransactionM
     });
 
     sender
+}
+
+fn initialize_utxos_from_file(
+    mut utxo_set: UTXOSet,
+    accounts: Vec<Account>,
+) -> Result<UTXOSet, NodoBitcoinError> {
+    let blocks = SerializedBlock::read_blocks_from_file()?;
+    let txns = blocks
+        .iter()
+        .flat_map(|bloque| bloque.txns.clone())
+        .collect::<Vec<_>>();
+
+    utxo_set.update_from_transactions(txns, accounts.clone())?;
+    Ok(utxo_set)
 }
 
 pub fn update_from_transactions(
