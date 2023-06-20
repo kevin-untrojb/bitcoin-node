@@ -7,7 +7,7 @@ use crate::{
     blockchain::transaction::Transaction,
     config,
     errores::{InterfaceError, NodoBitcoinError},
-    interface::view::{end_loading, start_loading, ViewObject},
+    interface::{view::{ViewObject}, public::{start_loading, end_loading}},
     log::{create_logger_actor, LogMessages},
     protocol::{connection::connect, initial_block_download::get_full_blockchain},
     wallet::{
