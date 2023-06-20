@@ -68,13 +68,6 @@ pub fn init_block_broadcasting(
         let thread_sender_tx_manager = sender_tx_manager.clone();
         let shared_blocks = blocks.clone();
         
-        // let (sender_thread, receiver_thread) = channel();
-        // let sender_mutex_connection = sender_mutex.clone();
-        // let mut senders_locked = match sender_mutex_connection.lock(){
-        //     Ok(mut senders_locked) => senders_locked.push(sender_thread),
-        //     Err(_) => continue,
-        // };
-        // drop(senders_locked);
         let sender_mutex_connection = sender_mutex.clone();
         threads.push(thread::spawn(move || {
             let (sender_thread, receiver_thread) = channel();
@@ -97,7 +90,7 @@ pub fn init_block_broadcasting(
                 }
 
                 let mut buffer = [0u8; 24];
-                if socket.read_message(&mut buffer).is_err() {
+                if socket.read_exact_message(&mut buffer).is_err() {
                     log_error_message(
                         thread_logger.clone(),
                         "Error al leer el header del mensaje en broadcasting".to_string(),
@@ -110,7 +103,7 @@ pub fn init_block_broadcasting(
                         let mut header = vec![0u8; payload_len];
                         if socket.read_exact_message(&mut header).is_err() {
                             log_error_message(
-                                thread_logger,
+                                thread_logger.clone(),
                                 "Error al leer el mensaje en broadcasting".to_string(),
                             );
                             return;
@@ -122,7 +115,7 @@ pub fn init_block_broadcasting(
                     }
                     Err(_) => continue,
                 };
-
+                println!("{:?}", command);
                 if command == "ping" {
                     let pong_msg = match make_pong(&header) {
                         Ok(msg) => msg,
@@ -131,7 +124,7 @@ pub fn init_block_broadcasting(
 
                     if socket.write_message(&pong_msg).is_err() {
                         log_error_message(
-                            thread_logger,
+                            thread_logger.clone(),
                             "Error al escribir el mensaje pong".to_string(),
                         );
                         return;
@@ -140,9 +133,18 @@ pub fn init_block_broadcasting(
 
                 if command == "inv" {
                     log_info_message(thread_logger.clone(), "Mensaje inv recibido".to_string());
+                    println!("{:?}", header);
                     let get_data = match GetDataMessage::new_for_tx(&header) {
-                        Ok(get_data) => get_data,
-                        Err(_) => continue,
+                        Ok(get_data) => {
+                            log_info_message(
+                                thread_logger.clone(),
+                                "Get data armado correctamente".to_string(),
+                            );
+                            get_data
+                        },
+                        Err(_) => {
+                            continue
+                        },
                     };
 
                     let get_data_message = match get_data.serialize() {

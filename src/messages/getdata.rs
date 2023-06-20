@@ -30,7 +30,8 @@ impl GetDataMessage {
     pub fn new_for_tx(inv_msg: &Vec<u8>) -> Result<GetDataMessage, NodoBitcoinError> {
         let mut inventory = Vec::new();
         let (size_bytes, count) = parse_varint(&inv_msg);
-
+        println!("{:?}",count);
+        println!("{:?}", size_bytes);
         for i in 0..count {
             let offset = (i * 36) + size_bytes;
             let inv_type = u32::from_le_bytes([
@@ -39,6 +40,7 @@ impl GetDataMessage {
                 inv_msg[offset + 2],
                 inv_msg[offset + 3],
             ]);
+            println!("{:?}", inv_type);
             if inv_type != MSG_TX {
                 return Err(NodoBitcoinError::NoEsTransaccion);
             }

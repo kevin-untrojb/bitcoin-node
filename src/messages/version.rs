@@ -15,7 +15,7 @@ pub struct VersionMessage {
     user_agent_bytes: u32,
     user_agent: String,
     start_height: u32,
-    relay: bool,
+    relay: u8,
 }
 
 const DEFAUL_SERVICES: u64 = 0;
@@ -25,7 +25,7 @@ const DEFAULT_TRANS_IP: &str = "192.168.0.66";
 const DEFAULT_USER_AGENT_BYTES: u32 = 0;
 const DEFAULT_USER_AGENT: &str = "5";
 const DEFAULT_START_HEIGHT: u32 = 0;
-const DEFAULT_RELAY: bool = true;
+const DEFAULT_RELAY: u8 = 1;
 
 impl VersionMessage {
     fn string_to_bytes(s: &str, fixed_size: usize) -> Vec<u8> {
