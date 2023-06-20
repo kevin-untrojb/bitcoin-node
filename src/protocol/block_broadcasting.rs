@@ -13,13 +13,17 @@ use crate::{
         ping_pong::make_pong,
     }, wallet::transaction_manager::TransactionMessages,
 };
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{Sender, channel};
 use std::{
     sync::{Arc, Mutex, MutexGuard},
     thread,
 };
 
 use super::admin_connections::AdminConnections;
+
+pub enum BlockBroadcastingMessages {
+    ShutDown,
+}
 
 pub fn init_block_broadcasting(
     logger: Sender<LogMessages>,
@@ -28,20 +32,71 @@ pub fn init_block_broadcasting(
 ) -> Result<(), NodoBitcoinError> {
     let blocks = Arc::new(Mutex::new(SerializedBlock::read_blocks_from_file()?));
     let mut threads = vec![];
+    let (sender, receiver) = channel();
+    sender_tx_manager.send(TransactionMessages::SenderBlockBroadcasting(sender));
+    let mut senders: Vec<Sender<BlockBroadcastingMessages>> = Vec::new();
+    let sender_mutex = Arc::new(Mutex::new(senders));
+
+    let thread_logger_shutdown = logger.clone();
+    let sender_mutex_clone = sender_mutex.clone();
+    thread::spawn(move || {
+        while let Ok(message) = receiver.recv() {
+            match message {
+                BlockBroadcastingMessages::ShutDown => {
+                    let mut senders_locked = match sender_mutex_clone.lock(){
+                        Ok(senders_locked) => senders_locked,
+                        Err(_) => return,
+                    };
+
+                    for sender in  senders_locked.iter() {
+                        log_info_message(
+                            thread_logger_shutdown.clone(),
+                            "Inicio cierre hilos block broadcasting.".to_string(),
+                        );
+                        sender.send(BlockBroadcastingMessages::ShutDown);
+                    }
+
+                    drop(senders_locked);
+                }
+            }
+        }
+    });
+
     for connection in admin_connections.get_connections() {
         let socket = connection.clone();
         let thread_logger = logger.clone();
         let thread_sender_tx_manager = sender_tx_manager.clone();
         let shared_blocks = blocks.clone();
+        
+        let (sender_thread, receiver_thread) = channel();
+        let sender_mutex_connection = sender_mutex.clone();
+        let mut senders_locked = match sender_mutex_connection.lock(){
+            Ok(mut senders_locked) => senders_locked.push(sender_thread),
+            Err(_) => continue,
+        };
+        drop(senders_locked);
         threads.push(thread::spawn(move || loop {
+            if let Ok(message) = receiver_thread.try_recv() {
+                match message {
+                    BlockBroadcastingMessages::ShutDown => {
+                        log_info_message(
+                            thread_logger.clone(),
+                            "Hilo block broadcasting cerrado correctamente.".to_string(),
+                        );
+                        return;
+                    }
+                }
+            }
+
             let mut buffer = [0u8; 24];
             if socket.read_message(&mut buffer).is_err() {
                 log_error_message(
-                    thread_logger,
+                    thread_logger.clone(),
                     "Error al leer el header del mensaje en broadcasting".to_string(),
                 );
                 return;
             }
+
             let (command, header) = match check_header(&buffer) {
                 Ok((command, payload_len)) => {
                     let mut header = vec![0u8; payload_len];
@@ -76,6 +131,7 @@ pub fn init_block_broadcasting(
             }
 
             if command == "inv" {
+                log_info_message(thread_logger.clone(), "Mensaje inv recibido".to_string());
                 let get_data = match GetDataMessage::new_for_tx(&header) {
                     Ok(get_data) => get_data,
                     Err(_) => continue,
@@ -128,6 +184,7 @@ pub fn init_block_broadcasting(
                 };
 
                 if command == "tx" {
+                    log_info_message(thread_logger.clone(), "Tx recibido.".to_string());
                     let tx = match Transaction::deserialize(&tx_read){
                         Ok(tx) => tx,
                         Err(_) => {

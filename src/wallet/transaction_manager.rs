@@ -6,9 +6,9 @@ use std::thread;
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::Transaction;
 use crate::errores::NodoBitcoinError;
-use crate::log::{log_error_message, LogMessages};
+use crate::log::{log_error_message, LogMessages, log_info_message};
 use crate::protocol::admin_connections::{self, AdminConnections};
-use crate::protocol::block_broadcasting::init_block_broadcasting;
+use crate::protocol::block_broadcasting::{init_block_broadcasting, BlockBroadcastingMessages};
 use crate::wallet::uxto_set::UTXOSet;
 
 use super::user::Account;
@@ -18,6 +18,8 @@ pub struct TransactionManager {
     uxtos: UTXOSet,
     tx_pendings: Vec<Transaction>,
     accounts: Vec<Account>,
+    sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
+    // TODO guardar hilos abiertos para despues cerrarlos (block broadcasting)
 }
 
 pub enum TransactionMessages {
@@ -38,6 +40,7 @@ pub enum TransactionMessages {
     ),
     NewBlock(SerializedBlock),
     NewTx(Transaction),
+    SenderBlockBroadcasting(Sender<BlockBroadcastingMessages>),
     ShutDown,
 }
 
@@ -55,6 +58,7 @@ impl TransactionManager {
                 logger,
                 sender_tx_manager,
             )) => {
+                log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 thread::spawn(move || {
                     init_block_broadcasting(logger, admin_connections, sender_tx_manager);
                 });
@@ -69,6 +73,9 @@ impl TransactionManager {
             }
             TransactionMessages::NewTx(tx) => {
                 self.tx_pendings.push(tx);
+            }
+            TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
+                self.sender_block_broadcasting = Some(sender_block_broadcasting);
             }
             TransactionMessages::ShutDown => return,
         }
@@ -86,6 +93,7 @@ pub fn create_transaction_manager(accounts: Vec<Account>) -> Sender<TransactionM
         uxtos: UTXOSet::new(),
         tx_pendings: Vec::new(),
         accounts,
+        sender_block_broadcasting: None
     }));
 
     thread::spawn(move || {
