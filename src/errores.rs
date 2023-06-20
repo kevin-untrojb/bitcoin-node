@@ -140,3 +140,35 @@ impl fmt::Display for NodoBitcoinError {
         }
     }
 }
+
+#[derive(Debug, PartialEq)]
+pub enum InterfaceError {
+    CreateAccount,
+}
+
+impl Error for InterfaceError {}
+
+impl fmt::Display for InterfaceError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            InterfaceError::CreateAccount => {
+                write!(f, "Hubo un error al crear la cuenta. Intente nuevamente.")
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum InterfaceMessage {
+    CreateAccount,
+}
+
+impl fmt::Display for InterfaceMessage {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            InterfaceMessage::CreateAccount => {
+                write!(f, "Cuenta creada.")
+            }
+        }
+    }
+}

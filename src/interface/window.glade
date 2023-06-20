@@ -312,13 +312,13 @@
                       <object class="GtkBox">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="margin-start">10</property>
                         <property name="homogeneous">True</property>
                         <child>
-                          <object class="GtkLabel" id="id_prueba">
+                          <object class="GtkLabel">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <property name="halign">start</property>
-                            <property name="margin-left">10</property>
                             <property name="margin-start">10</property>
                             <property name="label" translatable="yes">Available:</property>
                             <property name="ellipsize">start</property>
@@ -353,13 +353,13 @@
                       <object class="GtkBox">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="margin-start">10</property>
                         <property name="homogeneous">True</property>
                         <child>
                           <object class="GtkLabel">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <property name="halign">start</property>
-                            <property name="margin-left">10</property>
                             <property name="margin-start">10</property>
                             <property name="label" translatable="yes">Pending:</property>
                             <property name="ellipsize">start</property>
@@ -393,54 +393,13 @@
                       <object class="GtkBox">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
-                        <property name="spacing">2</property>
+                        <property name="margin-start">10</property>
                         <property name="homogeneous">True</property>
                         <child>
                           <object class="GtkLabel">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <property name="halign">start</property>
-                            <property name="margin-left">10</property>
-                            <property name="margin-start">10</property>
-                            <property name="label" translatable="yes">Immature:</property>
-                            <property name="ellipsize">start</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkLabel" id="immature">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="label" translatable="yes">0 BTC</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">3</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkBox">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="homogeneous">True</property>
-                        <child>
-                          <object class="GtkLabel">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="halign">start</property>
-                            <property name="margin-left">10</property>
                             <property name="margin-start">10</property>
                             <property name="label" translatable="yes">Total:</property>
                             <property name="ellipsize">start</property>
@@ -455,7 +414,7 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkLabel" id="total_balances">
+                          <object class="GtkLabel" id="total">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <property name="label" translatable="yes">0 BTC</property>
@@ -832,25 +791,10 @@
               </packing>
             </child>
             <child>
-              <object class="GtkColorButton">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-              </object>
-              <packing>
-                <property name="position">2</property>
-              </packing>
+              <placeholder/>
             </child>
             <child type="tab">
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Receive</property>
-              </object>
-              <packing>
-                <property name="position">2</property>
-                <property name="tab-fill">False</property>
-              </packing>
+              <placeholder/>
             </child>
             <child>
               <object class="GtkTreeView">
@@ -862,9 +806,7 @@
                 <property name="enable-grid-lines">both</property>
                 <property name="tooltip-column">0</property>
                 <child internal-child="selection">
-                  <object class="GtkTreeSelection">
-                    <property name="mode">multiple</property>
-                  </object>
+                  <object class="GtkTreeSelection"/>
                 </child>
                 <child>
                   <object class="GtkTreeViewColumn">
