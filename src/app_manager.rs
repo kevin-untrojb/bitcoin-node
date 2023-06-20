@@ -1,6 +1,7 @@
 use std::{
-    sync::mpsc::{self},
-    thread::{self, sleep}, time::Duration,
+    sync::mpsc::{self, channel},
+    thread::{self, sleep},
+    time::Duration,
 };
 
 use crate::{
@@ -32,6 +33,10 @@ pub struct ApplicationManager {
     logger: mpsc::Sender<LogMessages>,
 }
 
+pub enum ApplicationManagerMessages {
+    ShutDowned,
+}
+
 impl ApplicationManager {
     pub fn new(sender: glib::Sender<ViewObject>) -> Self {
         let accounts = match Account::get_all_accounts() {
@@ -54,15 +59,32 @@ impl ApplicationManager {
 
     pub fn close(&self) {
         // TODO: cerrar los threads abiertos
+        start_loading(
+            self.sender_frontend.clone(),
+            "Closing threads... ".to_string(),
+        );
+
         log_info_message(self.logger.clone(), "Cerrando aplicación...".to_string());
         println!("Close");
         _ = Account::save_all_accounts(self.accounts.clone());
-        _ = self.tx_manager.send(TransactionMessages::ShutDown);
-        sleep(Duration::new(40, 0));
+
+        // cerrar todos los threads abiertos
+        let (sender, receiver) = channel();
+        _ = self.tx_manager.send(TransactionMessages::ShutDown(sender));
+
+        while let Ok(message) = receiver.recv() {
+            match message {
+                ApplicationManagerMessages::ShutDowned => {
+                    break;
+                }
+            }
+        }
+
         log_info_message(
             self.logger.clone(),
             "Aplicación cerrada exitosamente.".to_string(),
         );
+        end_loading(self.sender_frontend.clone());
     }
 
     fn get_available_amount(&self) -> Result<u64, NodoBitcoinError> {
