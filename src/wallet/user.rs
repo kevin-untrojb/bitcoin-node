@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_one_account_save_read() {
-        let mut account = Account::new(
+        let account = Account::new(
             "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw".to_string(),
             "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string(),
             "wallet1".to_string(),
@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_two_account_save_read() {
-        let mut account1 = Account::new(
+        let account1 = Account::new(
             "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw".to_string(),
             "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string(),
             "wallet2".to_string(),
@@ -180,7 +180,7 @@ mod tests {
         assert_eq!(accounts[0].public_key, account1.public_key);
         assert_eq!(accounts[0].wallet_name, account1.wallet_name);
 
-        let mut account2 = Account::new(
+        let account2 = Account::new(
             "cU7dbzeBRgMEZ5BUst2CFydGRm9gt8uQbNoojWPRRuHb2xk5q5h2".to_string(),
             "mtm4vS3WH7pg13pjFEmqGq2TSPDcUN6k7a".to_string(),
             "wallet1".to_string(),

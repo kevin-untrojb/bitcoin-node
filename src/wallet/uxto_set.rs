@@ -154,9 +154,9 @@ mod tests {
             Err(e) => return vec![],
         };
 
-        let p2pkh_script = match p2pkh_script_serialized(&script) {
+        match p2pkh_script_serialized(&script) {
             Ok(p2pkh_script) => return p2pkh_script,
-            Err(e) => return vec![],
+            Err(_) => return vec![],
         };
     }
 
