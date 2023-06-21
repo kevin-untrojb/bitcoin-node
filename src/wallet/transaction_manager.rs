@@ -18,6 +18,7 @@ use super::user::Account;
 #[derive(Clone)]
 pub struct TransactionManager {
     pub uxtos: UTXOSet,
+    tx_local_accounts: Vec<Transaction>,
     tx_pendings: Vec<Transaction>,
     accounts: Vec<Account>,
     sender_app_manager: Option<Sender<ApplicationManagerMessages>>,
@@ -28,6 +29,7 @@ pub struct TransactionManager {
 
 pub enum TransactionMessages {
     GetAvailable((String, Sender<Result<u64, NodoBitcoinError>>)),
+    GetTransactionByAccount((String, Sender<Vec<Transaction>>)),
     _UpdateFromTransactions(
         (
             Vec<Transaction>,
@@ -56,6 +58,13 @@ impl TransactionManager {
         match message {
             TransactionMessages::GetAvailable((account, result)) => {
                 result.send(self.uxtos.get_available(account));
+            }
+            TransactionMessages::GetTransactionByAccount((account, result)) => {
+                let tx_by_account = match self.uxtos.tx_by_accounts.get(&account) {
+                    Some(tx) => tx.clone(),
+                    None => Vec::new(),
+                };
+                result.send(tx_by_account);
             }
             TransactionMessages::_UpdateFromTransactions((transactions, accounts, result)) => {
                 result.send(self.uxtos.update_from_transactions(transactions, accounts));
@@ -208,6 +217,7 @@ pub fn create_transaction_manager(accounts: Vec<Account>) -> Sender<TransactionM
 
     let transaction_manager = Arc::new(Mutex::new(TransactionManager {
         uxtos: UTXOSet::new(),
+        tx_local_accounts: Vec::new(),
         tx_pendings: Vec::new(),
         accounts,
         sender_block_broadcasting: None,
@@ -277,6 +287,25 @@ pub fn get_available(
             // handle error
             log_error_message(logger, "".to_string());
             Err(NodoBitcoinError::InvalidAccount)
+        }
+    }
+}
+pub fn get_txs_by_account(
+    logger: Sender<LogMessages>,
+    manager: Sender<TransactionMessages>,
+    account: String,
+) -> Vec<Transaction> {
+    let (sender, receiver) = channel();
+    manager.send(TransactionMessages::GetTransactionByAccount((
+        account, sender,
+    )));
+    match receiver.recv() {
+        Ok(result) => result,
+        Err(_) => {
+            // todo log error
+            // handle error
+            log_error_message(logger, "".to_string());
+            vec![]
         }
     }
 }

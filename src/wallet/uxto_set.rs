@@ -29,6 +29,7 @@ impl fmt::Display for Utxo {
 pub struct UTXOSet {
     pub utxos_for_account: HashMap<String, Vec<Utxo>>,
     pub account_for_txid_index: HashMap<(Uint256, u32), String>,
+    pub tx_by_accounts: HashMap<String, Vec<Transaction>>,
 }
 
 impl fmt::Display for UTXOSet {
@@ -47,7 +48,47 @@ impl UTXOSet {
         UTXOSet {
             utxos_for_account: HashMap::new(),
             account_for_txid_index: HashMap::new(),
+            tx_by_accounts: HashMap::new(),
         }
+    }
+
+    // verificar si existe una tx para un account
+    pub fn existe_tx_para_account(&self, account: String, new_tx: &Transaction) -> bool {
+        if !self.tx_by_accounts.contains_key(&account) {
+            return false;
+        }
+
+        let tx_by_account = match self.tx_by_accounts.get(&account) {
+            Some(tx_by_account) => tx_by_account,
+            None => return false,
+        };
+
+        for tx in tx_by_account {
+            if tx.txid() == new_tx.txid() {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    fn agregar_tx_desde_out(&mut self, tx: &Transaction, current_account: String) {
+        if self.existe_tx_para_account(current_account.clone(), tx) {
+            return;
+        }
+        let txs_for_account = self
+            .tx_by_accounts
+            .entry(current_account.clone())
+            .or_default();
+        txs_for_account.push(tx.clone());
+    }
+
+    fn agregar_tx_desde_in(&mut self, tx: &Transaction, key: (Uint256, u32)) {
+        let account = self.account_for_txid_index[&key].clone();
+        if self.existe_tx_para_account(account.clone(), tx) {
+            return;
+        }
+        let txs_for_account = self.tx_by_accounts.entry(account.clone()).or_default();
+        txs_for_account.push(tx.clone());
     }
 
     fn agregar_utxo(
@@ -106,6 +147,8 @@ impl UTXOSet {
                     Err(_) => continue,
                 };
 
+                self.agregar_tx_desde_out(tx, current_account.public_key.clone());
+
                 self.agregar_utxo(
                     current_account.public_key.clone(),
                     tx_id,
@@ -121,6 +164,7 @@ impl UTXOSet {
                 let key = (previous_tx_id, output_index);
 
                 if self.account_for_txid_index.contains_key(&key) {
+                    self.agregar_tx_desde_in(tx, key.clone());
                     self.eliminar_utxo(previous_tx_id, output_index, key);
                 }
             }
@@ -151,7 +195,7 @@ mod tests {
     fn get_pk_script_from_account(account: String) -> Vec<u8> {
         let script = match decode_base58(account) {
             Ok(script) => script,
-            Err(e) => return vec![],
+            Err(_) => return vec![],
         };
 
         match p2pkh_script_serialized(&script) {

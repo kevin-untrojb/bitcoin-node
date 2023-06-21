@@ -17,7 +17,9 @@ use crate::{
         initial_block_download::get_full_blockchain,
     },
     wallet::{
-        transaction_manager::{create_transaction_manager, get_available, TransactionMessages},
+        transaction_manager::{
+            create_transaction_manager, get_available, get_txs_by_account, TransactionMessages,
+        },
         user::Account,
     },
 };
@@ -154,6 +156,19 @@ impl ApplicationManager {
         get_available(logger, tx_manager, public_key.to_string())
     }
 
+    fn get_txs_by_account(&self) -> Result<Vec<Transaction>, NodoBitcoinError> {
+        let current_account = self.get_current_account()?;
+        let public_key = current_account.public_key.clone();
+        let logger = self.logger.clone();
+        let tx_manager = self.tx_manager.clone();
+
+        Ok(get_txs_by_account(
+            logger,
+            tx_manager,
+            public_key.to_string(),
+        ))
+    }
+
     fn thread_download_blockchain(&mut self) {
         let logger = self.logger.clone();
         let sender_frontend = self.sender_frontend.clone();
@@ -243,7 +258,9 @@ impl ApplicationManager {
         self.current_account = current_account;
 
         // llamar al tx_manager para que me devuelva un Vec<Transaction> y con eso llamar a la vista
-        let txs_current_account = Vec::<Transaction>::new();
+        let txs_current_account = self.get_txs_by_account()?;
+        println!("txs_current_account: {:?}", txs_current_account);
+
         let _ = self
             .sender_frontend
             .send(ViewObject::UploadTransactions(txs_current_account));
