@@ -56,7 +56,6 @@ impl Connection {
             Ok(mut connection) => match connection.read_exact(buf) {
                 Ok(()) => Ok(()),
                 Err(error) => {
-                    println!("{:?}", error.kind());
                     if error.kind() == ErrorKind::WouldBlock {
                         Ok(())
                     }else{

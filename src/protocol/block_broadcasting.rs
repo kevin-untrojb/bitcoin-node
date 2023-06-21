@@ -115,7 +115,7 @@ pub fn init_block_broadcasting(
                     }
                     Err(_) => continue,
                 };
-                println!("{:?}", command);
+
                 if command == "ping" {
                     let pong_msg = match make_pong(&header) {
                         Ok(msg) => msg,
@@ -133,13 +133,8 @@ pub fn init_block_broadcasting(
 
                 if command == "inv" {
                     log_info_message(thread_logger.clone(), "Mensaje inv recibido".to_string());
-                    println!("{:?}", header);
                     let get_data = match GetDataMessage::new_for_tx(&header) {
                         Ok(get_data) => {
-                            log_info_message(
-                                thread_logger.clone(),
-                                "Get data armado correctamente".to_string(),
-                            );
                             get_data
                         },
                         Err(_) => {
@@ -196,14 +191,18 @@ pub fn init_block_broadcasting(
                     if command == "tx" {
                         log_info_message(thread_logger.clone(), "Tx recibido.".to_string());
                         let tx = match Transaction::deserialize(&tx_read){
-                            Ok(tx) => tx,
+                            Ok(tx) => {
+                                log_info_message(thread_logger.clone(), "Transacción nueva descerializada correctamente".to_string());
+                                tx
+                            },
                             Err(_) => {
-                                log_error_message(thread_logger, "No se pudo guardar la nueva transacción recibida en block broadcasting.".to_string());
+                                log_error_message(thread_logger.clone(), "No se pudo guardar la nueva transacción recibida en block broadcasting.".to_string());
                                 return;
                             }
                         };
 
                         thread_sender_tx_manager.send(TransactionMessages::NewTx(tx));
+                        log_info_message(thread_logger.clone(), "Nueva transacción enviada al manager".to_string());
                     }
                 }
 
