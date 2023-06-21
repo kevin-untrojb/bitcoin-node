@@ -18,10 +18,9 @@ use super::user::Account;
 #[derive(Clone)]
 pub struct TransactionManager {
     pub uxtos: UTXOSet,
-    tx_local_accounts: Vec<Transaction>,
     tx_pendings: Vec<Transaction>,
     accounts: Vec<Account>,
-    sender_app_manager: Option<Sender<ApplicationManagerMessages>>,
+    sender_app_manager: Sender<ApplicationManagerMessages>,
     sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
     admin_connections: Option<AdminConnections>,
     // TODO guardar hilos abiertos para despues cerrarlos (block broadcasting)
@@ -138,7 +137,7 @@ impl TransactionManager {
                 );
             }
             TransactionMessages::ShutDown(sender_app_manager) => {
-                self.sender_app_manager = Some(sender_app_manager.clone());
+                self.sender_app_manager = sender_app_manager.clone();
                 let _ = match &self.sender_block_broadcasting {
                     Some(sender) => sender.send(BlockBroadcastingMessages::ShutDown),
                     None => {
@@ -148,10 +147,8 @@ impl TransactionManager {
                 };
             }
             TransactionMessages::Shutdowned() => {
-                match &self.sender_app_manager {
-                    Some(sender) => sender.send(ApplicationManagerMessages::ShutDowned),
-                    None => return,
-                };
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::ShutDowned);
             }
         }
     }
@@ -212,16 +209,18 @@ fn send_new_tx(
     Ok(())
 }
 
-pub fn create_transaction_manager(accounts: Vec<Account>) -> Sender<TransactionMessages> {
+pub fn create_transaction_manager(
+    accounts: Vec<Account>,
+    app_sender: Sender<ApplicationManagerMessages>,
+) -> Sender<TransactionMessages> {
     let (sender, receiver) = channel();
 
     let transaction_manager = Arc::new(Mutex::new(TransactionManager {
         uxtos: UTXOSet::new(),
-        tx_local_accounts: Vec::new(),
         tx_pendings: Vec::new(),
         accounts,
         sender_block_broadcasting: None,
-        sender_app_manager: None,
+        sender_app_manager: app_sender,
         admin_connections: None,
     }));
 

@@ -1,5 +1,8 @@
 use std::{
-    sync::mpsc::{self, channel},
+    sync::{
+        mpsc::{self, channel},
+        Arc, Mutex,
+    },
     thread::{self},
 };
 
@@ -35,26 +38,58 @@ pub struct ApplicationManager {
 
 pub enum ApplicationManagerMessages {
     ShutDowned,
+    NewTx,
 }
 
 impl ApplicationManager {
-    pub fn new(sender: glib::Sender<ViewObject>) -> Self {
+    pub fn new(sender_frontend: glib::Sender<ViewObject>) -> Self {
         let accounts = match Account::get_all_accounts() {
             Ok(accounts) => accounts,
             Err(_) => Vec::new(),
         };
-        let tx_manager = create_transaction_manager(accounts.clone());
+        let (sender_app_manager, receiver_app_manager) = channel();
+        let tx_manager = create_transaction_manager(accounts.clone(), sender_app_manager);
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         let mut app_manager = ApplicationManager {
             current_account: None,
             accounts,
-            sender_frontend: sender,
-            logger: logger.clone(),
+            sender_frontend,
+            logger,
             tx_manager,
         };
         app_manager.thread_download_blockchain();
+        let ret_value = app_manager.clone();
 
-        app_manager
+        let app_manager_mutex = Arc::new(Mutex::new(app_manager));
+        thread::spawn(move || {
+            let ap = app_manager_mutex.clone();
+            while let Ok(message) = receiver_app_manager.recv() {
+                let mut manager = ap.lock().unwrap();
+                manager.handle_message(message);
+            }
+        });
+
+        ret_value
+    }
+    fn handle_message(&mut self, message: ApplicationManagerMessages) {
+        match message {
+            ApplicationManagerMessages::ShutDowned => {
+                return;
+            }
+            ApplicationManagerMessages::NewTx => {
+                let txs_current_account = match self.get_txs_by_account() {
+                    Ok(txs) => txs,
+                    Err(_) => {
+                        return;
+                    }
+                };
+                println!("txs_current_account: {:?}", txs_current_account);
+
+                let _ = self
+                    .sender_frontend
+                    .send(ViewObject::UploadTransactions(txs_current_account));
+            }
+        }
     }
 
     pub fn send_transaction(
@@ -120,14 +155,17 @@ impl ApplicationManager {
         _ = Account::save_all_accounts(self.accounts.clone());
 
         // cerrar todos los threads abiertos
-        let (sender, receiver) = channel();
-        _ = self.tx_manager.send(TransactionMessages::ShutDown(sender));
+        let (sender_shutdown, receiver_shutdown) = channel();
+        _ = self
+            .tx_manager
+            .send(TransactionMessages::ShutDown(sender_shutdown));
 
-        while let Ok(message) = receiver.recv() {
+        while let Ok(message) = receiver_shutdown.recv() {
             match message {
                 ApplicationManagerMessages::ShutDowned => {
                     break;
                 }
+                ApplicationManagerMessages::NewTx => continue,
             }
         }
 
