@@ -12,9 +12,9 @@ pub struct VersionMessage {
     addr_trans_ip: String,
     addr_trans_port: u16,
     nonce: u64,
-    user_agent_bytes: u32,
+    user_agent_bytes: u8,
     user_agent: String,
-    start_height: u32,
+    start_height: i32,
     relay: u8,
 }
 
@@ -22,9 +22,9 @@ const DEFAUL_SERVICES: u64 = 0;
 const DEFAUL_NONCE: u64 = 0;
 const DEFAUL_TRANS_PORT: u16 = 18333;
 const DEFAULT_TRANS_IP: &str = "192.168.0.66";
-const DEFAULT_USER_AGENT_BYTES: u32 = 0;
+const DEFAULT_USER_AGENT_BYTES: u8 = 0;
 const DEFAULT_USER_AGENT: &str = "5";
-const DEFAULT_START_HEIGHT: u32 = 0;
+const DEFAULT_START_HEIGHT: i32 = 0;
 const DEFAULT_RELAY: u8 = 1;
 
 impl VersionMessage {
