@@ -91,7 +91,7 @@ impl SerializedBlock {
     pub fn _local_merkle_tree(&self) -> Result<_MerkleRoot, NodoBitcoinError> {
         let local_merkle = match _MerkleRoot::_from_block(self) {
             Ok(calculated_merkle) => calculated_merkle,
-            Err(_) => return Err(NodoBitcoinError::_NoSePuedeArmarElArbol),
+            Err(_) => return Err(NodoBitcoinError::NoSePuedeArmarElArbol),
         };
         Ok(local_merkle)
     }

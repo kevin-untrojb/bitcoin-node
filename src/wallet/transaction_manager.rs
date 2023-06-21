@@ -5,11 +5,12 @@ use std::thread;
 
 use crate::app_manager::ApplicationManagerMessages;
 use crate::blockchain::block::SerializedBlock;
-use crate::blockchain::transaction::Transaction;
+use crate::blockchain::transaction::{create_tx_to_send, Transaction};
 use crate::errores::NodoBitcoinError;
 use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::protocol::admin_connections::{self, AdminConnections};
 use crate::protocol::block_broadcasting::{init_block_broadcasting, BlockBroadcastingMessages};
+use crate::protocol::send_tx::send_tx;
 use crate::wallet::uxto_set::UTXOSet;
 
 use super::user::Account;
@@ -21,6 +22,7 @@ pub struct TransactionManager {
     accounts: Vec<Account>,
     sender_app_manager: Option<Sender<ApplicationManagerMessages>>,
     sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
+    admin_connections: Option<AdminConnections>,
     // TODO guardar hilos abiertos para despues cerrarlos (block broadcasting)
 }
 
@@ -40,6 +42,7 @@ pub enum TransactionMessages {
             Sender<TransactionMessages>,
         ),
     ),
+    SendTx(Account, String, u64, u64, Sender<LogMessages>),
     NewBlock(SerializedBlock),
     NewTx(Transaction),
     SenderBlockBroadcasting(Sender<BlockBroadcastingMessages>),
@@ -75,6 +78,7 @@ impl TransactionManager {
                     };
                 self.uxtos = uxos_updated;
                 log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
+                self.admin_connections = Some(admin_connections.clone());
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 thread::spawn(move || {
                     init_block_broadcasting(logger, admin_connections, sender_tx_manager);
@@ -93,6 +97,19 @@ impl TransactionManager {
             }
             TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
                 self.sender_block_broadcasting = Some(sender_block_broadcasting);
+            }
+            TransactionMessages::SendTx(account, target_address, target_amount, fee, logger) => {
+                let utxos = self.uxtos.clone();
+                let admin_connections = self.admin_connections.clone();
+                send_new_tx(
+                    account,
+                    target_address,
+                    target_amount,
+                    fee,
+                    utxos,
+                    admin_connections,
+                    logger,
+                );
             }
             TransactionMessages::ShutDown(sender_app_manager) => {
                 self.sender_app_manager = Some(sender_app_manager.clone());
@@ -118,6 +135,40 @@ impl TransactionManager {
     }
 }
 
+fn send_new_tx(
+    account: Account,
+    target_address: String,
+    target_amount: u64,
+    fee: u64,
+    utxo_set: UTXOSet,
+    admin_connections: Option<AdminConnections>,
+    logger: Sender<LogMessages>,
+) -> Result<(), NodoBitcoinError> {
+    // obtener UTXOS del account
+    let public_key = account.public_key.clone();
+    let utxos_by_account = match utxo_set.utxos_for_account.get(&public_key) {
+        Some(utxos) => utxos.clone(),
+        None => return Err(NodoBitcoinError::CuentaNoEncontrada),
+    };
+
+    let tx_obj = create_tx_to_send(
+        account,
+        target_address,
+        target_amount,
+        fee,
+        utxos_by_account,
+    )?;
+
+    let admin_connections = match admin_connections {
+        Some(admin_connections) => admin_connections,
+        None => return Err(NodoBitcoinError::NoSePuedeEnviarTransaccion),
+    };
+
+    send_tx(admin_connections, logger, tx_obj)?;
+
+    Ok(())
+}
+
 pub fn create_transaction_manager(accounts: Vec<Account>) -> Sender<TransactionMessages> {
     let (sender, receiver) = channel();
 
@@ -127,6 +178,7 @@ pub fn create_transaction_manager(accounts: Vec<Account>) -> Sender<TransactionM
         accounts,
         sender_block_broadcasting: None,
         sender_app_manager: None,
+        admin_connections: None,
     }));
 
     thread::spawn(move || {

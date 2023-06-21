@@ -14,7 +14,7 @@ impl MerkleNode {
         right_node: Option<MerkleNode>,
     ) -> Result<MerkleNode, NodoBitcoinError> {
         if left_node.is_none() && right_node.is_none() {
-            return Err(NodoBitcoinError::_NoChildren);
+            return Err(NodoBitcoinError::NoChildren);
         }
         let hash = Self::_hash(left_node.clone(), right_node.clone());
         let left = left_node.map(Box::new);
@@ -49,7 +49,7 @@ fn test_error() {
 
     let result_error = MerkleNode::_from_nodes(left_node, right_node);
     assert!(result_error.is_err());
-    assert!(matches!(result_error, Err(NodoBitcoinError::_NoChildren)));
+    assert!(matches!(result_error, Err(NodoBitcoinError::NoChildren)));
 }
 
 #[test]
