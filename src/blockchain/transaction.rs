@@ -140,7 +140,7 @@ impl Transaction {
         Ok(u256)
     }
 
-    pub fn get_tx_from_file(txid: Uint256) -> Result<Transaction, NodoBitcoinError> {
+    pub fn _get_tx_from_file(txid: Uint256) -> Result<Transaction, NodoBitcoinError> {
         let blocks = SerializedBlock::read_blocks_from_file()?;
         let mut txs = HashMap::new();
         for block in blocks {
@@ -306,7 +306,7 @@ pub fn create_tx_to_send(
     Ok(tx_obj)
 }
 
-fn crear_tx_outs(
+fn _crear_tx_outs(
     target_public_key: String,
     value: u64,
     fee: u64,

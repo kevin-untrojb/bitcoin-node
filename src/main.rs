@@ -16,7 +16,7 @@ use std::{env, println};
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::uint256::Uint256;
-use crate::protocol::send_tx::{mock_tx_obj, send_tx};
+use crate::protocol::send_tx::{_mock_tx_obj, send_tx};
 use crate::wallet::user::Account;
 use crate::{log::create_logger_actor, protocol::connection::connect};
 use errores::NodoBitcoinError;
@@ -37,13 +37,13 @@ fn main() {
     }
 }
 
-fn send_tx_main() {
+fn _send_tx_main() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         let admin_connections = connect(logger.clone())?;
-        let tx_obj = mock_tx_obj()?;
+        let tx_obj = _mock_tx_obj()?;
         send_tx(admin_connections, logger, tx_obj)?;
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
@@ -107,7 +107,7 @@ fn new_tx() {
     }
 }
 
-fn signature() {
+fn _signature() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
@@ -189,7 +189,7 @@ fn signature() {
     }
 }
 
-fn new_tx_signed() {
+fn _new_tx_signed() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;
@@ -200,7 +200,7 @@ fn new_tx_signed() {
         ];
 
         let previous_tx_id = Uint256::from_le_bytes(previous_tx_id_bytes);
-        let previous_tx = Transaction::get_tx_from_file(previous_tx_id)?;
+        let previous_tx = Transaction::_get_tx_from_file(previous_tx_id)?;
 
         let prev_index: usize = 1;
 
@@ -240,7 +240,7 @@ fn new_tx_signed() {
     }
 }
 
-fn click_build_utxo_set() {
+fn _click_build_utxo_set() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;

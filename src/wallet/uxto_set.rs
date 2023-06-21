@@ -97,7 +97,6 @@ impl UTXOSet {
         transactions: Vec<Transaction>,
         accounts: Vec<Account>,
     ) -> Result<(), NodoBitcoinError> {
-        let mut i = 0;
         for tx in transactions.iter() {
             let tx_id = tx.txid()?;
             // recorro los output para identificar los que son mios
@@ -125,7 +124,6 @@ impl UTXOSet {
                     self.eliminar_utxo(previous_tx_id, output_index, key);
                 }
             }
-            i += 1;
         }
         Ok(())
     }

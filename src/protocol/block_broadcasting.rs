@@ -35,7 +35,7 @@ pub fn init_block_broadcasting(
     let mut threads = vec![];
     let (sender, receiver) = channel();
     sender_tx_manager.send(TransactionMessages::SenderBlockBroadcasting(sender));
-    let mut senders: Vec<Sender<BlockBroadcastingMessages>> = Vec::new();
+    let senders: Vec<Sender<BlockBroadcastingMessages>> = Vec::new();
     let sender_mutex = Arc::new(Mutex::new(senders));
 
     let thread_logger_shutdown = logger.clone();
@@ -44,7 +44,7 @@ pub fn init_block_broadcasting(
         while let Ok(message) = receiver.recv() {
             match message {
                 BlockBroadcastingMessages::ShutDown => {
-                    let mut senders_locked = match sender_mutex_clone.lock() {
+                    let senders_locked = match sender_mutex_clone.lock() {
                         Ok(senders_locked) => senders_locked,
                         Err(_) => return,
                     };
@@ -71,7 +71,7 @@ pub fn init_block_broadcasting(
         let sender_mutex_connection = sender_mutex.clone();
         threads.push(thread::spawn(move || {
             let (sender_thread, receiver_thread) = channel();
-            let mut senders_locked = match sender_mutex_connection.lock(){
+            let senders_locked = match sender_mutex_connection.lock(){
                 Ok(mut senders_locked) => senders_locked.push(sender_thread),
                 Err(_) => return,
             };

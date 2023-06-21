@@ -8,7 +8,7 @@ use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::{create_tx_to_send, Transaction};
 use crate::errores::NodoBitcoinError;
 use crate::log::{log_error_message, log_info_message, LogMessages};
-use crate::protocol::admin_connections::{self, AdminConnections};
+use crate::protocol::admin_connections::AdminConnections;
 use crate::protocol::block_broadcasting::{init_block_broadcasting, BlockBroadcastingMessages};
 use crate::protocol::send_tx::send_tx;
 use crate::wallet::uxto_set::UTXOSet;
@@ -28,7 +28,7 @@ pub struct TransactionManager {
 
 pub enum TransactionMessages {
     GetAvailable((String, Sender<Result<u64, NodoBitcoinError>>)),
-    UpdateFromTransactions(
+    _UpdateFromTransactions(
         (
             Vec<Transaction>,
             Vec<Account>,
@@ -56,7 +56,7 @@ impl TransactionManager {
             TransactionMessages::GetAvailable((account, result)) => {
                 result.send(self.uxtos.get_available(account));
             }
-            TransactionMessages::UpdateFromTransactions((transactions, accounts, result)) => {
+            TransactionMessages::_UpdateFromTransactions((transactions, accounts, result)) => {
                 result.send(self.uxtos.update_from_transactions(transactions, accounts));
             }
             TransactionMessages::InitBlockBroadcasting((
@@ -68,7 +68,7 @@ impl TransactionManager {
                 let uxos_updated =
                     match initialize_utxos_from_file(self.uxtos.clone(), self.accounts.clone()) {
                         Ok(uxtos) => uxtos,
-                        Err(e) => {
+                        Err(_) => {
                             log_error_message(
                                 logger.clone(),
                                 "Error al inicializar UTXOS".to_string(),
@@ -86,7 +86,8 @@ impl TransactionManager {
             }
             TransactionMessages::NewBlock(block) => {
                 let txns = block.txns.clone();
-                self.uxtos
+                let _ = self
+                    .uxtos
                     .update_from_transactions(txns.clone(), self.accounts.clone());
                 for tx in txns {
                     self.update_pendings(tx);
@@ -101,7 +102,7 @@ impl TransactionManager {
             TransactionMessages::SendTx(account, target_address, target_amount, fee, logger) => {
                 let utxos = self.uxtos.clone();
                 let admin_connections = self.admin_connections.clone();
-                send_new_tx(
+                let _ = send_new_tx(
                     account,
                     target_address,
                     target_amount,
@@ -113,7 +114,7 @@ impl TransactionManager {
             }
             TransactionMessages::ShutDown(sender_app_manager) => {
                 self.sender_app_manager = Some(sender_app_manager.clone());
-                match &self.sender_block_broadcasting {
+                let _ = match &self.sender_block_broadcasting {
                     Some(sender) => sender.send(BlockBroadcastingMessages::ShutDown),
                     None => {
                         sender_app_manager.send(ApplicationManagerMessages::ShutDowned);
@@ -206,14 +207,14 @@ fn initialize_utxos_from_file(
     Ok(utxo_set)
 }
 
-pub fn update_from_transactions(
+pub fn _update_from_transactions(
     logger: Sender<LogMessages>,
     manager: Sender<TransactionMessages>,
     transactions: Vec<Transaction>,
     accounts: Vec<Account>,
 ) -> Result<(), NodoBitcoinError> {
     let (sender, receiver) = channel();
-    manager.send(TransactionMessages::UpdateFromTransactions((
+    manager.send(TransactionMessages::_UpdateFromTransactions((
         transactions,
         accounts,
         sender,

@@ -16,10 +16,7 @@ pub fn send_tx(
     logger: mpsc::Sender<LogMessages>,
     tx_obj: Transaction,
 ) -> Result<(), NodoBitcoinError> {
-    //let tx_obj = mock_tx_obj()?;
-
     let tx_obj_bytes = tx_obj.serialize()?;
-    println!("tx_obj_bytes: {:02X?}", tx_obj_bytes);
 
     let payload: Vec<u8> = tx_obj_bytes.clone();
     let header = make_header("tx".to_string(), &payload)?;
@@ -54,7 +51,7 @@ Cuentas de prueba:
     - Private key: cVcf7ZMBWAanLmWy4QUHpNJEfNvX8n8NowAwzsDA1Qq82mk34drz
 
  */
-pub fn mock_tx_obj() -> Result<Transaction, NodoBitcoinError> {
+pub fn _mock_tx_obj() -> Result<Transaction, NodoBitcoinError> {
     let private_key = "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw".to_string();
     let public_key = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
     let account_name = "test".to_string();

@@ -25,7 +25,7 @@ impl Account {
     }
 
     pub fn save_all_accounts(accounts: Vec<Account>) -> Result<(), NodoBitcoinError> {
-        let mut file = File::create(ACCOUNT_FILENAME).expect("No se pudo crear el archivo");
+        let file = File::create(ACCOUNT_FILENAME).expect("No se pudo crear el archivo");
         for account in accounts {
             account.save(&mut &file)?;
         }
@@ -82,7 +82,7 @@ impl Account {
                 account_bytes.push(value);
                 offset = new_offset;
             }
-            let mut account = Account::new(
+            let account = Account::new(
                 account_bytes[0].clone(),
                 account_bytes[1].clone(),
                 account_bytes[2].clone(),

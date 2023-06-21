@@ -251,7 +251,8 @@ fn send_transaction(
             Ok(res) => res,
             Err(_) => return,
         };
-        &app_manager_thread.send_transaction(to_address, transaction_amount, transaction_fee);
+        let _ =
+            &app_manager_thread.send_transaction(to_address, transaction_amount, transaction_fee);
         drop(app_manager_thread);
     }
 }
@@ -276,11 +277,11 @@ fn select_current_account(
 }
 
 fn close(app_manager: Arc<Mutex<ApplicationManager>>) {
-    let mut app_manager_thread = match app_manager.lock() {
+    let app_manager_thread = match app_manager.lock() {
         Ok(res) => res,
         Err(_) => return,
     };
-    &app_manager_thread.close();
+    let _ = &app_manager_thread.close();
     drop(app_manager_thread);
 }
 
@@ -343,7 +344,7 @@ fn open_wallet_dialog(
 }
 
 fn create_combobox_wallet_list(builder: &Builder, app_manager: Arc<Mutex<ApplicationManager>>) {
-    let mut app_manager_thread = match app_manager.lock() {
+    let app_manager_thread = match app_manager.lock() {
         Ok(res) => res,
         Err(_) => return,
     };

@@ -1,11 +1,7 @@
-use super::view::{ViewObject, ViewObjectStatus, ViewObjectData};
+use super::view::{ViewObject, ViewObjectData, ViewObjectStatus};
 use glib::Sender;
-use gtk::{
-    prelude::*,
-    traits::{ButtonExt, WidgetExt},
-    Builder, Button, Dialog, Entry, Label, ResponseType, Spinner, Window,
-};
-use gtk::{CellRendererText, ComboBox, ListStore, MessageType};
+use gtk::MessageType;
+use gtk::{prelude::*, traits::WidgetExt, Builder, Dialog, ResponseType};
 
 // Activa spinner y muestra mensaje. Realizar llamada antes de hacer operacion y usar end_loading una vez que termine.
 pub fn start_loading(sender: Sender<ViewObject>, text: String) {
@@ -38,7 +34,6 @@ pub fn end_loading(sender: Sender<ViewObject>) {
     let _ = sender.send(ViewObject::Spinner(view_object_status));
     let _ = sender.send(ViewObject::Label(view_object_data));
 }
-
 
 // Info message: app_manager.sender_frontend.send(ViewObject::Error(InterfaceError::enum));
 // Error message: app_manager.sender_frontend.send(ViewObject::Message(InterfaceMessage::enum));

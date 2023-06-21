@@ -1,7 +1,6 @@
 use std::{
     sync::mpsc::{self, channel},
-    thread::{self, sleep},
-    time::Duration,
+    thread::{self},
 };
 
 use crate::{
@@ -14,8 +13,7 @@ use crate::{
     },
     log::{create_logger_actor, log_info_message, LogMessages},
     protocol::{
-        admin_connections::{self, AdminConnections},
-        connection::connect,
+        admin_connections::AdminConnections, connection::connect,
         initial_block_download::get_full_blockchain,
     },
     wallet::{
@@ -91,13 +89,19 @@ impl ApplicationManager {
         );
         log_info_message(self.logger.clone(), message);
 
-        self.tx_manager.send(TransactionMessages::SendTx(
-            account,
-            target_address,
-            target_amount,
-            fee,
-            logger,
-        ));
+        if self
+            .tx_manager
+            .send(TransactionMessages::SendTx(
+                account,
+                target_address,
+                target_amount,
+                fee,
+                logger,
+            ))
+            .is_err()
+        {
+            return Err(NodoBitcoinError::NoSePuedeEnviarTransaccion);
+        }
 
         Ok(())
     }
