@@ -16,7 +16,7 @@ use std::{env, println};
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::uint256::Uint256;
-use crate::protocol::send_tx::send_tx;
+use crate::protocol::send_tx::{mock_tx_obj, send_tx};
 use crate::wallet::user::Account;
 use crate::{log::create_logger_actor, protocol::connection::connect};
 use errores::NodoBitcoinError;
@@ -43,7 +43,8 @@ fn send_tx_main() {
         config::inicializar(args)?;
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         let admin_connections = connect(logger.clone())?;
-        send_tx(admin_connections, logger)?;
+        let tx_obj = mock_tx_obj()?;
+        send_tx(admin_connections, logger, tx_obj)?;
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
         Ok(())

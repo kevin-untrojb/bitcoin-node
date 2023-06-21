@@ -70,7 +70,7 @@ pub fn _build_varint_bytes(prefix: u8, value: usize) -> Result<Vec<u8>, NodoBitc
                 let bytes = vec![value_byte];
                 Ok(bytes)
             } else {
-                Err(NodoBitcoinError::_ValorFueraDeRango)
+                Err(NodoBitcoinError::ValorFueraDeRango)
             }
         }
     }
@@ -146,7 +146,7 @@ mod tests {
         assert!(result_large.is_err());
         assert_eq!(
             result_large.unwrap_err(),
-            NodoBitcoinError::_ValorFueraDeRango
+            NodoBitcoinError::ValorFueraDeRango
         );
     }
 

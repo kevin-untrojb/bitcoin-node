@@ -18,9 +18,9 @@ pub struct VersionMessage {
     relay: u8,
 }
 
-const DEFAUL_SERVICES: u64 = 0;
-const DEFAUL_NONCE: u64 = 0;
-const DEFAUL_TRANS_PORT: u16 = 18333;
+const DEFAULT_SERVICES: u64 = 0;
+const DEFAULT_NONCE: u64 = 0;
+const DEFAULT_TRANS_PORT: u16 = 18333;
 const DEFAULT_TRANS_IP: &str = "192.168.0.66";
 const DEFAULT_USER_AGENT_BYTES: u8 = 0;
 const DEFAULT_USER_AGENT: &str = "5";
@@ -37,16 +37,16 @@ impl VersionMessage {
         bytes
     }
     pub fn new(version: u32, timestamp: u64, addr_recv_socket: SocketAddr) -> VersionMessage {
-        let services = DEFAUL_SERVICES;
-        let addr_trans_services = DEFAUL_SERVICES;
+        let services = DEFAULT_SERVICES;
+        let addr_trans_services = DEFAULT_SERVICES;
 
-        let addr_recv_services = DEFAUL_SERVICES;
+        let addr_recv_services = DEFAULT_SERVICES;
         let addr_recv_ip = addr_recv_socket.ip().to_string();
         let addr_recv_port = addr_recv_socket.port();
 
         let addr_trans_ip = DEFAULT_TRANS_IP.to_string();
-        let addr_trans_port = DEFAUL_TRANS_PORT;
-        let nonce = DEFAUL_NONCE;
+        let addr_trans_port = DEFAULT_TRANS_PORT;
+        let nonce = DEFAULT_NONCE;
         let user_agent_bytes = DEFAULT_USER_AGENT_BYTES;
         let user_agent = DEFAULT_USER_AGENT.to_string();
         let start_height = DEFAULT_START_HEIGHT;

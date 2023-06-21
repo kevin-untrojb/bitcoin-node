@@ -2,14 +2,14 @@ use std::{error::Error, fmt};
 
 #[derive(Debug, PartialEq)]
 pub enum NodoBitcoinError {
-    _NoArgument,
+    NoArgument,
     NoExisteArchivo,
     NoExisteClave,
     ConfigLock,
     NoSePuedeLeerValorDeArchivoConfig,
 
     // conexion
-    _NoSePudoConectar,
+    NoSePudoConectar,
     MagicNumberIncorrecto,
     ErrorEnHandshake,
     NoSeEncuentraConexionLibre,
@@ -20,11 +20,11 @@ pub enum NodoBitcoinError {
     NoSePuedeLeerLosBytesHeaderVersionMessage,
     NoSePuedeLeerLosBytesVersionMessage,
     NoSePuedeLeerLosBytesVerackMessage,
-    _ValorFueraDeRango,
+    ValorFueraDeRango,
 
     // merkle_tree
-    _NoChildren,
-    _NoSePuedeArmarElArbol,
+    NoChildren,
+    NoSePuedeArmarElArbol,
 
     // decode base58 error
     DecodeError,
@@ -39,6 +39,8 @@ pub enum NodoBitcoinError {
     // wallet
     NoHayCuentaSeleccionada,
     ErrorAlCrearLaCuenta,
+    CuentaNoEncontrada,
+    NoSePuedeEnviarTransaccion,
 }
 
 impl Error for NodoBitcoinError {}
@@ -46,7 +48,7 @@ impl Error for NodoBitcoinError {}
 impl fmt::Display for NodoBitcoinError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            NodoBitcoinError::_NoArgument => {
+            NodoBitcoinError::NoArgument => {
                 write!(f, "ERROR: No se especificó el nombre del archivo.")
             }
             NodoBitcoinError::ConfigLock => {
@@ -73,10 +75,10 @@ impl fmt::Display for NodoBitcoinError {
                     "ERROR: No se puede escribir correctamente la estructura en bytes."
                 )
             }
-            NodoBitcoinError::_NoSePudoConectar => {
+            NodoBitcoinError::NoSePudoConectar => {
                 write!(f, "ERROR: No se pudo conectar al servidor.")
             }
-            NodoBitcoinError::_ValorFueraDeRango => {
+            NodoBitcoinError::ValorFueraDeRango => {
                 write!(
                     f,
                     "ERROR: No se puede parsear el valor ya que está fuera de rango."
@@ -89,7 +91,7 @@ impl fmt::Display for NodoBitcoinError {
             NodoBitcoinError::ErrorEnHandshake => {
                 write!(f, "ERROR: Hubo un error en el handshake.")
             }
-            NodoBitcoinError::_NoChildren => {
+            NodoBitcoinError::NoChildren => {
                 write!(f, "ERROR: No hay TXs para crear el Merkle Tree.")
             }
             NodoBitcoinError::NoSeEncuentraConexionLibre => {
@@ -113,7 +115,7 @@ impl fmt::Display for NodoBitcoinError {
                     "ERROR: No se puede leer correctamente el verack message."
                 )
             }
-            NodoBitcoinError::_NoSePuedeArmarElArbol => {
+            NodoBitcoinError::NoSePuedeArmarElArbol => {
                 write!(f, "ERROR: No se puede crear el merkle tree del bloque.")
             }
             NodoBitcoinError::DecodeError => {
@@ -136,6 +138,12 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::ErrorAlCrearLaCuenta => {
                 write!(f, "ERROR: No se puede crear la cuenta.")
+            }
+            NodoBitcoinError::CuentaNoEncontrada => {
+                write!(f, "ERROR: No se encuentra la cuenta.")
+            }
+            NodoBitcoinError::NoSePuedeEnviarTransaccion => {
+                write!(f, "ERROR: No se puede enviar la transacción.")
             }
         }
     }

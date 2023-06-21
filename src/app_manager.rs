@@ -62,14 +62,14 @@ impl ApplicationManager {
         target_address: String,
         target_amount_string: String,
         fee_string: String,
-    ) {
+    ) -> Result<(), NodoBitcoinError> {
         let target_amount = match target_amount_string.parse::<f64>() {
             Ok(target_amount) => (target_amount * 100_000_000.0) as u64,
             Err(_) => {
                 _ = self
                     .sender_frontend
                     .send(ViewObject::Error(InterfaceError::TargetAmountNotValid));
-                return;
+                return Err(NodoBitcoinError::NoSePuedeEnviarTransaccion);
             }
         };
         let fee: u64 = match fee_string.parse::<f64>() {
@@ -78,14 +78,28 @@ impl ApplicationManager {
                 _ = self
                     .sender_frontend
                     .send(ViewObject::Error(InterfaceError::FeeNotValid));
-                return;
+                return Err(NodoBitcoinError::NoSePuedeEnviarTransaccion);
             }
         };
+
+        let account = self.get_current_account()?;
+        let logger = self.logger.clone();
+
         let message = format!(
-            "Transacción enviada a {:?}. Monto: {:?}. Fee: {:?}",
+            "Enviando tx a {:?}. Monto: {:?}. Fee: {:?} ...",
             target_address, target_amount, fee
         );
         log_info_message(self.logger.clone(), message);
+
+        self.tx_manager.send(TransactionMessages::SendTx(
+            account,
+            target_address,
+            target_amount,
+            fee,
+            logger,
+        ));
+
+        Ok(())
     }
 
     pub fn close(&self) {
@@ -118,12 +132,17 @@ impl ApplicationManager {
         end_loading(self.sender_frontend.clone());
     }
 
-    fn get_available_amount(&self) -> Result<u64, NodoBitcoinError> {
+    fn get_current_account(&self) -> Result<Account, NodoBitcoinError> {
         let option_current_account = self.current_account.clone();
         let current_account = match option_current_account {
             Some(account) => account,
             None => return Err(NodoBitcoinError::NoHayCuentaSeleccionada),
         };
+        Ok(current_account)
+    }
+
+    fn get_available_amount(&self) -> Result<u64, NodoBitcoinError> {
+        let current_account = self.get_current_account()?;
         let public_key = current_account.public_key.clone();
         let logger = self.logger.clone();
         let tx_manager = self.tx_manager.clone();
