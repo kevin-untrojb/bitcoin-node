@@ -35,6 +35,7 @@ pub enum TransactionMessages {
             Sender<Result<(), NodoBitcoinError>>,
         ),
     ),
+    AddAccount(Vec<Account>, Sender<LogMessages>),
     InitBlockBroadcasting(
         (
             AdminConnections,
@@ -59,24 +60,39 @@ impl TransactionManager {
             TransactionMessages::_UpdateFromTransactions((transactions, accounts, result)) => {
                 result.send(self.uxtos.update_from_transactions(transactions, accounts));
             }
+            TransactionMessages::AddAccount(accounts, logger) => {
+                self.accounts = accounts;
+                let utxos_updated = match update_utxos_from_file(
+                    logger.clone(),
+                    self.uxtos.clone(),
+                    self.accounts.clone(),
+                ) {
+                    Ok(uxtos) => uxtos,
+                    Err(_) => {
+                        log_error_message(logger.clone(), "Error al inicializar UTXOS".to_string());
+                        return;
+                    }
+                };
+                self.uxtos = utxos_updated;
+                log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
+            }
             TransactionMessages::InitBlockBroadcasting((
                 admin_connections,
                 logger,
                 sender_tx_manager,
             )) => {
-                log_info_message(logger.clone(), "Actualizando UTXOS ...".to_string());
-                let uxos_updated =
-                    match initialize_utxos_from_file(self.uxtos.clone(), self.accounts.clone()) {
-                        Ok(uxtos) => uxtos,
-                        Err(_) => {
-                            log_error_message(
-                                logger.clone(),
-                                "Error al inicializar UTXOS".to_string(),
-                            );
-                            return;
-                        }
-                    };
-                self.uxtos = uxos_updated;
+                let utxos_updated = match update_utxos_from_file(
+                    logger.clone(),
+                    self.uxtos.clone(),
+                    self.accounts.clone(),
+                ) {
+                    Ok(uxtos) => uxtos,
+                    Err(_) => {
+                        log_error_message(logger.clone(), "Error al inicializar UTXOS".to_string());
+                        return;
+                    }
+                };
+                self.uxtos = utxos_updated;
                 log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
                 self.admin_connections = Some(admin_connections.clone());
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
@@ -134,6 +150,23 @@ impl TransactionManager {
     fn update_pendings(&mut self, new_tx: Transaction) {
         self.tx_pendings.retain(|tx| tx.txid() != new_tx.txid());
     }
+}
+
+fn update_utxos_from_file(
+    logger: Sender<LogMessages>,
+    utxo_set: UTXOSet,
+    accounts: Vec<Account>,
+) -> Result<UTXOSet, NodoBitcoinError> {
+    log_info_message(logger.clone(), "Actualizando UTXOS ...".to_string());
+    let uxos_updated = match initialize_utxos_from_file(utxo_set.clone(), accounts.clone()) {
+        Ok(uxtos) => uxtos,
+        Err(_) => {
+            log_error_message(logger.clone(), "Error al inicializar UTXOS".to_string());
+            return Err(NodoBitcoinError::ErrorAlActualizarUTXOS);
+        }
+    };
+    log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
+    Ok(uxos_updated)
 }
 
 fn send_new_tx(

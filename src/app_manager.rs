@@ -212,7 +212,11 @@ impl ApplicationManager {
         }
 
         self.accounts.push(new_account.clone());
-        // avisarle al tx_manager que se acaba de crear una cuenta
+
+        let _ = self.tx_manager.send(TransactionMessages::AddAccount(
+            self.accounts.clone(),
+            self.logger.clone(),
+        ));
 
         new_account.clone()
     }

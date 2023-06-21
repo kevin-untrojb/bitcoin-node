@@ -41,6 +41,7 @@ pub enum NodoBitcoinError {
     ErrorAlCrearLaCuenta,
     CuentaNoEncontrada,
     NoSePuedeEnviarTransaccion,
+    ErrorAlActualizarUTXOS,
 }
 
 impl Error for NodoBitcoinError {}
@@ -144,6 +145,9 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::NoSePuedeEnviarTransaccion => {
                 write!(f, "ERROR: No se puede enviar la transacción.")
+            }
+            NodoBitcoinError::ErrorAlActualizarUTXOS => {
+                write!(f, "ERROR: No se puede actualizar las UTXOs.")
             }
         }
     }
