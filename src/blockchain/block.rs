@@ -21,7 +21,7 @@ use transaction::Transaction;
 pub struct SerializedBlock {
     pub header: BlockHeader,
     pub txns: Vec<Transaction>,
-    txn_amount: usize,
+    pub txn_amount: usize,
 }
 
 impl fmt::Display for SerializedBlock {

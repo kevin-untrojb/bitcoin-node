@@ -24,6 +24,7 @@ use crate::{
             create_transaction_manager, get_available, get_txs_by_account, TransactionMessages,
         },
         user::Account,
+        uxto_set::TxReport,
     },
 };
 
@@ -83,6 +84,7 @@ impl ApplicationManager {
                         return;
                     }
                 };
+
                 println!("txs_current_account: {:?}", txs_current_account);
 
                 let _ = self
@@ -194,7 +196,7 @@ impl ApplicationManager {
         get_available(logger, tx_manager, public_key.to_string())
     }
 
-    fn get_txs_by_account(&self) -> Result<Vec<Transaction>, NodoBitcoinError> {
+    fn get_txs_by_account(&self) -> Result<Vec<TxReport>, NodoBitcoinError> {
         let current_account = self.get_current_account()?;
         let public_key = current_account.public_key.clone();
         let logger = self.logger.clone();
@@ -297,6 +299,7 @@ impl ApplicationManager {
 
         // llamar al tx_manager para que me devuelva un Vec<Transaction> y con eso llamar a la vista
         let txs_current_account = self.get_txs_by_account()?;
+
         println!("txs_current_account: {:?}", txs_current_account);
 
         let _ = self

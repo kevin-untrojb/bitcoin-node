@@ -58,13 +58,9 @@ pub fn _mock_tx_obj() -> Result<Transaction, NodoBitcoinError> {
     let account = Account::new(private_key, public_key.clone(), account_name);
 
     let blocks = SerializedBlock::read_blocks_from_file()?;
-    let txns = blocks
-        .iter()
-        .flat_map(|bloque| bloque.txns.clone())
-        .collect::<Vec<_>>();
 
     let mut utxo_set = UTXOSet::new();
-    utxo_set.update_from_transactions(txns, vec![account.clone()])?;
+    utxo_set.update_from_blocks(blocks, vec![account.clone()])?;
 
     let utxos_by_account = utxo_set.utxos_for_account;
     let utxos = utxos_by_account.get(&public_key).unwrap().clone();

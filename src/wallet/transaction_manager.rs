@@ -14,6 +14,7 @@ use crate::protocol::send_tx::send_tx;
 use crate::wallet::uxto_set::UTXOSet;
 
 use super::user::Account;
+use super::uxto_set::TxReport;
 
 #[derive(Clone)]
 pub struct TransactionManager {
@@ -28,10 +29,10 @@ pub struct TransactionManager {
 
 pub enum TransactionMessages {
     GetAvailable((String, Sender<Result<u64, NodoBitcoinError>>)),
-    GetTransactionByAccount((String, Sender<Vec<Transaction>>)),
-    _UpdateFromTransactions(
+    GetTxReportByAccount((String, Sender<Vec<TxReport>>)),
+    _UpdateFromBlocks(
         (
-            Vec<Transaction>,
+            Vec<SerializedBlock>,
             Vec<Account>,
             Sender<Result<(), NodoBitcoinError>>,
         ),
@@ -58,15 +59,15 @@ impl TransactionManager {
             TransactionMessages::GetAvailable((account, result)) => {
                 result.send(self.uxtos.get_available(account));
             }
-            TransactionMessages::GetTransactionByAccount((account, result)) => {
-                let tx_by_account = match self.uxtos.tx_by_accounts.get(&account) {
+            TransactionMessages::GetTxReportByAccount((account, result)) => {
+                let tx_by_account = match self.uxtos.tx_report_by_accounts.get(&account) {
                     Some(tx) => tx.clone(),
                     None => Vec::new(),
                 };
                 result.send(tx_by_account);
             }
-            TransactionMessages::_UpdateFromTransactions((transactions, accounts, result)) => {
-                result.send(self.uxtos.update_from_transactions(transactions, accounts));
+            TransactionMessages::_UpdateFromBlocks((blocks, accounts, result)) => {
+                result.send(self.uxtos.update_from_blocks(blocks, accounts));
             }
             TransactionMessages::AddAccount(accounts, logger) => {
                 self.accounts = accounts;
@@ -112,7 +113,7 @@ impl TransactionManager {
                 let txns = block.txns.clone();
                 let _ = self
                     .uxtos
-                    .update_from_transactions(txns.clone(), self.accounts.clone());
+                    .update_from_blocks(vec![block], self.accounts.clone());
                 for tx in txns {
                     self.update_pendings(tx);
                 }
@@ -240,26 +241,26 @@ fn initialize_utxos_from_file(
     accounts: Vec<Account>,
 ) -> Result<UTXOSet, NodoBitcoinError> {
     let blocks = SerializedBlock::read_blocks_from_file()?;
-    let txns = blocks
-        .iter()
-        .flat_map(|bloque| bloque.txns.clone())
-        .collect::<Vec<_>>();
+    // filtrar los bloxks por sólo aquellos que tiene transacciones
+    let blocks_with_tx = blocks
+        .into_iter()
+        .filter(|block| block.txns.len() > 0)
+        .collect::<Vec<SerializedBlock>>();
 
-    utxo_set.update_from_transactions(txns, accounts.clone())?;
+    println!("blocks with tx {:?}", blocks_with_tx.len());
+    utxo_set.update_from_blocks(blocks_with_tx, accounts.clone())?;
     Ok(utxo_set)
 }
 
 pub fn _update_from_transactions(
     logger: Sender<LogMessages>,
     manager: Sender<TransactionMessages>,
-    transactions: Vec<Transaction>,
+    blocks: Vec<SerializedBlock>,
     accounts: Vec<Account>,
 ) -> Result<(), NodoBitcoinError> {
     let (sender, receiver) = channel();
-    manager.send(TransactionMessages::_UpdateFromTransactions((
-        transactions,
-        accounts,
-        sender,
+    manager.send(TransactionMessages::_UpdateFromBlocks((
+        blocks, accounts, sender,
     )));
 
     match receiver.recv() {
@@ -293,11 +294,9 @@ pub fn get_txs_by_account(
     logger: Sender<LogMessages>,
     manager: Sender<TransactionMessages>,
     account: String,
-) -> Vec<Transaction> {
+) -> Vec<TxReport> {
     let (sender, receiver) = channel();
-    manager.send(TransactionMessages::GetTransactionByAccount((
-        account, sender,
-    )));
+    manager.send(TransactionMessages::GetTxReportByAccount((account, sender)));
     match receiver.recv() {
         Ok(result) => result,
         Err(_) => {

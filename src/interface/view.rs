@@ -9,9 +9,12 @@ use std::sync::{Arc, Mutex};
 
 use std::println;
 
-use crate::errores::{InterfaceError, InterfaceMessage};
 use crate::wallet::user::Account;
 use crate::{app_manager::ApplicationManager, blockchain::transaction::Transaction};
+use crate::{
+    errores::{InterfaceError, InterfaceMessage},
+    wallet::uxto_set::TxReport,
+};
 
 use super::public::{open_message_dialog, start_loading};
 
@@ -20,7 +23,7 @@ pub enum ViewObject {
     Spinner(ViewObjectStatus),
     Error(InterfaceError),
     Message(InterfaceMessage),
-    UploadTransactions(Vec<Transaction>),
+    UploadTransactions(Vec<TxReport>),
     UploadAmounts((u64, u64)),
 }
 
@@ -267,7 +270,7 @@ fn select_current_account(
         Err(_) => return,
     };
     if value == "None" {
-        let txs_current_account = Vec::<Transaction>::new();
+        let txs_current_account = Vec::<TxReport>::new();
         let _ = sender.send(ViewObject::UploadTransactions(txs_current_account));
         let _ = sender.send(ViewObject::UploadAmounts((0, 0)));
     } else {
