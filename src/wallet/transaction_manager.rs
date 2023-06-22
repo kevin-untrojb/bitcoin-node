@@ -1,11 +1,15 @@
+use std::collections::HashMap;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
+use bitcoin_hashes::Hash;
+
 use crate::app_manager::ApplicationManagerMessages;
 use crate::blockchain::block::SerializedBlock;
-use crate::blockchain::transaction::{create_tx_to_send, Transaction};
+use crate::blockchain::transaction::{create_tx_to_send, Transaction, self};
+use crate::common::uint256::Uint256;
 use crate::errores::NodoBitcoinError;
 use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::protocol::admin_connections::AdminConnections;
@@ -19,7 +23,7 @@ use super::uxto_set::TxReport;
 #[derive(Clone)]
 pub struct TransactionManager {
     pub uxtos: UTXOSet,
-    tx_pendings: Vec<Transaction>,
+    tx_pendings: HashMap<Uint256, Transaction>,
     accounts: Vec<Account>,
     sender_app_manager: Sender<ApplicationManagerMessages>,
     sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
@@ -117,12 +121,12 @@ impl TransactionManager {
                     .uxtos
                     .update_from_blocks(vec![block], self.accounts.clone());
                 for tx in txns {
-                    self.update_pendings(tx);
+                    self.update_pendings(tx.txid().unwrap());
                 }
                 self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::NewTx(tx) => {
-                self.tx_pendings.push(tx);
+                self.tx_pendings.insert(tx.txid().unwrap(), tx);
             }
             TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
                 self.sender_block_broadcasting = Some(sender_block_broadcasting);
@@ -154,8 +158,8 @@ impl TransactionManager {
         }
     }
 
-    fn update_pendings(&mut self, new_tx: Transaction) {
-        self.tx_pendings.retain(|tx| tx.txid() != new_tx.txid());
+    fn update_pendings(&mut self, tx_id: Uint256) {
+        self.tx_pendings.remove(&tx_id);
     }
 }
 
@@ -218,7 +222,7 @@ pub fn create_transaction_manager(
 
     let transaction_manager = Arc::new(Mutex::new(TransactionManager {
         uxtos: UTXOSet::new(),
-        tx_pendings: Vec::new(),
+        tx_pendings: HashMap::new(),
         accounts,
         sender_block_broadcasting: None,
         sender_app_manager: app_sender,
