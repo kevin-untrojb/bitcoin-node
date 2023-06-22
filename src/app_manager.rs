@@ -1,6 +1,6 @@
 use std::{
     sync::{
-        mpsc::{self, channel},
+        mpsc::{self, Sender, channel},
         Arc, Mutex,
     },
     thread::{self},
@@ -14,7 +14,7 @@ use crate::{
         public::{end_loading, start_loading},
         view::ViewObject,
     },
-    log::{create_logger_actor, log_info_message, LogMessages},
+    log::{create_logger_actor, log_info_message,log_error_message, LogMessages},
     protocol::{
         admin_connections::AdminConnections, connection::connect,
         initial_block_download::get_full_blockchain,
@@ -35,11 +35,12 @@ pub struct ApplicationManager {
     pub tx_manager: mpsc::Sender<TransactionMessages>,
     sender_frontend: glib::Sender<ViewObject>,
     logger: mpsc::Sender<LogMessages>,
+    sender_app_manager: Sender<ApplicationManagerMessages>
 }
 
 pub enum ApplicationManagerMessages {
-    ShutDowned,
-    NewTx,
+    ShutDowned(Sender<Result<(), NodoBitcoinError>>),
+    TransactionManagerUpdate,
 }
 
 impl ApplicationManager {
@@ -49,10 +50,11 @@ impl ApplicationManager {
             Err(_) => Vec::new(),
         };
         let (sender_app_manager, receiver_app_manager) = channel();
-        let tx_manager = create_transaction_manager(accounts.clone(), sender_app_manager);
+        let tx_manager = create_transaction_manager(accounts.clone(), sender_app_manager.clone());
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         let mut app_manager = ApplicationManager {
             current_account: None,
+            sender_app_manager,
             accounts,
             sender_frontend,
             logger,
@@ -74,18 +76,20 @@ impl ApplicationManager {
     }
     fn handle_message(&mut self, message: ApplicationManagerMessages) {
         match message {
-            ApplicationManagerMessages::ShutDowned => {
+            ApplicationManagerMessages::ShutDowned(shut_down_sender) => {
+                _ = self
+                    .tx_manager
+                    .send(TransactionMessages::ShutDown);
+                shut_down_sender.send(Ok(()));
                 return;
             }
-            ApplicationManagerMessages::NewTx => {
+            ApplicationManagerMessages::TransactionManagerUpdate => {
                 let txs_current_account = match self.get_txs_by_account() {
                     Ok(txs) => txs,
                     Err(_) => {
                         return;
                     }
                 };
-
-                println!("txs_current_account: {:?}", txs_current_account);
 
                 let _ = self
                     .sender_frontend
@@ -145,7 +149,7 @@ impl ApplicationManager {
         Ok(())
     }
 
-    pub fn close(&self) {
+    pub fn close(&self) -> Result<(), NodoBitcoinError> {
         // TODO: cerrar los threads abiertos
         start_loading(
             self.sender_frontend.clone(),
@@ -158,16 +162,14 @@ impl ApplicationManager {
 
         // cerrar todos los threads abiertos
         let (sender_shutdown, receiver_shutdown) = channel();
-        _ = self
-            .tx_manager
-            .send(TransactionMessages::ShutDown(sender_shutdown));
-
-        while let Ok(message) = receiver_shutdown.recv() {
-            match message {
-                ApplicationManagerMessages::ShutDowned => {
-                    break;
-                }
-                ApplicationManagerMessages::NewTx => continue,
+        self.sender_app_manager.send(ApplicationManagerMessages::ShutDowned(sender_shutdown));
+        match receiver_shutdown.recv(){
+            Ok(_) => {},
+            Err(_) => {
+                // todo log error
+                // handle error
+                log_error_message(self.logger.clone(), "".to_string());
+                return Err(NodoBitcoinError::InvalidAccount);
             }
         }
 
@@ -176,6 +178,7 @@ impl ApplicationManager {
             "Aplicación cerrada exitosamente.".to_string(),
         );
         end_loading(self.sender_frontend.clone());
+        Ok(())
     }
 
     fn get_current_account(&self) -> Result<Account, NodoBitcoinError> {

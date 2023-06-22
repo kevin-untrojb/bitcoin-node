@@ -49,8 +49,7 @@ pub enum TransactionMessages {
     NewBlock(SerializedBlock),
     NewTx(Transaction),
     SenderBlockBroadcasting(Sender<BlockBroadcastingMessages>),
-    ShutDown(Sender<ApplicationManagerMessages>),
-    Shutdowned(),
+    ShutDown,
 }
 
 impl TransactionManager {
@@ -68,6 +67,7 @@ impl TransactionManager {
             }
             TransactionMessages::_UpdateFromBlocks((blocks, accounts, result)) => {
                 result.send(self.uxtos.update_from_blocks(blocks, accounts));
+                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::AddAccount(accounts, logger) => {
                 self.accounts = accounts;
@@ -84,6 +84,7 @@ impl TransactionManager {
                 };
                 self.uxtos = utxos_updated;
                 log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
+                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::InitBlockBroadcasting((
                 admin_connections,
@@ -108,6 +109,7 @@ impl TransactionManager {
                 thread::spawn(move || {
                     init_block_broadcasting(logger, admin_connections, sender_tx_manager);
                 });
+                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::NewBlock(block) => {
                 let txns = block.txns.clone();
@@ -117,6 +119,7 @@ impl TransactionManager {
                 for tx in txns {
                     self.update_pendings(tx);
                 }
+                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::NewTx(tx) => {
                 self.tx_pendings.push(tx);
@@ -137,19 +140,16 @@ impl TransactionManager {
                     logger,
                 );
             }
-            TransactionMessages::ShutDown(sender_app_manager) => {
-                self.sender_app_manager = sender_app_manager.clone();
+            TransactionMessages::ShutDown => {
                 let _ = match &self.sender_block_broadcasting {
-                    Some(sender) => sender.send(BlockBroadcastingMessages::ShutDown),
+                    Some(sender) => {
+                        sender.send(BlockBroadcastingMessages::ShutDown);
+                        return
+                    },
                     None => {
-                        sender_app_manager.send(ApplicationManagerMessages::ShutDowned);
                         return;
                     }
                 };
-            }
-            TransactionMessages::Shutdowned() => {
-                self.sender_app_manager
-                    .send(ApplicationManagerMessages::ShutDowned);
             }
         }
     }
