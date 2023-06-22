@@ -35,11 +35,13 @@ pub struct ApplicationManager {
     pub tx_manager: mpsc::Sender<TransactionMessages>,
     sender_frontend: glib::Sender<ViewObject>,
     logger: mpsc::Sender<LogMessages>,
-    sender_app_manager: Sender<ApplicationManagerMessages>
+    sender_app_manager: Sender<ApplicationManagerMessages>,
+    sender_shut_down:Option<Sender<Result<(), NodoBitcoinError>>>
 }
 
 pub enum ApplicationManagerMessages {
-    ShutDowned(Sender<Result<(), NodoBitcoinError>>),
+    ShutDowned,
+    ShutDown(Sender<Result<(), NodoBitcoinError>>),
     TransactionManagerUpdate,
 }
 
@@ -54,6 +56,7 @@ impl ApplicationManager {
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         let mut app_manager = ApplicationManager {
             current_account: None,
+            sender_shut_down:None,
             sender_app_manager,
             accounts,
             sender_frontend,
@@ -76,12 +79,11 @@ impl ApplicationManager {
     }
     fn handle_message(&mut self, message: ApplicationManagerMessages) {
         match message {
-            ApplicationManagerMessages::ShutDowned(shut_down_sender) => {
+            ApplicationManagerMessages::ShutDown(shut_down_sender) => {
                 _ = self
                     .tx_manager
                     .send(TransactionMessages::ShutDown);
-                shut_down_sender.send(Ok(()));
-                return;
+                self.sender_shut_down = Some(shut_down_sender);
             }
             ApplicationManagerMessages::TransactionManagerUpdate => {
                 let txs_current_account = match self.get_txs_by_account() {
@@ -94,6 +96,13 @@ impl ApplicationManager {
                 let _ = self
                     .sender_frontend
                     .send(ViewObject::UploadTransactions(txs_current_account));
+            }
+            ApplicationManagerMessages::ShutDowned =>{
+                if let Some(sender_shout_down) = &self.sender_shut_down{
+                    sender_shout_down.send(Ok(()));
+                    return
+                }
+
             }
         }
     }
@@ -162,7 +171,7 @@ impl ApplicationManager {
 
         // cerrar todos los threads abiertos
         let (sender_shutdown, receiver_shutdown) = channel();
-        self.sender_app_manager.send(ApplicationManagerMessages::ShutDowned(sender_shutdown));
+        self.sender_app_manager.send(ApplicationManagerMessages::ShutDown(sender_shutdown));
         match receiver_shutdown.recv(){
             Ok(_) => {},
             Err(_) => {

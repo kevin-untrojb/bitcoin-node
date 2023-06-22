@@ -54,6 +54,7 @@ pub enum TransactionMessages {
     NewTx(Transaction),
     SenderBlockBroadcasting(Sender<BlockBroadcastingMessages>),
     ShutDown,
+    Shutdowned,
 }
 
 impl TransactionManager {
@@ -155,8 +156,12 @@ impl TransactionManager {
                     }
                 };
             }
+            TransactionMessages::Shutdowned => {
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::ShutDowned);
+                }
+            }
         }
-    }
 
     fn update_pendings(&mut self, tx_id: Uint256) {
         self.tx_pendings.remove(&tx_id);
