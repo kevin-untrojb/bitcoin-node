@@ -299,6 +299,7 @@ pub fn init_block_broadcasting(
         let _ = thread.join();
     }
 
+    _ = sender_tx_manager.send(TransactionMessages::Shutdowned);
 
     Ok(())
 }

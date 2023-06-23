@@ -26,7 +26,8 @@ pub enum ViewObject {
     UploadTransactions(Vec<TxReport>),
     UploadAmounts((u64, u64)),
     NewBlock(String),
-    NewTx(String)
+    NewTx(String),
+    CloseApplication,
 }
 
 pub struct ViewObjectData {
@@ -55,9 +56,14 @@ pub fn create_view() -> Sender<ViewObject> {
         window.set_title(&title);
         window.show_all();
 
-        let sender_close_clone = sender.clone();
+        let sender_clone = sender.clone();
         let manager_close_app = app_manager_mutex.clone();
-        handle_closure(manager_close_app, sender_close_clone, window.clone());
+        window.connect_delete_event(move |_, _| {
+            start_loading(sender_clone.clone(), "Cerrando aplicación...".to_string());
+            close(manager_close_app.clone());
+            //gtk::main_quit();
+            Inhibit(true)
+        });
     };
 
     let manager_create_wallet: Arc<Mutex<ApplicationManager>> = app_manager_mutex.clone();
@@ -87,6 +93,9 @@ pub fn create_view() -> Sender<ViewObject> {
             }
             ViewObject::UploadTransactions(transactions) => {
                 println!("Actualizar transactions {}", transactions.len());
+            }
+            ViewObject::CloseApplication => {
+                gtk::main_quit();
             }
             ViewObject::UploadAmounts((available, pending)) => {
                 let mut total: u64 = 0;
@@ -144,17 +153,6 @@ pub fn create_view() -> Sender<ViewObject> {
 fn satoshis_to_btc_string(satoshis: u64) -> String {
     let btc = satoshis as f64 / 100_000_000.0;
     format!("{:.8} BTC", btc)
-}
-
-fn handle_closure(manager_close_app: Arc<Mutex<ApplicationManager>>,
-    sender: Sender<ViewObject>, window: Window){
-    window.connect_delete_event(move |_,_| {
-        start_loading(sender.clone(), "Closing threads...".to_string());
-        close(manager_close_app.clone());
-        end_loading(sender.clone());
-        gtk::main_quit();
-        Inhibit(false)
-    });
 }
 
 fn handle_modal_wallet(
