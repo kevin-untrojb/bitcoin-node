@@ -112,6 +112,12 @@ impl ApplicationManager {
                 );
                 let _ = self.sender_frontend.send(ViewObject::CloseApplication);
             }
+            ApplicationManagerMessages::NewBlock => {
+                let _ = self.sender_frontend.send(ViewObject::NewBlock("Nuevo bloque recibido".to_string()));
+            }
+            ApplicationManagerMessages::NewTx => {
+                let _ = self.sender_frontend.send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
+            }
         }
     }
 
@@ -176,7 +182,7 @@ impl ApplicationManager {
         // TODO: cerrar los threads abiertos
         start_loading(
             self.sender_frontend.clone(),
-            "Closing aplication... ".to_string(),
+            "Closing application... ".to_string(),
         );
 
         log_info_message(self.logger.clone(), "Cerrando aplicación...".to_string());

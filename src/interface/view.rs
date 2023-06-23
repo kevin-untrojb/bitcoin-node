@@ -117,10 +117,10 @@ pub fn create_view() -> Sender<ViewObject> {
                 }
             }
             ViewObject::NewBlock(message) => {
-                open_message_dialog(false, &builder_receiver_clone, message);
+                //open_message_dialog(false, &builder_receiver_clone, message);
             }
             ViewObject::NewTx(message) => {
-                open_message_dialog(false, &builder_receiver_clone, message);
+                //open_message_dialog(false, &builder_receiver_clone, message);
             }
         }
         glib::Continue(true)

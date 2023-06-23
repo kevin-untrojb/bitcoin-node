@@ -145,6 +145,7 @@ impl TransactionManager {
             }
             TransactionMessages::NewTx(tx) => {
                 self.tx_pendings.insert(tx.txid().unwrap(), tx);
+                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
                 self.sender_app_manager.send(ApplicationManagerMessages::NewTx);
             }
             TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
