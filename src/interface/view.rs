@@ -25,6 +25,7 @@ pub enum ViewObject {
     Message(InterfaceMessage),
     UploadTransactions(Vec<TxReport>),
     UploadAmounts((u64, u64)),
+    CloseApplication,
 }
 
 pub struct ViewObjectData {
@@ -59,8 +60,8 @@ pub fn create_view() -> Sender<ViewObject> {
         window.connect_delete_event(move |_, _| {
             start_loading(sender_clone.clone(), "Cerrando aplicación...".to_string());
             close(manager_close_app.clone());
-            gtk::main_quit();
-            Inhibit(false)
+            //gtk::main_quit();
+            Inhibit(true)
         });
     };
 
@@ -91,6 +92,10 @@ pub fn create_view() -> Sender<ViewObject> {
             }
             ViewObject::UploadTransactions(_) => {
                 println!("Actualizar transactions");
+            }
+            ViewObject::CloseApplication => {
+                println!("Cerrar la aplicacion");
+                gtk::main_quit();
             }
             ViewObject::UploadAmounts((available, pending)) => {
                 let mut total: u64 = 0;

@@ -40,7 +40,7 @@ pub enum ApplicationManagerMessages {
     GetAmountsByAccount(u64, u64),
     GetTxReportByAccount(Vec<TxReport>),
     ShutDowned,
-    ShutDown(Sender<Result<(), NodoBitcoinError>>),
+    ShutDown,
     TransactionManagerUpdate,
 }
 
@@ -95,15 +95,20 @@ impl ApplicationManager {
                     .send(ViewObject::UploadTransactions(tx_reports));
                 end_loading(self.sender_frontend.clone());
             }
-            ApplicationManagerMessages::ShutDown(shut_down_sender) => {
+            ApplicationManagerMessages::ShutDown => {
                 _ = self.tx_manager.send(TransactionMessages::ShutDown);
-                self.sender_shut_down = Some(shut_down_sender);
+                //self.sender_shut_down = Some(shut_down_sender);
             }
             ApplicationManagerMessages::ShutDowned => {
-                if let Some(sender_shout_down) = &self.sender_shut_down {
-                    let _ = sender_shout_down.send(Ok(()));
-                    return;
-                }
+                // if let Some(sender_shout_down) = &self.sender_shut_down {
+                //     let _ = sender_shout_down.send(Ok(()));
+                //     return;
+                // };
+                log_info_message(
+                    self.logger.clone(),
+                    "Aplicación cerrada exitosamente.".to_string(),
+                );
+                let _ = self.sender_frontend.send(ViewObject::CloseApplication);
             }
         }
     }
@@ -163,32 +168,25 @@ impl ApplicationManager {
         // TODO: cerrar los threads abiertos
         start_loading(
             self.sender_frontend.clone(),
-            "Closing threads... ".to_string(),
+            "Closing aplication... ".to_string(),
         );
 
         log_info_message(self.logger.clone(), "Cerrando aplicación...".to_string());
-        println!("Close");
         _ = Account::save_all_accounts(self.accounts.clone());
 
         // cerrar todos los threads abiertos
-        let (sender_shutdown, receiver_shutdown) = channel();
+        //let (sender_shutdown, receiver_shutdown) = channel();
         self.sender_app_manager
-            .send(ApplicationManagerMessages::ShutDown(sender_shutdown));
-        match receiver_shutdown.recv() {
-            Ok(_) => {}
-            Err(_) => {
-                // todo log error
-                // handle error
-                log_error_message(self.logger.clone(), "".to_string());
-                return Err(NodoBitcoinError::InvalidAccount);
-            }
-        }
-
-        log_info_message(
-            self.logger.clone(),
-            "Aplicación cerrada exitosamente.".to_string(),
-        );
-        end_loading(self.sender_frontend.clone());
+            .send(ApplicationManagerMessages::ShutDown);
+        // match receiver_shutdown.recv() {
+        //     Ok(_) => {}
+        //     Err(_) => {
+        //         // todo log error
+        //         // handle error
+        //         log_error_message(self.logger.clone(), "".to_string());
+        //         return Err(NodoBitcoinError::InvalidAccount);
+        //     }
+        // }
         Ok(())
     }
 
