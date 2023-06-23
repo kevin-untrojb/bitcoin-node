@@ -90,7 +90,7 @@ pub fn init_block_broadcasting(
                 }
 
                 let mut buffer = [0u8; 24];
-                if socket.read_exact_message(&mut buffer).is_err() {
+                if socket.read_message(&mut buffer).is_err() {
                     log_error_message(
                         thread_logger.clone(),
                         "Error al leer el header del mensaje en broadcasting".to_string(),
@@ -101,7 +101,7 @@ pub fn init_block_broadcasting(
                 let (command, header) = match check_header(&buffer) {
                     Ok((command, payload_len)) => {
                         let mut header = vec![0u8; payload_len];
-                        if socket.read_exact_message(&mut header).is_err() {
+                        if socket.read_message(&mut header).is_err() {
                             log_error_message(
                                 thread_logger.clone(),
                                 "Error al leer el mensaje en broadcasting".to_string(),
@@ -162,7 +162,7 @@ pub fn init_block_broadcasting(
                     }
 
                     let mut buffer = [0u8; 24];
-                    if socket.read_exact_message(&mut buffer).is_err() {
+                    if socket.read_message(&mut buffer).is_err() {
                         log_error_message(
                             thread_logger,
                             "Error al leer el header mensaje en broadcasting.".to_string(),
@@ -173,7 +173,7 @@ pub fn init_block_broadcasting(
                     let (command, tx_read) = match check_header(&buffer) {
                         Ok((command, payload_len)) => {
                             let mut tx_read = vec![0u8; payload_len];
-                            if socket.read_exact_message(&mut tx_read).is_err() {
+                            if socket.read_message(&mut tx_read).is_err() {
                                 log_error_message(
                                     thread_logger,
                                     "Error al leer el mensaje en broadcasting.".to_string(),
@@ -244,7 +244,7 @@ pub fn init_block_broadcasting(
                     }
 
                     let mut buffer = [0u8; 24];
-                    if socket.read_exact_message(&mut buffer).is_err() {
+                    if socket.read_message(&mut buffer).is_err() {
                         log_error_message(
                             thread_logger,
                             "Error al leer el header mensaje en broadcasting.".to_string(),
@@ -255,7 +255,7 @@ pub fn init_block_broadcasting(
                     let (command, block_read) = match check_header(&buffer) {
                         Ok((command, payload_len)) => {
                             let mut block_read = vec![0u8; payload_len];
-                            if socket.read_exact_message(&mut block_read).is_err() {
+                            if socket.read_message(&mut block_read).is_err() {
                                 log_error_message(
                                     thread_logger,
                                     "Error al leer el mensaje en broadcasting.".to_string(),
