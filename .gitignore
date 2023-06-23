@@ -4,3 +4,6 @@ headers.bin
 /blocks.bin
 /src/nodo.log
 /accounts.dat
+/account_for_txid_index.dat
+/tx_report_by_accounts.dat
+/utxos_for_account.dat

@@ -272,4 +272,16 @@ mod tests {
             assert_eq!(a.0[i], b.0[NUM_BYTES - i - 1]);
         }
     }
+
+    #[test]
+    fn test_get_bytes_from_le_bytes() {
+        let a = Uint256::_from_u64(123456789);
+
+        let bytes = a.get_bytes();
+        let from_be = Uint256::from_be_bytes(bytes);
+
+        for i in 0..NUM_BYTES {
+            assert_eq!(a.0[i], from_be.0[i]);
+        }
+    }
 }

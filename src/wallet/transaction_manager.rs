@@ -8,7 +8,7 @@ use bitcoin_hashes::Hash;
 
 use crate::app_manager::ApplicationManagerMessages;
 use crate::blockchain::block::SerializedBlock;
-use crate::blockchain::transaction::{create_tx_to_send, Transaction, self};
+use crate::blockchain::transaction::{self, create_tx_to_send, Transaction};
 use crate::common::uint256::Uint256;
 use crate::errores::NodoBitcoinError;
 use crate::log::{log_error_message, log_info_message, LogMessages};
@@ -22,7 +22,7 @@ use super::uxto_set::TxReport;
 
 #[derive(Clone)]
 pub struct TransactionManager {
-    pub uxtos: UTXOSet,
+    pub utxos: UTXOSet,
     tx_pendings: HashMap<Uint256, Transaction>,
     accounts: Vec<Account>,
     sender_app_manager: Sender<ApplicationManagerMessages>,
@@ -53,6 +53,7 @@ pub enum TransactionMessages {
     NewBlock(SerializedBlock),
     NewTx(Transaction),
     SenderBlockBroadcasting(Sender<BlockBroadcastingMessages>),
+    LoadSavedUTXOS,
     ShutDown,
     Shutdowned,
 }
@@ -61,24 +62,26 @@ impl TransactionManager {
     fn handle_message(&mut self, message: TransactionMessages) {
         match message {
             TransactionMessages::GetAvailable((account, result)) => {
-                result.send(self.uxtos.get_available(account));
+                result.send(self.utxos.get_available(account));
             }
             TransactionMessages::GetTxReportByAccount((account, result)) => {
-                let tx_by_account = match self.uxtos.tx_report_by_accounts.get(&account) {
+                let tx_by_account = match self.utxos.tx_report_by_accounts.get(&account) {
                     Some(tx) => tx.clone(),
                     None => Vec::new(),
                 };
                 result.send(tx_by_account);
             }
             TransactionMessages::_UpdateFromBlocks((blocks, accounts, result)) => {
-                result.send(self.uxtos.update_from_blocks(blocks, accounts));
-                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
+                result.send(self.utxos.update_from_blocks(blocks, accounts));
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::AddAccount(accounts, logger) => {
                 self.accounts = accounts;
+                self.utxos.last_timestamp = 0;
                 let utxos_updated = match update_utxos_from_file(
                     logger.clone(),
-                    self.uxtos.clone(),
+                    self.utxos.clone(),
                     self.accounts.clone(),
                 ) {
                     Ok(uxtos) => uxtos,
@@ -87,9 +90,10 @@ impl TransactionManager {
                         return;
                     }
                 };
-                self.uxtos = utxos_updated;
+                self.utxos = utxos_updated;
                 log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
-                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::InitBlockBroadcasting((
                 admin_connections,
@@ -98,7 +102,7 @@ impl TransactionManager {
             )) => {
                 let utxos_updated = match update_utxos_from_file(
                     logger.clone(),
-                    self.uxtos.clone(),
+                    self.utxos.clone(),
                     self.accounts.clone(),
                 ) {
                     Ok(uxtos) => uxtos,
@@ -107,24 +111,26 @@ impl TransactionManager {
                         return;
                     }
                 };
-                self.uxtos = utxos_updated;
+                self.utxos = utxos_updated;
                 log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
                 self.admin_connections = Some(admin_connections.clone());
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 thread::spawn(move || {
                     init_block_broadcasting(logger, admin_connections, sender_tx_manager);
                 });
-                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::NewBlock(block) => {
                 let txns = block.txns.clone();
                 let _ = self
-                    .uxtos
+                    .utxos
                     .update_from_blocks(vec![block], self.accounts.clone());
                 for tx in txns {
                     self.update_pendings(tx.txid().unwrap());
                 }
-                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::NewTx(tx) => {
                 self.tx_pendings.insert(tx.txid().unwrap(), tx);
@@ -133,7 +139,7 @@ impl TransactionManager {
                 self.sender_block_broadcasting = Some(sender_block_broadcasting);
             }
             TransactionMessages::SendTx(account, target_address, target_amount, fee, logger) => {
-                let utxos = self.uxtos.clone();
+                let utxos = self.utxos.clone();
                 let admin_connections = self.admin_connections.clone();
                 let _ = send_new_tx(
                     account,
@@ -145,12 +151,18 @@ impl TransactionManager {
                     logger,
                 );
             }
+            TransactionMessages::LoadSavedUTXOS => {
+                // cargar los utxos guardados en el archivo
+                let _ = self.utxos.load();
+            }
             TransactionMessages::ShutDown => {
+                // guardar utxos en archivo
+                let _ = self.utxos.save();
                 let _ = match &self.sender_block_broadcasting {
                     Some(sender) => {
                         sender.send(BlockBroadcastingMessages::ShutDown);
-                        return
-                    },
+                        return;
+                    }
                     None => {
                         return;
                     }
@@ -159,9 +171,9 @@ impl TransactionManager {
             TransactionMessages::Shutdowned => {
                 self.sender_app_manager
                     .send(ApplicationManagerMessages::ShutDowned);
-                }
             }
         }
+    }
 
     fn update_pendings(&mut self, tx_id: Uint256) {
         self.tx_pendings.remove(&tx_id);
@@ -226,7 +238,7 @@ pub fn create_transaction_manager(
     let (sender, receiver) = channel();
 
     let transaction_manager = Arc::new(Mutex::new(TransactionManager {
-        uxtos: UTXOSet::new(),
+        utxos: UTXOSet::new(),
         tx_pendings: HashMap::new(),
         accounts,
         sender_block_broadcasting: None,

@@ -1,6 +1,6 @@
 use std::{
     sync::{
-        mpsc::{self, Sender, channel},
+        mpsc::{self, channel, Sender},
         Arc, Mutex,
     },
     thread::{self},
@@ -14,7 +14,7 @@ use crate::{
         public::{end_loading, start_loading},
         view::ViewObject,
     },
-    log::{create_logger_actor, log_info_message,log_error_message, LogMessages},
+    log::{create_logger_actor, log_error_message, log_info_message, LogMessages},
     protocol::{
         admin_connections::AdminConnections, connection::connect,
         initial_block_download::get_full_blockchain,
@@ -36,7 +36,7 @@ pub struct ApplicationManager {
     sender_frontend: glib::Sender<ViewObject>,
     logger: mpsc::Sender<LogMessages>,
     sender_app_manager: Sender<ApplicationManagerMessages>,
-    sender_shut_down:Option<Sender<Result<(), NodoBitcoinError>>>
+    sender_shut_down: Option<Sender<Result<(), NodoBitcoinError>>>,
 }
 
 pub enum ApplicationManagerMessages {
@@ -53,10 +53,11 @@ impl ApplicationManager {
         };
         let (sender_app_manager, receiver_app_manager) = channel();
         let tx_manager = create_transaction_manager(accounts.clone(), sender_app_manager.clone());
+        _ = tx_manager.send(TransactionMessages::LoadSavedUTXOS);
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         let mut app_manager = ApplicationManager {
             current_account: None,
-            sender_shut_down:None,
+            sender_shut_down: None,
             sender_app_manager,
             accounts,
             sender_frontend,
@@ -80,9 +81,7 @@ impl ApplicationManager {
     fn handle_message(&mut self, message: ApplicationManagerMessages) {
         match message {
             ApplicationManagerMessages::ShutDown(shut_down_sender) => {
-                _ = self
-                    .tx_manager
-                    .send(TransactionMessages::ShutDown);
+                _ = self.tx_manager.send(TransactionMessages::ShutDown);
                 self.sender_shut_down = Some(shut_down_sender);
             }
             ApplicationManagerMessages::TransactionManagerUpdate => {
@@ -97,12 +96,11 @@ impl ApplicationManager {
                     .sender_frontend
                     .send(ViewObject::UploadTransactions(txs_current_account));
             }
-            ApplicationManagerMessages::ShutDowned =>{
-                if let Some(sender_shout_down) = &self.sender_shut_down{
+            ApplicationManagerMessages::ShutDowned => {
+                if let Some(sender_shout_down) = &self.sender_shut_down {
                     sender_shout_down.send(Ok(()));
-                    return
+                    return;
                 }
-
             }
         }
     }
@@ -171,9 +169,10 @@ impl ApplicationManager {
 
         // cerrar todos los threads abiertos
         let (sender_shutdown, receiver_shutdown) = channel();
-        self.sender_app_manager.send(ApplicationManagerMessages::ShutDown(sender_shutdown));
-        match receiver_shutdown.recv(){
-            Ok(_) => {},
+        self.sender_app_manager
+            .send(ApplicationManagerMessages::ShutDown(sender_shutdown));
+        match receiver_shutdown.recv() {
+            Ok(_) => {}
             Err(_) => {
                 // todo log error
                 // handle error
@@ -311,8 +310,6 @@ impl ApplicationManager {
 
         // llamar al tx_manager para que me devuelva un Vec<Transaction> y con eso llamar a la vista
         let txs_current_account = self.get_txs_by_account()?;
-
-        println!("txs_current_account: {:?}", txs_current_account);
 
         let _ = self
             .sender_frontend

@@ -4,7 +4,10 @@ use std::{
     mem,
 };
 
-use crate::errores::NodoBitcoinError;
+use crate::{
+    common::utils_file::{read_decoded_string_offset, save_encoded_len_bytes},
+    errores::NodoBitcoinError,
+};
 
 #[derive(Clone)]
 pub struct Account {
@@ -33,27 +36,9 @@ impl Account {
     }
 
     fn save(&self, file: &mut dyn Write) -> Result<(), NodoBitcoinError> {
-        Account::save_len_bytes(file, self.secret_key.clone())?;
-        Account::save_len_bytes(file, self.public_key.clone())?;
-        Account::save_len_bytes(file, self.wallet_name.clone())
-    }
-
-    fn save_len_bytes(file: &mut dyn Write, data: String) -> Result<(), NodoBitcoinError> {
-        let encoded = bs58::encode(data.as_bytes()).into_string();
-        let len = encoded.len();
-        match file.write_all(&len.to_ne_bytes()) {
-            Ok(_) => {}
-            Err(_) => {
-                return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
-            }
-        };
-        match file.write_all(&encoded.as_bytes()) {
-            Ok(_) => {}
-            Err(_) => {
-                return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
-            }
-        };
-        Ok(())
+        save_encoded_len_bytes(file, self.secret_key.clone())?;
+        save_encoded_len_bytes(file, self.public_key.clone())?;
+        save_encoded_len_bytes(file, self.wallet_name.clone())
     }
 
     pub fn get_all_accounts() -> Result<Vec<Account>, NodoBitcoinError> {
@@ -78,7 +63,7 @@ impl Account {
         while offset < buffer_len {
             let mut account_bytes = vec![];
             for _ in 0..3 {
-                let (value, new_offset) = Self::leer_account(buffer.clone(), offset)?;
+                let (value, new_offset) = read_decoded_string_offset(buffer.clone(), offset)?;
                 account_bytes.push(value);
                 offset = new_offset;
             }
@@ -90,44 +75,6 @@ impl Account {
             todas.push(account);
         }
         Ok(todas)
-    }
-
-    fn leer_account(buffer: Vec<u8>, offset: u64) -> Result<(String, u64), NodoBitcoinError> {
-        let sizeof_usize = mem::size_of::<usize>() as u64;
-        let len_bytes: [u8; 8] = match Self::leer_bytes(buffer.clone(), offset, sizeof_usize)?
-            .as_slice()
-            .try_into()
-        {
-            Ok(bytes) => bytes,
-            Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
-        };
-        let len_account = usize::from_ne_bytes(len_bytes);
-        let account_bytes = Self::leer_bytes(buffer, offset + sizeof_usize, len_account as u64)?;
-        let account = String::from_utf8(account_bytes);
-        if account.is_err() {
-            return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
-        }
-        let account = account.unwrap();
-
-        // Decodificar el string codificado
-        let decoded = match bs58::decode(&account).into_vec() {
-            Ok(bytes) => bytes,
-            Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
-        };
-        let decoded_string = match String::from_utf8(decoded) {
-            Ok(string) => string,
-            Err(_) => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
-        };
-
-        Ok((decoded_string, offset + sizeof_usize + len_account as u64))
-    }
-
-    fn leer_bytes(buffer: Vec<u8>, offset: u64, length: u64) -> Result<Vec<u8>, NodoBitcoinError> {
-        let mut bytes = vec![0; length as usize];
-        for i in 0..length {
-            bytes[i as usize] = buffer[(offset + i) as usize];
-        }
-        Ok(bytes)
     }
 }
 
