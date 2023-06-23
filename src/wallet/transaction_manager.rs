@@ -4,11 +4,9 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
-use bitcoin_hashes::Hash;
-
 use crate::app_manager::ApplicationManagerMessages;
 use crate::blockchain::block::SerializedBlock;
-use crate::blockchain::transaction::{self, create_tx_to_send, Transaction};
+use crate::blockchain::transaction::{create_tx_to_send, Transaction};
 use crate::common::uint256::Uint256;
 use crate::errores::NodoBitcoinError;
 use crate::log::{log_error_message, log_info_message, LogMessages};
@@ -18,7 +16,6 @@ use crate::protocol::send_tx::send_tx;
 use crate::wallet::uxto_set::UTXOSet;
 
 use super::user::Account;
-use super::uxto_set::TxReport;
 
 #[derive(Clone)]
 pub struct TransactionManager {
@@ -32,8 +29,8 @@ pub struct TransactionManager {
 }
 
 pub enum TransactionMessages {
-    GetAvailable((String, Sender<Result<u64, NodoBitcoinError>>)),
-    GetTxReportByAccount((String, Sender<Vec<TxReport>>)),
+    GetAvailableAndPending(String),
+    GetTxReportByAccount(String),
     _UpdateFromBlocks(
         (
             Vec<SerializedBlock>,
@@ -61,15 +58,29 @@ pub enum TransactionMessages {
 impl TransactionManager {
     fn handle_message(&mut self, message: TransactionMessages) {
         match message {
-            TransactionMessages::GetAvailable((account, result)) => {
-                result.send(self.utxos.get_available(account));
+            TransactionMessages::GetAvailableAndPending(account) => {
+                let available_amount = match self.utxos.get_available(account) {
+                    Ok(available_amount) => available_amount,
+                    Err(_) => 0,
+                };
+
+                let pending_amount = 0; //todo!
+
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::GetAmountsByAccount(
+                        available_amount,
+                        pending_amount,
+                    ));
             }
-            TransactionMessages::GetTxReportByAccount((account, result)) => {
+            TransactionMessages::GetTxReportByAccount(account) => {
                 let tx_by_account = match self.utxos.tx_report_by_accounts.get(&account) {
                     Some(tx) => tx.clone(),
                     None => Vec::new(),
                 };
-                result.send(tx_by_account);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::GetTxReportByAccount(
+                        tx_by_account.clone(),
+                    ));
             }
             TransactionMessages::_UpdateFromBlocks((blocks, accounts, result)) => {
                 result.send(self.utxos.update_from_blocks(blocks, accounts));
@@ -291,40 +302,6 @@ pub fn _update_from_transactions(
             // handle error
             log_error_message(logger, "".to_string());
             Err(NodoBitcoinError::InvalidAccount)
-        }
-    }
-}
-pub fn get_available(
-    logger: Sender<LogMessages>,
-    manager: Sender<TransactionMessages>,
-    account: String,
-) -> Result<u64, NodoBitcoinError> {
-    let (sender, receiver) = channel();
-    manager.send(TransactionMessages::GetAvailable((account, sender)));
-    match receiver.recv() {
-        Ok(result) => result,
-        Err(_) => {
-            // todo log error
-            // handle error
-            log_error_message(logger, "".to_string());
-            Err(NodoBitcoinError::InvalidAccount)
-        }
-    }
-}
-pub fn get_txs_by_account(
-    logger: Sender<LogMessages>,
-    manager: Sender<TransactionMessages>,
-    account: String,
-) -> Vec<TxReport> {
-    let (sender, receiver) = channel();
-    manager.send(TransactionMessages::GetTxReportByAccount((account, sender)));
-    match receiver.recv() {
-        Ok(result) => result,
-        Err(_) => {
-            // todo log error
-            // handle error
-            log_error_message(logger, "".to_string());
-            vec![]
         }
     }
 }

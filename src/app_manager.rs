@@ -7,7 +7,6 @@ use std::{
 };
 
 use crate::{
-    blockchain::transaction::Transaction,
     config,
     errores::{InterfaceError, NodoBitcoinError},
     interface::{
@@ -20,9 +19,7 @@ use crate::{
         initial_block_download::get_full_blockchain,
     },
     wallet::{
-        transaction_manager::{
-            create_transaction_manager, get_available, get_txs_by_account, TransactionMessages,
-        },
+        transaction_manager::{create_transaction_manager, TransactionMessages},
         user::Account,
         uxto_set::TxReport,
     },
@@ -40,6 +37,8 @@ pub struct ApplicationManager {
 }
 
 pub enum ApplicationManagerMessages {
+    GetAmountsByAccount(u64, u64),
+    GetTxReportByAccount(Vec<TxReport>),
     ShutDowned,
     ShutDown(Sender<Result<(), NodoBitcoinError>>),
     TransactionManagerUpdate,
@@ -80,25 +79,29 @@ impl ApplicationManager {
     }
     fn handle_message(&mut self, message: ApplicationManagerMessages) {
         match message {
+            ApplicationManagerMessages::TransactionManagerUpdate => {
+                _ = self.send_messages_to_get_values();
+            }
+            ApplicationManagerMessages::GetAmountsByAccount(available_amount, pending_amount) => {
+                let _ = self.sender_frontend.send(ViewObject::UploadAmounts((
+                    available_amount,
+                    pending_amount,
+                )));
+                end_loading(self.sender_frontend.clone());
+            }
+            ApplicationManagerMessages::GetTxReportByAccount(tx_reports) => {
+                let _ = self
+                    .sender_frontend
+                    .send(ViewObject::UploadTransactions(tx_reports));
+                end_loading(self.sender_frontend.clone());
+            }
             ApplicationManagerMessages::ShutDown(shut_down_sender) => {
                 _ = self.tx_manager.send(TransactionMessages::ShutDown);
                 self.sender_shut_down = Some(shut_down_sender);
             }
-            ApplicationManagerMessages::TransactionManagerUpdate => {
-                let txs_current_account = match self.get_txs_by_account() {
-                    Ok(txs) => txs,
-                    Err(_) => {
-                        return;
-                    }
-                };
-
-                let _ = self
-                    .sender_frontend
-                    .send(ViewObject::UploadTransactions(txs_current_account));
-            }
             ApplicationManagerMessages::ShutDowned => {
                 if let Some(sender_shout_down) = &self.sender_shut_down {
-                    sender_shout_down.send(Ok(()));
+                    let _ = sender_shout_down.send(Ok(()));
                     return;
                 }
             }
@@ -198,28 +201,6 @@ impl ApplicationManager {
         Ok(current_account)
     }
 
-    fn get_available_amount(&self) -> Result<u64, NodoBitcoinError> {
-        let current_account = self.get_current_account()?;
-        let public_key = current_account.public_key.clone();
-        let logger = self.logger.clone();
-        let tx_manager = self.tx_manager.clone();
-
-        get_available(logger, tx_manager, public_key.to_string())
-    }
-
-    fn get_txs_by_account(&self) -> Result<Vec<TxReport>, NodoBitcoinError> {
-        let current_account = self.get_current_account()?;
-        let public_key = current_account.public_key.clone();
-        let logger = self.logger.clone();
-        let tx_manager = self.tx_manager.clone();
-
-        Ok(get_txs_by_account(
-            logger,
-            tx_manager,
-            public_key.to_string(),
-        ))
-    }
-
     fn thread_download_blockchain(&mut self) {
         let logger = self.logger.clone();
         let sender_frontend = self.sender_frontend.clone();
@@ -296,6 +277,25 @@ impl ApplicationManager {
         return true;
     }
 
+    fn send_messages_to_get_values(&self) -> Result<(), NodoBitcoinError> {
+        let current_account_ok = match self.current_account.clone() {
+            Some(account) => account,
+            None => return Err(NodoBitcoinError::InvalidAccount),
+        };
+        let manager = self.tx_manager.clone();
+        manager.send(TransactionMessages::GetTxReportByAccount(
+            current_account_ok.public_key.clone(),
+        ));
+        manager.send(TransactionMessages::GetAvailableAndPending(
+            current_account_ok.public_key.clone(),
+        ));
+        start_loading(
+            self.sender_frontend.clone(),
+            "Updating wallet data ... ".to_string(),
+        );
+        Ok(())
+    }
+
     pub fn select_current_account(&mut self, name: String) -> Result<(), NodoBitcoinError> {
         let accounts = self.accounts.clone();
         let mut current_account = None;
@@ -307,23 +307,6 @@ impl ApplicationManager {
         }
         // cambio el current_account
         self.current_account = current_account;
-
-        // llamar al tx_manager para que me devuelva un Vec<Transaction> y con eso llamar a la vista
-        let txs_current_account = self.get_txs_by_account()?;
-
-        let _ = self
-            .sender_frontend
-            .send(ViewObject::UploadTransactions(txs_current_account));
-
-        // pedirle al tx manager los saldos de las utxos del nuevo account seleccionado y con eso llamar a la vista
-        // tambien devolver los pending
-        let available_amount = self.get_available_amount()?;
-        let pending_amount: u64 = 500000;
-        let _ = self.sender_frontend.send(ViewObject::UploadAmounts((
-            available_amount,
-            pending_amount,
-        )));
-
-        Ok(())
+        self.send_messages_to_get_values()
     }
 }
