@@ -9,7 +9,7 @@ use std::{
 use crate::{
     blockchain::transaction::Transaction,
     config,
-    errores::{InterfaceError, NodoBitcoinError},
+    errores::{InterfaceError, NodoBitcoinError, InterfaceMessage},
     interface::{
         public::{end_loading, start_loading},
         view::ViewObject,
@@ -41,6 +41,8 @@ pub struct ApplicationManager {
 pub enum ApplicationManagerMessages {
     ShutDowned(Sender<Result<(), NodoBitcoinError>>),
     TransactionManagerUpdate,
+    NewBlock,
+    NewTx
 }
 
 impl ApplicationManager {
@@ -95,6 +97,16 @@ impl ApplicationManager {
                     .sender_frontend
                     .send(ViewObject::UploadTransactions(txs_current_account));
             }
+            ApplicationManagerMessages::NewTx => {
+                let _ = self
+                    .sender_frontend
+                    .send(ViewObject::NewTx("Nueva transaccion recibida. Podras ver mas detalles en la pestaña 'Transactions'.".to_string()));
+            }
+            ApplicationManagerMessages::NewBlock => {
+                let _ = self
+                    .sender_frontend
+                    .send(ViewObject::NewBlock("Nuevo bloque recibido.".to_string()));
+            }
         }
     }
 
@@ -143,19 +155,20 @@ impl ApplicationManager {
             ))
             .is_err()
         {
+            _ = self
+                    .sender_frontend
+                    .send(ViewObject::Error(InterfaceError::TransactionNotSent));
             return Err(NodoBitcoinError::NoSePuedeEnviarTransaccion);
         }
 
+        _ = self
+        .sender_frontend
+        .send(ViewObject::Message(InterfaceMessage::TransactionSent));
         Ok(())
     }
 
     pub fn close(&self) -> Result<(), NodoBitcoinError> {
         // TODO: cerrar los threads abiertos
-        start_loading(
-            self.sender_frontend.clone(),
-            "Closing threads... ".to_string(),
-        );
-
         log_info_message(self.logger.clone(), "Cerrando aplicación...".to_string());
         println!("Close");
         _ = Account::save_all_accounts(self.accounts.clone());
@@ -177,7 +190,6 @@ impl ApplicationManager {
             self.logger.clone(),
             "Aplicación cerrada exitosamente.".to_string(),
         );
-        end_loading(self.sender_frontend.clone());
         Ok(())
     }
 
@@ -275,6 +287,10 @@ impl ApplicationManager {
             self.accounts.clone(),
             self.logger.clone(),
         ));
+
+        _ = self
+        .sender_frontend
+        .send(ViewObject::Message(InterfaceMessage::CreateAccount));
 
         new_account.clone()
     }
