@@ -79,6 +79,14 @@ impl Uint256 {
 
         result
     }
+
+    pub fn to_hexa_string(&self) -> String {
+        let mut result = String::new();
+        for i in 0..NUM_BYTES {
+            result.push_str(&format!("{:02x}", self.0[i]));
+        }
+        result
+    }
 }
 
 impl PartialOrd for Uint256 {
@@ -283,5 +291,19 @@ mod tests {
         for i in 0..NUM_BYTES {
             assert_eq!(a.0[i], from_be.0[i]);
         }
+    }
+
+    #[test]
+    fn test_to_hexa_string() {
+        let valor = Uint256([
+            0x01, 0x00, 0x00, 0x00, 0x01, 0x81, 0x3f, 0x79, 0x01, 0x1a, 0xcb, 0x80, 0x92, 0x5d,
+            0xfe, 0x69, 0xb3, 0xde, 0xf3, 0x55, 0xfe, 0x91, 0x4b, 0xd1, 0xd9, 0x6a, 0x3f, 0x5f,
+            0x71, 0xbf, 0x83, 0x03,
+        ]);
+
+        let hexa_string =
+            "0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303".to_string();
+
+        assert_eq!(valor.to_hexa_string(), hexa_string);
     }
 }

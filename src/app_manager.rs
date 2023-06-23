@@ -173,20 +173,9 @@ impl ApplicationManager {
 
         log_info_message(self.logger.clone(), "Cerrando aplicación...".to_string());
         _ = Account::save_all_accounts(self.accounts.clone());
-
-        // cerrar todos los threads abiertos
-        //let (sender_shutdown, receiver_shutdown) = channel();
         self.sender_app_manager
             .send(ApplicationManagerMessages::ShutDown);
-        // match receiver_shutdown.recv() {
-        //     Ok(_) => {}
-        //     Err(_) => {
-        //         // todo log error
-        //         // handle error
-        //         log_error_message(self.logger.clone(), "".to_string());
-        //         return Err(NodoBitcoinError::InvalidAccount);
-        //     }
-        // }
+
         Ok(())
     }
 

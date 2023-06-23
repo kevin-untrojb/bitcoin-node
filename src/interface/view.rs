@@ -90,11 +90,10 @@ pub fn create_view() -> Sender<ViewObject> {
             ViewObject::Message(message) => {
                 open_message_dialog(false, &builder_receiver_clone, message.to_string());
             }
-            ViewObject::UploadTransactions(_) => {
-                println!("Actualizar transactions");
+            ViewObject::UploadTransactions(tx_reports) => {
+                println!("tx_reports: {:?}", tx_reports);
             }
             ViewObject::CloseApplication => {
-                println!("Cerrar la aplicacion");
                 gtk::main_quit();
             }
             ViewObject::UploadAmounts((available, pending)) => {
