@@ -5,7 +5,7 @@ use gtk::{
     Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, Window,
 };
 use gtk::{CellRendererText, ComboBox, ListStore};
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, time::Duration, thread};
 
 use std::println;
 
@@ -16,7 +16,7 @@ use crate::{
     wallet::uxto_set::TxReport,
 };
 
-use super::public::{open_message_dialog, start_loading};
+use super::public::{open_message_dialog, start_loading, end_loading};
 
 pub enum ViewObject {
     Label(ViewObjectData),
@@ -25,6 +25,8 @@ pub enum ViewObject {
     Message(InterfaceMessage),
     UploadTransactions(Vec<TxReport>),
     UploadAmounts((u64, u64)),
+    NewBlock(String),
+    NewTx(String)
 }
 
 pub struct ViewObjectData {
@@ -53,15 +55,9 @@ pub fn create_view() -> Sender<ViewObject> {
         window.set_title(&title);
         window.show_all();
 
-        let sender_clone = sender.clone();
-
+        let sender_close_clone = sender.clone();
         let manager_close_app = app_manager_mutex.clone();
-        window.connect_delete_event(move |_, _| {
-            start_loading(sender_clone.clone(), "Cerrando aplicación...".to_string());
-            close(manager_close_app.clone());
-            gtk::main_quit();
-            Inhibit(false)
-        });
+        handle_closure(manager_close_app, sender_close_clone, window.clone());
     };
 
     let manager_create_wallet: Arc<Mutex<ApplicationManager>> = app_manager_mutex.clone();
@@ -89,8 +85,8 @@ pub fn create_view() -> Sender<ViewObject> {
             ViewObject::Message(message) => {
                 open_message_dialog(false, &builder_receiver_clone, message.to_string());
             }
-            ViewObject::UploadTransactions(_) => {
-                println!("Actualizar transactions");
+            ViewObject::UploadTransactions(transactions) => {
+                println!("Actualizar transactions {}", transactions.len());
             }
             ViewObject::UploadAmounts((available, pending)) => {
                 let mut total: u64 = 0;
@@ -110,6 +106,12 @@ pub fn create_view() -> Sender<ViewObject> {
                     let btc_total = satoshis_to_btc_string(total);
                     label.set_text(&btc_total);
                 }
+            }
+            ViewObject::NewBlock(message) => {
+                open_message_dialog(false, &builder_receiver_clone, message);
+            }
+            ViewObject::NewTx(message) => {
+                open_message_dialog(false, &builder_receiver_clone, message);
             }
         }
         glib::Continue(true)
@@ -142,6 +144,17 @@ pub fn create_view() -> Sender<ViewObject> {
 fn satoshis_to_btc_string(satoshis: u64) -> String {
     let btc = satoshis as f64 / 100_000_000.0;
     format!("{:.8} BTC", btc)
+}
+
+fn handle_closure(manager_close_app: Arc<Mutex<ApplicationManager>>,
+    sender: Sender<ViewObject>, window: Window){
+    window.connect_delete_event(move |_,_| {
+        start_loading(sender.clone(), "Closing threads...".to_string());
+        close(manager_close_app.clone());
+        end_loading(sender.clone());
+        gtk::main_quit();
+        Inhibit(false)
+    });
 }
 
 fn handle_modal_wallet(
@@ -256,6 +269,9 @@ fn send_transaction(
         };
         let _ =
             &app_manager_thread.send_transaction(to_address, transaction_amount, transaction_fee);
+        to_address_entry.set_text("");
+        transaction_amount_entry.set_text("");
+        transaction_fee_entry.set_text("");
         drop(app_manager_thread);
     }
 }
@@ -329,7 +345,6 @@ fn open_wallet_dialog(
                     };
                     let account = app_manager_thread.create_account(key, address, name);
                     add_wallet_combobox(&builder_clone, &account);
-                    open_message_dialog(false, &builder_clone, "Cuenta creada".to_string());
                     drop(app_manager_thread);
                 }
             }
