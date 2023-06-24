@@ -13,7 +13,7 @@ use crate::{
         public::{end_loading, start_loading},
         view::ViewObject,
     },
-    log::{create_logger_actor, log_error_message, log_info_message, LogMessages},
+    log::{create_logger_actor, LogMessages, log_info_message},
     protocol::{
         admin_connections::AdminConnections, connection::connect,
         initial_block_download::get_full_blockchain,
@@ -43,7 +43,8 @@ pub enum ApplicationManagerMessages {
     ShutDown,
     TransactionManagerUpdate,
     NewBlock,
-    NewTx
+    NewTx,
+    BlockBroadcastingError
 }
 
 impl ApplicationManager {
@@ -70,9 +71,8 @@ impl ApplicationManager {
 
         let app_manager_mutex = Arc::new(Mutex::new(app_manager));
         thread::spawn(move || {
-            let ap = app_manager_mutex.clone();
             while let Ok(message) = receiver_app_manager.recv() {
-                let mut manager = ap.lock().unwrap();
+                let mut manager = app_manager_mutex.lock().unwrap();
                 manager.handle_message(message);
             }
         });
@@ -117,6 +117,9 @@ impl ApplicationManager {
             }
             ApplicationManagerMessages::NewTx => {
                 let _ = self.sender_frontend.send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
+            }
+            ApplicationManagerMessages::BlockBroadcastingError => {
+                self.sender_frontend.send(ViewObject::BlockBroadcastingError("Ha ocurrido un error de conexión. Reinicie la aplicación.".to_string()));
             }
         }
     }
@@ -243,8 +246,8 @@ impl ApplicationManager {
             sender_frontend.clone(),
             "Obteniendo blockchain... ".to_string(),
         );
-        get_full_blockchain(logger.clone(), admin_connections.clone())?;
-        end_loading(sender_frontend.clone());
+        get_full_blockchain(logger, admin_connections.clone())?;
+        end_loading(sender_frontend);
         Ok(admin_connections)
     }
 
@@ -270,7 +273,7 @@ impl ApplicationManager {
         .sender_frontend
         .send(ViewObject::Message(InterfaceMessage::CreateAccount));
 
-        new_account.clone()
+        new_account
     }
 
     fn account_validator(new_account: Account, accounts: Vec<Account>) -> bool {
@@ -279,7 +282,7 @@ impl ApplicationManager {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     fn send_messages_to_get_values(&self) -> Result<(), NodoBitcoinError> {
@@ -292,7 +295,7 @@ impl ApplicationManager {
             current_account_ok.public_key.clone(),
         ));
         manager.send(TransactionMessages::GetAvailableAndPending(
-            current_account_ok.public_key.clone(),
+            current_account_ok.public_key,
         ));
         start_loading(
             self.sender_frontend.clone(),

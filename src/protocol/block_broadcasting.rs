@@ -34,7 +34,9 @@ pub fn init_block_broadcasting(
     let blocks = Arc::new(Mutex::new(SerializedBlock::read_blocks_from_file()?));
     let mut threads = vec![];
     let (sender, receiver) = channel();
-    sender_tx_manager.send(TransactionMessages::SenderBlockBroadcasting(sender));
+    if sender_tx_manager.send(TransactionMessages::SenderBlockBroadcasting(sender)).is_err(){
+        return Err(NodoBitcoinError::NoSePudoConectar);
+    };
     let senders: Vec<Sender<BlockBroadcastingMessages>> = Vec::new();
     let sender_mutex = Arc::new(Mutex::new(senders));
 
@@ -53,7 +55,9 @@ pub fn init_block_broadcasting(
                         "Inicio cierre hilos block broadcasting.".to_string(),
                     );
                     for sender in senders_locked.iter() {
-                        sender.send(BlockBroadcastingMessages::ShutDown);
+                        if sender.send(BlockBroadcastingMessages::ShutDown).is_err(){
+                            return;
+                        };
                     }
 
                     drop(senders_locked);
@@ -81,7 +85,7 @@ pub fn init_block_broadcasting(
                     match message {
                         BlockBroadcastingMessages::ShutDown => {
                             log_info_message(
-                                thread_logger.clone(),
+                                thread_logger,
                                 "Hilo block broadcasting cerrado correctamente.".to_string(),
                             );
                             return;
@@ -201,7 +205,9 @@ pub fn init_block_broadcasting(
                             }
                         };
 
-                        thread_sender_tx_manager.send(TransactionMessages::NewTx(tx));
+                        if thread_sender_tx_manager.send(TransactionMessages::NewTx(tx)).is_err(){
+                            return;
+                        };
                         log_info_message(thread_logger.clone(), "Nueva transacción enviada al manager".to_string());
                     }
                 }
@@ -281,7 +287,9 @@ pub fn init_block_broadcasting(
                         let cloned_result = shared_blocks.lock();
                         if let Ok(cloned) = cloned_result {
                             guardar_header_y_bloque(thread_logger.clone(), block.clone(), cloned, header[0]);
-                            thread_sender_tx_manager.send(TransactionMessages::NewBlock(block));
+                            if thread_sender_tx_manager.send(TransactionMessages::NewBlock(block)).is_err(){
+                                return;
+                            };
                         } else {
                             log_error_message(
                                 thread_logger,

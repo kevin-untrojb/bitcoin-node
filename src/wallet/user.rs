@@ -1,7 +1,6 @@
 use std::{
     fs::File,
     io::{Read, Write},
-    mem,
 };
 
 use crate::{

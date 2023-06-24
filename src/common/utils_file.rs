@@ -10,7 +10,7 @@ pub fn save_encoded_len_bytes(file: &mut dyn Write, data: String) -> Result<(), 
             return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
         }
     };
-    match file.write_all(&encoded.as_bytes()) {
+    match file.write_all(encoded.as_bytes()) {
         Ok(_) => {}
         Err(_) => {
             return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);

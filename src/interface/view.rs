@@ -5,18 +5,18 @@ use gtk::{
     Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, Window,
 };
 use gtk::{CellRendererText, ComboBox, ListStore};
-use std::{sync::{Arc, Mutex}, time::Duration, thread};
+use std::{sync::{Arc, Mutex}};
 
 use std::println;
 
 use crate::wallet::user::Account;
-use crate::{app_manager::ApplicationManager, blockchain::transaction::Transaction};
+use crate::{app_manager::ApplicationManager};
 use crate::{
     errores::{InterfaceError, InterfaceMessage},
     wallet::uxto_set::TxReport,
 };
 
-use super::public::{open_message_dialog, start_loading, end_loading};
+use super::public::{open_message_dialog, start_loading};
 
 pub enum ViewObject {
     Label(ViewObjectData),
@@ -28,6 +28,7 @@ pub enum ViewObject {
     NewBlock(String),
     NewTx(String),
     CloseApplication,
+    BlockBroadcastingError(String)
 }
 
 pub struct ViewObjectData {
@@ -73,14 +74,14 @@ pub fn create_view() -> Sender<ViewObject> {
     receiver.attach(None, move |view_object: ViewObject| {
         match view_object {
             ViewObject::Label(data) => {
-                if let Some(label) = builder_receiver_clone.object::<Label>(&String::from(data.id))
+                if let Some(label) = builder_receiver_clone.object::<Label>(&data.id)
                 {
-                    label.set_text(&data.text.to_string());
+                    label.set_text(&data.text);
                 }
             }
             ViewObject::Spinner(data) => {
                 if let Some(spinner) =
-                    builder_receiver_clone.object::<Spinner>(&String::from(data.id))
+                    builder_receiver_clone.object::<Spinner>(&data.id)
                 {
                     spinner.set_active(data.active);
                 }
@@ -122,6 +123,9 @@ pub fn create_view() -> Sender<ViewObject> {
             ViewObject::NewTx(message) => {
                 //open_message_dialog(false, &builder_receiver_clone, message);
             }
+            ViewObject::BlockBroadcastingError(message) => {
+                open_message_dialog(true, &builder_receiver_clone, message);
+            }
         }
         glib::Continue(true)
     });
@@ -137,7 +141,7 @@ pub fn create_view() -> Sender<ViewObject> {
         builder.clone(),
     );
 
-    let manager_transaction: Arc<Mutex<ApplicationManager>> = app_manager_mutex.clone();
+    let manager_transaction: Arc<Mutex<ApplicationManager>> = app_manager_mutex;
     let sender_transaction_clone = sender.clone();
     handle_transaction(
         manager_transaction,
@@ -145,7 +149,7 @@ pub fn create_view() -> Sender<ViewObject> {
         builder.clone(),
     );
 
-    handle_modal_about(builder.clone());
+    handle_modal_about(builder);
 
     sender
 }
@@ -160,7 +164,7 @@ fn handle_modal_wallet(
     builder: Builder,
 ) {
     if let Some(dialog) = builder.object::<Dialog>("wallet_dialog") {
-        let dialog_clone = dialog.clone();
+        let dialog_clone = dialog;
         if let Some(new_wallet_button) = builder.object::<Button>("new_wallet_button") {
             new_wallet_button.connect_clicked(move |_| {
                 open_wallet_dialog(&dialog_clone, &builder, manager_open_modal_wallet.clone());
@@ -384,7 +388,7 @@ fn create_combobox_wallet_list(builder: &Builder, app_manager: Arc<Mutex<Applica
         let name = &account.wallet_name as &dyn ToValue;
         list_store.insert_with_values(None, &[(0, name)]);
     }
-    list_store.insert_with_values(Some(0 as u32), &[(0, &"None".to_string() as &dyn ToValue)]);
+    list_store.insert_with_values(Some(0_u32), &[(0, &"None".to_string() as &dyn ToValue)]);
 
     let cell_renderer = CellRendererText::new();
     combobox_wallet.pack_start(&cell_renderer, true);

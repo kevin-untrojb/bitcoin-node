@@ -74,7 +74,7 @@ impl Utxo {
         let tx_len = usize::from_ne_bytes(bytes[offset..offset + sizeof_usize].try_into().unwrap());
         offset += sizeof_usize;
         let tx = Transaction::deserialize(&bytes[offset..offset + tx_len])?;
-        offset += tx_len;
+
         Ok(Utxo {
             tx_id,
             output_index,
@@ -139,7 +139,7 @@ impl TxReport {
         let is_tx_in = bytes[offset] != 0;
         offset += 1;
         let index = u32::from_ne_bytes(bytes[offset..offset + sizeof_u32].try_into().unwrap());
-        offset += sizeof_u32;
+
         Ok(TxReport {
             is_pending,
             timestamp,
@@ -226,7 +226,7 @@ impl UTXOSet {
     ) {
         let tx_report = TxReport {
             is_pending: pending,
-            timestamp: timestamp,
+            timestamp,
             tx_id: utxo.tx_id,
             amount: utxo.tx_out.value as i128,
             is_tx_in: false,
@@ -267,9 +267,9 @@ impl UTXOSet {
 
         let tx_report = TxReport {
             is_pending: pending,
-            timestamp: timestamp,
+            timestamp,
             tx_id,
-            amount: (value as i128) * (-1 as i128),
+            amount: (value as i128) * (-1_i128),
             is_tx_in: true,
             index: tx_in_index,
         };
@@ -301,7 +301,7 @@ impl UTXOSet {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn agregar_utxo(
@@ -314,7 +314,7 @@ impl UTXOSet {
     ) -> Utxo {
         let utxo = Utxo {
             tx_id,
-            output_index: output_index,
+            output_index,
             tx_out: tx_out.clone(),
             pk_script: tx_out.pk_script.clone(),
             tx: tx.clone(),
@@ -335,7 +335,7 @@ impl UTXOSet {
 
     fn eliminar_utxo(&mut self, previous_tx_id: Uint256, output_index: u32, key: (Uint256, u32)) {
         let account = self.account_for_txid_index[&key].clone();
-        let utxos_for_account = self.utxos_for_account.entry(account.clone()).or_default();
+        let utxos_for_account = self.utxos_for_account.entry(account).or_default();
         utxos_for_account
             .retain(|utxo| !(utxo.tx_id == previous_tx_id && utxo.output_index == output_index));
         self.account_for_txid_index.remove(&key);
@@ -373,7 +373,7 @@ impl UTXOSet {
                         tx_id,
                         output_index as u32,
                         tx_out,
-                        &tx,
+                        tx,
                     );
 
                     self.agregar_tx_report_desde_out(
@@ -437,7 +437,7 @@ impl UTXOSet {
             }
         };
         for (key, values) in hashmap {
-            save_encoded_len_bytes(file, key);
+            save_encoded_len_bytes(file, key)?;
             let len = values.len();
             match file.write_all(&len.to_ne_bytes()) {
                 Ok(_) => {}
@@ -446,7 +446,7 @@ impl UTXOSet {
                 }
             };
             for utxo in values {
-                utxo.save(file);
+                utxo.save(file)?;
             }
         }
         Ok(())
@@ -460,7 +460,7 @@ impl UTXOSet {
         let mut offset = 0;
         let buffer_len = buffer.len() as usize;
         if buffer_len < 4 {
-            return Ok((0 as u32, hashmap));
+            return Ok((0_u32, hashmap));
         }
         let binding = buffer.clone();
         let bytes = binding.as_slice();
@@ -504,7 +504,7 @@ impl UTXOSet {
                     return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
                 }
             };
-            save_encoded_len_bytes(file, values);
+            save_encoded_len_bytes(file, values)?;
         }
         Ok(())
     }
@@ -512,10 +512,9 @@ impl UTXOSet {
     pub fn load_account_for_txid_index(
         buffer: Vec<u8>,
     ) -> Result<HashMap<(Uint256, u32), String>, NodoBitcoinError> {
-        let sizeof_usize: usize = mem::size_of::<usize>();
         let mut hashmap: HashMap<(Uint256, u32), String> = HashMap::new();
         let mut offset = 0;
-        let buffer_len = buffer.len() as usize;
+        let buffer_len = buffer.len();
         if buffer_len < 4 {
             return Ok(hashmap);
         }
@@ -539,7 +538,7 @@ impl UTXOSet {
         file: &mut dyn Write,
     ) -> Result<(), NodoBitcoinError> {
         for (key, values) in hashmap {
-            save_encoded_len_bytes(file, key);
+            save_encoded_len_bytes(file, key)?;
             let len = values.len();
             match file.write_all(&len.to_ne_bytes()) {
                 Ok(_) => {}
@@ -548,7 +547,7 @@ impl UTXOSet {
                 }
             };
             for tx_report in values {
-                tx_report.save(file);
+                tx_report.save(file)?;
             }
         }
         Ok(())
@@ -623,7 +622,7 @@ impl UTXOSet {
     }
 
     pub fn load(&mut self) -> Result<(), NodoBitcoinError> {
-        let mut buffer_utxos_for_account =
+        let buffer_utxos_for_account =
             Self::load_bytes_from_file(UTXO_FOR_ACCOUNT_FILENAME.to_string())?;
 
         let (timestamp, hash_utxos_for_account) =
@@ -631,11 +630,11 @@ impl UTXOSet {
         self.last_timestamp = timestamp;
         self.utxos_for_account = hash_utxos_for_account;
 
-        let mut buffer_account_for_txid =
+        let buffer_account_for_txid =
             Self::load_bytes_from_file(ACCOUNT_FOR_TXID_INDEX_FILENAME.to_string())?;
         self.account_for_txid_index = Self::load_account_for_txid_index(buffer_account_for_txid)?;
 
-        let mut buffer_tx_report_by_account =
+        let buffer_tx_report_by_account =
             Self::load_bytes_from_file(TX_REPORT_BY_ACCOUNT_FILENAME.to_string())?;
         self.tx_report_by_accounts = Self::load_tx_report_by_accounts(buffer_tx_report_by_account)?;
 

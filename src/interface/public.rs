@@ -50,7 +50,7 @@ pub fn open_message_dialog(error: bool, builder: &Builder, message: String) {
         }
 
         dialog.set_title("");
-        dialog.set_property("secondary-text", &message);
+        dialog.set_property("secondary-text", message);
 
         dialog.connect_response(move |dialog, response_id| match response_id {
             ResponseType::Close => dialog.hide(),

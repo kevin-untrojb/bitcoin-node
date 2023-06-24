@@ -18,7 +18,7 @@ pub fn send_tx(
 ) -> Result<(), NodoBitcoinError> {
     let tx_obj_bytes = tx_obj.serialize()?;
 
-    let payload: Vec<u8> = tx_obj_bytes.clone();
+    let payload: Vec<u8> = tx_obj_bytes;
     let header = make_header("tx".to_string(), &payload)?;
     let mut tx_msg = Vec::new();
     tx_msg.extend_from_slice(&header);

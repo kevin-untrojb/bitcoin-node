@@ -59,10 +59,7 @@ impl TransactionManager {
     fn handle_message(&mut self, message: TransactionMessages) {
         match message {
             TransactionMessages::GetAvailableAndPending(account) => {
-                let available_amount = match self.utxos.get_available(account) {
-                    Ok(available_amount) => available_amount,
-                    Err(_) => 0,
-                };
+                let available_amount = self.utxos.get_available(account).unwrap_or(0);
 
                 let pending_amount = 0; //todo!
 
@@ -79,7 +76,7 @@ impl TransactionManager {
                 };
                 self.sender_app_manager
                     .send(ApplicationManagerMessages::GetTxReportByAccount(
-                        tx_by_account.clone(),
+                        tx_by_account,
                     ));
             }
             TransactionMessages::_UpdateFromBlocks((blocks, accounts, result)) => {
@@ -97,12 +94,12 @@ impl TransactionManager {
                 ) {
                     Ok(uxtos) => uxtos,
                     Err(_) => {
-                        log_error_message(logger.clone(), "Error al inicializar UTXOS".to_string());
+                        log_error_message(logger, "Error al inicializar UTXOS".to_string());
                         return;
                     }
                 };
                 self.utxos = utxos_updated;
-                log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
+                log_info_message(logger, "UTXOS actualizadas".to_string());
                 self.sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
@@ -118,7 +115,7 @@ impl TransactionManager {
                 ) {
                     Ok(uxtos) => uxtos,
                     Err(_) => {
-                        log_error_message(logger.clone(), "Error al inicializar UTXOS".to_string());
+                        log_error_message(logger, "Error al inicializar UTXOS".to_string());
                         return;
                     }
                 };
@@ -126,8 +123,11 @@ impl TransactionManager {
                 log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
                 self.admin_connections = Some(admin_connections.clone());
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
+                let sender_app_manager_clone = self.sender_app_manager.clone();
                 thread::spawn(move || {
-                    init_block_broadcasting(logger, admin_connections, sender_tx_manager);
+                    if init_block_broadcasting(logger, admin_connections, sender_tx_manager).is_err(){
+                        sender_app_manager_clone.send(ApplicationManagerMessages::BlockBroadcastingError);
+                    };
                 });
                 self.sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
@@ -171,7 +171,7 @@ impl TransactionManager {
             TransactionMessages::ShutDown => {
                 // guardar utxos en archivo
                 let _ = self.utxos.save();
-                let _ = match &self.sender_block_broadcasting {
+                match &self.sender_block_broadcasting {
                     Some(sender) => {
                         sender.send(BlockBroadcastingMessages::ShutDown);
                         return;
@@ -199,14 +199,14 @@ fn update_utxos_from_file(
     accounts: Vec<Account>,
 ) -> Result<UTXOSet, NodoBitcoinError> {
     log_info_message(logger.clone(), "Actualizando UTXOS ...".to_string());
-    let uxos_updated = match initialize_utxos_from_file(utxo_set.clone(), accounts.clone()) {
+    let uxos_updated = match initialize_utxos_from_file(utxo_set, accounts) {
         Ok(uxtos) => uxtos,
         Err(_) => {
-            log_error_message(logger.clone(), "Error al inicializar UTXOS".to_string());
+            log_error_message(logger, "Error al inicializar UTXOS".to_string());
             return Err(NodoBitcoinError::ErrorAlActualizarUTXOS);
         }
     };
-    log_info_message(logger.clone(), "UTXOS actualizadas".to_string());
+    log_info_message(logger, "UTXOS actualizadas".to_string());
     Ok(uxos_updated)
 }
 

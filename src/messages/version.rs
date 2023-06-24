@@ -89,7 +89,7 @@ impl VersionMessage {
             payload.extend_from_slice(self.user_agent.as_bytes());
         }
         payload.extend_from_slice(&(self.start_height).to_le_bytes());
-        payload.extend_from_slice(&(self.relay as u8).to_le_bytes());
+        payload.extend_from_slice(&(self.relay).to_le_bytes());
 
         let header = make_header("version".to_string(), &payload)?;
 

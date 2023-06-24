@@ -61,7 +61,7 @@ pub fn create_logger_actor(log_file_path: Result<String, NodoBitcoinError>) -> S
     let actor = Arc::new(Mutex::new(LoggerActor { log_file }));
 
     thread::spawn(move || {
-        let actor = actor.clone();
+        let actor = actor;
         while let Ok(message) = receiver.recv() {
             let mut log_actor = actor.lock().unwrap();
             log_actor.handle_message(message);

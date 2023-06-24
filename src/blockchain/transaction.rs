@@ -295,7 +295,7 @@ pub fn create_tx_to_send(
     let private_key_wif = account.clone().secret_key;
     let (utxos, tx_in_value_sum) = get_utxos_for_value(utxos, value + fee)?;
     let (tx_ins, previous_txs) = crear_tx_ins(utxos)?;
-    let tx_out_target = TxOut::new(value, target_public_key.clone())?;
+    let tx_out_target = TxOut::new(value, target_public_key)?;
     let change_value = tx_in_value_sum - value - fee;
     let tx_out_change = crear_change_txout(account, change_value)?;
     let tx_outs = vec![tx_out_target, tx_out_change];
@@ -312,7 +312,7 @@ fn _crear_tx_outs(
     fee: u64,
 ) -> Result<Vec<TxOut>, NodoBitcoinError> {
     let tx_out_target = TxOut::new(value, target_public_key.clone())?;
-    let tx_out_fee = TxOut::new(fee, target_public_key.clone())?;
+    let tx_out_fee = TxOut::new(fee, target_public_key)?;
     Ok(vec![tx_out_target, tx_out_fee])
 }
 
@@ -329,7 +329,7 @@ fn crear_tx_ins(utxos: Vec<Utxo>) -> Result<(Vec<TxIn>, Vec<Transaction>), NodoB
 
 fn crear_change_txout(account: Account, value: u64) -> Result<TxOut, NodoBitcoinError> {
     let change_address = account.public_key;
-    let tx_out_change = TxOut::new(value, change_address.clone())?;
+    let tx_out_change = TxOut::new(value, change_address)?;
     Ok(tx_out_change)
 }
 

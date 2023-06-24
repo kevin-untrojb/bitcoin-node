@@ -29,7 +29,7 @@ impl GetDataMessage {
 
     pub fn new_for_tx(inv_msg: &Vec<u8>) -> Result<GetDataMessage, NodoBitcoinError> {
         let mut inventory = Vec::new();
-        let (size_bytes, count) = parse_varint(&inv_msg);
+        let (size_bytes, count) = parse_varint(inv_msg);
 
         for i in 0..count {
             let offset = (i * 36) + size_bytes;
@@ -52,7 +52,7 @@ impl GetDataMessage {
 
         Ok(GetDataMessage {
             count: count as u8,
-            inventory: inventory,
+            inventory,
         })
     }
 
