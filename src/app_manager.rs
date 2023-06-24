@@ -33,7 +33,6 @@ pub struct ApplicationManager {
     sender_frontend: glib::Sender<ViewObject>,
     logger: mpsc::Sender<LogMessages>,
     sender_app_manager: Sender<ApplicationManagerMessages>,
-    sender_shut_down: Option<Sender<Result<(), NodoBitcoinError>>>,
 }
 
 pub enum ApplicationManagerMessages {
@@ -59,7 +58,6 @@ impl ApplicationManager {
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         let mut app_manager = ApplicationManager {
             current_account: None,
-            sender_shut_down: None,
             sender_app_manager,
             accounts,
             sender_frontend,
