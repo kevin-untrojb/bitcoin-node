@@ -1,6 +1,8 @@
 use crate::errores::NodoBitcoinError;
 use std::{io::Write, mem};
 
+/// Guarda en el archivo recibido el tamaño del string recibido 
+/// seguido de ese mismo string, ambos codificados por motivos de seguridad
 pub fn save_encoded_len_bytes(file: &mut dyn Write, data: String) -> Result<(), NodoBitcoinError> {
     let encoded = bs58::encode(data.as_bytes()).into_string();
     let len = encoded.len();
@@ -19,6 +21,7 @@ pub fn save_encoded_len_bytes(file: &mut dyn Write, data: String) -> Result<(), 
     Ok(())
 }
 
+/// Lee información codificada de un archivo, la decodifica y devuelve
 pub fn read_decoded_string_offset(
     buffer: Vec<u8>,
     offset: u64,

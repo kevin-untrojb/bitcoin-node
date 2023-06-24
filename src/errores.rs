@@ -38,7 +38,6 @@ pub enum NodoBitcoinError {
 
     // wallet
     NoHayCuentaSeleccionada,
-    ErrorAlCrearLaCuenta,
     CuentaNoEncontrada,
     NoSePuedeEnviarTransaccion,
     ErrorAlActualizarUTXOS,
@@ -136,9 +135,6 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::NoHayCuentaSeleccionada => {
                 write!(f, "ERROR: No hay ninguna cuenta seleccionada.")
-            }
-            NodoBitcoinError::ErrorAlCrearLaCuenta => {
-                write!(f, "ERROR: No se puede crear la cuenta.")
             }
             NodoBitcoinError::CuentaNoEncontrada => {
                 write!(f, "ERROR: No se encuentra la cuenta.")
