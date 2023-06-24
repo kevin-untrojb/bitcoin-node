@@ -8,12 +8,12 @@ use std::{
 
 use crate::{
     config,
-    errores::{InterfaceError, NodoBitcoinError, InterfaceMessage},
+    errores::{InterfaceError, InterfaceMessage, NodoBitcoinError},
     interface::{
         public::{end_loading, start_loading},
         view::ViewObject,
     },
-    log::{create_logger_actor, LogMessages, log_info_message},
+    log::{create_logger_actor, log_error_message, log_info_message, LogMessages},
     protocol::{
         admin_connections::AdminConnections, connection::connect,
         initial_block_download::get_full_blockchain,
@@ -44,7 +44,7 @@ pub enum ApplicationManagerMessages {
     TransactionManagerUpdate,
     NewBlock,
     NewTx,
-    BlockBroadcastingError
+    BlockBroadcastingError,
 }
 
 impl ApplicationManager {
@@ -113,13 +113,16 @@ impl ApplicationManager {
                 let _ = self.sender_frontend.send(ViewObject::CloseApplication);
             }
             ApplicationManagerMessages::NewBlock => {
-                let _ = self.sender_frontend.send(ViewObject::NewBlock("Nuevo bloque recibido".to_string()));
+                //let _ = self.sender_frontend.send(ViewObject::NewBlock("Nuevo bloque recibido".to_string()));
             }
             ApplicationManagerMessages::NewTx => {
-                let _ = self.sender_frontend.send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
+                //let _ = self.sender_frontend.send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
             }
             ApplicationManagerMessages::BlockBroadcastingError => {
-                self.sender_frontend.send(ViewObject::BlockBroadcastingError("Ha ocurrido un error de conexión. Reinicie la aplicación.".to_string()));
+                self.sender_frontend
+                    .send(ViewObject::BlockBroadcastingError(
+                        "Ha ocurrido un error de conexión. Reinicie la aplicación.".to_string(),
+                    ));
             }
         }
     }
@@ -170,14 +173,14 @@ impl ApplicationManager {
             .is_err()
         {
             _ = self
-                    .sender_frontend
-                    .send(ViewObject::Error(InterfaceError::TransactionNotSent));
+                .sender_frontend
+                .send(ViewObject::Error(InterfaceError::TransactionNotSent));
             return Err(NodoBitcoinError::NoSePuedeEnviarTransaccion);
         }
 
         _ = self
-        .sender_frontend
-        .send(ViewObject::Message(InterfaceMessage::TransactionSent));
+            .sender_frontend
+            .send(ViewObject::Message(InterfaceMessage::TransactionSent));
         Ok(())
     }
 
@@ -270,8 +273,8 @@ impl ApplicationManager {
         ));
 
         _ = self
-        .sender_frontend
-        .send(ViewObject::Message(InterfaceMessage::CreateAccount));
+            .sender_frontend
+            .send(ViewObject::Message(InterfaceMessage::CreateAccount));
 
         new_account
     }

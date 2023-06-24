@@ -46,7 +46,6 @@ impl fmt::Display for Transaction {
 }
 
 impl Transaction {
-    #[warn(dead_code)]
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
         bytes

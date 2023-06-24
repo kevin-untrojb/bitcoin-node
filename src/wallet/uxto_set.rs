@@ -1,5 +1,5 @@
 use crate::blockchain::block::SerializedBlock;
-use crate::blockchain::transaction::{Transaction, TxOut};
+use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::uint256::Uint256;
 use crate::common::utils_file::{read_decoded_string_offset, save_encoded_len_bytes};
 use crate::errores::NodoBitcoinError;
@@ -341,7 +341,10 @@ impl UTXOSet {
         self.account_for_txid_index.remove(&key);
     }
 
-    fn validar_output(accounts: Vec<Account>, tx_out: &TxOut) -> Result<Account, NodoBitcoinError> {
+    pub fn validar_output(
+        accounts: Vec<Account>,
+        tx_out: &TxOut,
+    ) -> Result<Account, NodoBitcoinError> {
         for account in accounts.iter() {
             if tx_out.is_user_account_output(account.clone().public_key) {
                 return Ok(account.clone());
@@ -389,7 +392,7 @@ impl UTXOSet {
                     let output_index = tx_in.previous_output.index;
                     let key = (previous_tx_id, output_index);
 
-                    if self.account_for_txid_index.contains_key(&key) {
+                    if self.validar_input(tx_in.clone()).is_ok() {
                         self.agregar_tx_report_desde_in(
                             tx_id,
                             block.header.time,
@@ -401,11 +404,34 @@ impl UTXOSet {
                         );
                         self.eliminar_utxo(previous_tx_id, output_index, key);
                     }
+
+                    // if self.account_for_txid_index.contains_key(&key) {
+                    //     self.agregar_tx_report_desde_in(
+                    //         tx_id,
+                    //         block.header.time,
+                    //         false,
+                    //         tx_in_index as u32,
+                    //         key,
+                    //         previous_tx_id,
+                    //         output_index,
+                    //     );
+                    //     self.eliminar_utxo(previous_tx_id, output_index, key);
+                    // }
                 }
             }
             self.last_timestamp = block.header.time;
         }
         Ok(())
+    }
+
+    pub fn validar_input(&self, tx_in: TxIn) -> Result<String, NodoBitcoinError> {
+        let previous_tx_id = Uint256::from_be_bytes(tx_in.previous_output.hash);
+        let output_index = tx_in.previous_output.index;
+        let key = (previous_tx_id, output_index);
+        if self.account_for_txid_index.contains_key(&key) {
+            return Ok(self.account_for_txid_index[&key].clone());
+        }
+        Err(NodoBitcoinError::InvalidAccount)
     }
 
     pub fn get_available(&self, account: String) -> Result<u64, NodoBitcoinError> {

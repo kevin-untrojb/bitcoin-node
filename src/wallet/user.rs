@@ -8,7 +8,7 @@ use crate::{
     errores::NodoBitcoinError,
 };
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Account {
     pub secret_key: String,
     pub public_key: String,

@@ -196,7 +196,8 @@ pub fn init_block_broadcasting(
                         log_info_message(thread_logger.clone(), "Tx recibido.".to_string());
                         let tx = match Transaction::deserialize(&tx_read){
                             Ok(tx) => {
-                                log_info_message(thread_logger.clone(), "Transacción nueva descerializada correctamente".to_string());
+                                let msj = format!("Transacción nueva descerializada correctamente: {:?}", tx.txid().unwrap().to_hexa_string());
+                                log_info_message(thread_logger.clone(), msj);
                                 tx
                             },
                             Err(_) => {

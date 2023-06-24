@@ -144,6 +144,16 @@ impl TransactionManager {
                 self.sender_app_manager.send(ApplicationManagerMessages::NewBlock);
             }
             TransactionMessages::NewTx(tx) => {
+                let accounts_to_update = match self.validar_tx_propia(tx.clone()) {
+                    Ok(accounts) => accounts,
+                    Err(_) => vec![],
+                };
+                if accounts_to_update.len() > 0 {
+                    println!(
+                        "LLEGO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!: {:?}",
+                        accounts_to_update.len()
+                    );
+                }
                 self.tx_pendings.insert(tx.txid().unwrap(), tx);
                 self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
                 self.sender_app_manager.send(ApplicationManagerMessages::NewTx);
@@ -190,6 +200,30 @@ impl TransactionManager {
 
     fn update_pendings(&mut self, tx_id: Uint256) {
         self.tx_pendings.remove(&tx_id);
+    }
+
+    fn validar_tx_propia(&self, tx: Transaction) -> Result<Vec<Account>, NodoBitcoinError> {
+        let accounts = self.accounts.clone();
+        let utxo_set = self.utxos.clone();
+        let mut accounts_tx = vec![];
+        for tx_out in tx.output.iter() {
+            let account_ok = UTXOSet::validar_output(accounts.clone(), tx_out);
+            if account_ok.is_ok() {
+                accounts_tx.push(account_ok.unwrap());
+            }
+        }
+        for tx_in in tx.input.iter() {
+            let account_key_tx_in = utxo_set.validar_input(tx_in.clone());
+            if account_key_tx_in.is_ok() {
+                let account_name = account_key_tx_in.unwrap();
+                for account in accounts.iter() {
+                    if account.public_key == account_name && !accounts_tx.contains(account) {
+                        accounts_tx.push(account.clone());
+                    }
+                }
+            }
+        }
+        Ok(accounts_tx)
     }
 }
 
