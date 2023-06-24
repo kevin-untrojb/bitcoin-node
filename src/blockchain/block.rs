@@ -68,7 +68,7 @@ impl SerializedBlock {
 
         let tx_count_prefix = utils_bytes::from_amount_bytes_to_prefix(self.txn_amount);
         bytes
-            .write_all(&(utils_bytes::_build_varint_bytes(tx_count_prefix, self.txns.len())?))
+            .write_all(&(utils_bytes::build_varint_bytes(tx_count_prefix, self.txns.len())?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
         let bytes_txns_array = self.txns.iter().map(|txn| txn.serialize());

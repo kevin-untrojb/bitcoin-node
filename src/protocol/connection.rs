@@ -8,13 +8,13 @@ use crate::messages::version::VersionMessage;
 use chrono::Utc;
 use std::io::Read;
 use std::io::Write;
-use std::net::IpAddr;
 use std::net::TcpStream;
-use std::net::UdpSocket;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 
+/// Recorre lista de direccions e intenta conectarse a cada una de ellas 
+/// Si la conexión se realizó con éxito, se guarda esa conexión en el administrador de conexiones
 pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitcoinError> {
     let mut admin_connections = AdminConnections::new();
     let addresses = get_address();
@@ -47,6 +47,11 @@ pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitc
     Ok(admin_connections)
 }
 
+/// Se realiza el handshake con una conexión
+/// Si se envían con éxito los mensajes version y verack y también se reciben los mismos con éxito
+/// se considera que la conexión ha sido establecida con éxito.
+/// 
+/// También se envía un mensaje sendHeaders para establecer de qué forma se quiere recibir los bloques nuevos
 fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, NodoBitcoinError> {
     let timestamp = Utc::now().timestamp() as u64;
     let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
@@ -100,6 +105,8 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
     Ok(socket)
 }
 
+
+/// Obtiene las distintas direcciones de una semilla DNS
 pub fn get_address() -> Vec<SocketAddr> {
     let mut seeds = Vec::new();
     let url = config::get_valor("ADDRESS".to_owned()).unwrap();
@@ -113,10 +120,4 @@ pub fn get_address() -> Vec<SocketAddr> {
         }
     }
     seeds
-}
-
-fn _get_local_ip() -> Option<IpAddr> {
-    let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
-    socket.connect("8.8.8.8:80").ok()?;
-    socket.local_addr().ok()?.ip().into()
 }

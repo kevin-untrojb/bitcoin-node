@@ -10,6 +10,7 @@ pub struct GetHeadersMessage {
 }
 
 impl GetHeadersMessage {
+    /// Crea un mensaje GetHeadersMessage y lo devuelve
     pub fn new(
         version: u32,
         num_hashes: u8,
@@ -24,6 +25,7 @@ impl GetHeadersMessage {
         }
     }
 
+    /// Serializa un mensaje Get Headers y devuelve sus bytes
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut payload = Vec::new();
         let mut msg = Vec::new();

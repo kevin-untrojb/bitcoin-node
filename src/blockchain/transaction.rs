@@ -55,7 +55,7 @@ impl Transaction {
 
         let tx_in_count_prefix = utils_bytes::from_amount_bytes_to_prefix(self.tx_in_count);
         bytes
-            .write_all(&(utils_bytes::_build_varint_bytes(tx_in_count_prefix, self.input.len())?))
+            .write_all(&(utils_bytes::build_varint_bytes(tx_in_count_prefix, self.input.len())?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
         for tx_in in &self.input {
@@ -66,7 +66,7 @@ impl Transaction {
 
         let tx_out_count_prefix = utils_bytes::from_amount_bytes_to_prefix(self.tx_out_count);
         bytes
-            .write_all(&(utils_bytes::_build_varint_bytes(tx_out_count_prefix, self.output.len())?))
+            .write_all(&(utils_bytes::build_varint_bytes(tx_out_count_prefix, self.output.len())?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         for tx_out in &self.output {
             bytes
@@ -206,7 +206,7 @@ impl Transaction {
 
         let tx_in_count_prefix = utils_bytes::from_amount_bytes_to_prefix(self.tx_in_count);
         bytes
-            .write_all(&(utils_bytes::_build_varint_bytes(tx_in_count_prefix, self.input.len())?))
+            .write_all(&(utils_bytes::build_varint_bytes(tx_in_count_prefix, self.input.len())?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
         for (i, tx_in) in self.input.iter().enumerate() {
@@ -231,7 +231,7 @@ impl Transaction {
         }
         let tx_out_count_prefix = utils_bytes::from_amount_bytes_to_prefix(self.tx_out_count);
         bytes
-            .write_all(&(utils_bytes::_build_varint_bytes(tx_out_count_prefix, self.output.len())?))
+            .write_all(&(utils_bytes::build_varint_bytes(tx_out_count_prefix, self.output.len())?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         for tx_out in &self.output {
             bytes
@@ -386,7 +386,7 @@ impl TxIn {
         let script_bytes_prefix =
             utils_bytes::from_amount_bytes_to_prefix(self.script_bytes_amount);
         bytes
-            .write_all(&(utils_bytes::_build_varint_bytes(script_bytes_prefix, self.script_bytes)?))
+            .write_all(&(utils_bytes::build_varint_bytes(script_bytes_prefix, self.script_bytes)?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         bytes
             .write_all(&self.signature_script)
@@ -549,7 +549,7 @@ impl TxOut {
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         let n_bytes_prefix = utils_bytes::from_amount_bytes_to_prefix(self.pk_len_bytes);
         bytes
-            .write_all(&(utils_bytes::_build_varint_bytes(n_bytes_prefix, self.pk_script.len())?))
+            .write_all(&(utils_bytes::build_varint_bytes(n_bytes_prefix, self.pk_script.len())?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
         bytes
             .write_all(&self.pk_script)

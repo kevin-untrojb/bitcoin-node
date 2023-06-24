@@ -15,6 +15,8 @@ pub struct GetDataMessage {
 }
 
 impl GetDataMessage {
+    /// Crea un GetDataMessage donde el inventory es del tipo BLOCK.
+    /// O sea que este mensaje servirá para pedir bloques.
     pub fn new(count: u8, hash: [u8; 32]) -> GetDataMessage {
         let inventory = Inventory {
             inv_type: MSG_BLOCK,
@@ -27,6 +29,8 @@ impl GetDataMessage {
         }
     }
 
+    /// Crea un GetDataMessage para cuando se recibe una transacción a partir del mensaje inv
+    /// Devuelve un struct del mensaje GetDataMessage
     pub fn new_for_tx(inv_msg: &Vec<u8>) -> Result<GetDataMessage, NodoBitcoinError> {
         let mut inventory = Vec::new();
         let (size_bytes, count) = parse_varint(inv_msg);
@@ -56,6 +60,7 @@ impl GetDataMessage {
         })
     }
 
+    /// Serializa el mensaje GetData y devuelve los bytes del mismo
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut payload = Vec::new();
         let mut msg = Vec::new();
