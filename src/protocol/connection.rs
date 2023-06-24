@@ -16,7 +16,7 @@ use std::time::Duration;
 /// Recorre lista de direccions e intenta conectarse a cada una de ellas 
 /// Si la conexión se realizó con éxito, se guarda esa conexión en el administrador de conexiones
 pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitcoinError> {
-    let mut admin_connections = AdminConnections::new();
+    let mut admin_connections = AdminConnections::new(Some(logger.clone()));
     let addresses = get_address();
     let mut id: i32 = 0;
     for address in addresses.iter() {
