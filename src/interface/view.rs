@@ -2,15 +2,15 @@ use glib::Sender;
 use gtk::{
     prelude::*,
     traits::{ButtonExt, WidgetExt},
-    Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, Window,
+    Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, Window, TreeViewColumn, CellRendererToggle,
 };
 use gtk::{CellRendererText, ComboBox, ListStore};
 use std::{sync::{Arc, Mutex}};
 
 use std::println;
 
-use crate::wallet::user::Account;
-use crate::{app_manager::ApplicationManager};
+use crate::{wallet::user::Account, common::utils_timestamp::timestamp_to_datetime};
+use crate::{app_manager::ApplicationManager, blockchain::transaction::Transaction};
 use crate::{
     errores::{InterfaceError, InterfaceMessage},
     wallet::uxto_set::TxReport,
@@ -94,6 +94,7 @@ pub fn create_view() -> Sender<ViewObject> {
             }
             ViewObject::UploadTransactions(transactions) => {
                 println!("Actualizar transactions {}", transactions.len());
+                upload_transactions_table(&builder_receiver_clone, transactions);
             }
             ViewObject::CloseApplication => {
                 gtk::main_quit();
@@ -287,11 +288,12 @@ fn select_current_account(
         Ok(res) => res,
         Err(_) => return,
     };
-    if value == "None" {
-        let txs_current_account = Vec::<TxReport>::new();
-        let _ = sender.send(ViewObject::UploadTransactions(txs_current_account));
-        let _ = sender.send(ViewObject::UploadAmounts((0, 0)));
-    } else {
+
+    let txs_current_account = Vec::<TxReport>::new();
+    let _ = sender.send(ViewObject::UploadTransactions(txs_current_account));
+    let _ = sender.send(ViewObject::UploadAmounts((0, 0)));
+
+    if value != "None" {
         let _ = &app_manager_thread.select_current_account(value);
     }
     drop(app_manager_thread);
@@ -407,4 +409,34 @@ fn add_wallet_combobox(builder: &Builder, account: &Account) {
 
     let name = &account.wallet_name as &dyn ToValue;
     list_store.insert_with_values(None, &[(0, name)]);
+}
+
+fn upload_transactions_table(builder: &Builder, transactions: Vec<TxReport>){
+
+    let list_store: ListStore;
+    if let Some(res) = builder.object::<ListStore>("transactions") {
+        list_store = res;
+    } else {
+        return;
+    };
+
+    /*
+       pub is_pending: bool,
+    pub timestamp: u32,
+    pub tx_id: Uint256,
+    pub amount: i128,
+     */
+
+    for transaction in transactions {
+    let status;
+    if transaction.is_pending {
+        status = "Pending".to_string()
+    } else {status = "Confirmed".to_string()};
+    let is_pending = &status as &dyn ToValue;
+    let date = &timestamp_to_datetime(transaction.timestamp as i64).to_string() as &dyn ToValue;
+    let tx_id = &(&transaction.tx_id).to_hexa_string() as &dyn ToValue;
+    let amount = &(transaction.amount as i64) as &dyn ToValue;
+
+    list_store.insert_with_values(None, &[(0, is_pending), (1, date), (2, tx_id), (3, amount)]);
+    }
 }
