@@ -595,6 +595,7 @@ Untrojb Kevin</property>
               <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
+                <property name="vexpand">True</property>
                 <property name="orientation">vertical</property>
                 <child>
                   <!-- n-columns=2 n-rows=1 -->
@@ -639,71 +640,77 @@ Untrojb Kevin</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTreeView">
+                  <object class="GtkScrolledWindow">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
-                    <property name="valign">start</property>
-                    <property name="margin-top">5</property>
-                    <property name="model">transactions</property>
-                    <property name="search-column">0</property>
-                    <property name="enable-grid-lines">both</property>
-                    <property name="tooltip-column">2</property>
-                    <signal name="row-activated" handler="row_selected_handler" object="tx_id" swapped="no"/>
-                    <child internal-child="selection">
-                      <object class="GtkTreeSelection"/>
-                    </child>
+                    <property name="vexpand">True</property>
+                    <property name="shadow-type">in</property>
                     <child>
-                      <object class="GtkTreeViewColumn">
-                        <property name="sizing">fixed</property>
-                        <property name="fixed-width">80</property>
-                        <property name="title" translatable="yes">Status</property>
+                      <object class="GtkTreeView" id="transactions_tree_view">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="valign">start</property>
+                        <property name="margin-top">5</property>
+                        <property name="hscroll-policy">natural</property>
+                        <property name="vscroll-policy">natural</property>
+                        <property name="model">transactions</property>
+                        <property name="search-column">0</property>
+                        <property name="enable-grid-lines">both</property>
+                        <property name="tooltip-column">2</property>
                         <child>
-                          <object class="GtkCellRendererText" id="is_pending"/>
-                          <attributes>
-                            <attribute name="text">0</attribute>
-                          </attributes>
+                          <object class="GtkTreeViewColumn">
+                            <property name="sizing">fixed</property>
+                            <property name="fixed-width">80</property>
+                            <property name="title" translatable="yes">Status</property>
+                            <child>
+                              <object class="GtkCellRendererText" id="is_pending"/>
+                              <attributes>
+                                <attribute name="text">0</attribute>
+                              </attributes>
+                            </child>
+                          </object>
                         </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkTreeViewColumn">
-                        <property name="sizing">fixed</property>
-                        <property name="fixed-width">175</property>
-                        <property name="title" translatable="yes">Date</property>
                         <child>
-                          <object class="GtkCellRendererText" id="date"/>
-                          <attributes>
-                            <attribute name="text">1</attribute>
-                          </attributes>
+                          <object class="GtkTreeViewColumn">
+                            <property name="sizing">fixed</property>
+                            <property name="fixed-width">175</property>
+                            <property name="title" translatable="yes">Date</property>
+                            <child>
+                              <object class="GtkCellRendererText" id="date"/>
+                              <attributes>
+                                <attribute name="text">1</attribute>
+                              </attributes>
+                            </child>
+                          </object>
                         </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkTreeViewColumn">
-                        <property name="resizable">True</property>
-                        <property name="sizing">fixed</property>
-                        <property name="fixed-width">430</property>
-                        <property name="title" translatable="yes">ID</property>
-                        <property name="expand">True</property>
                         <child>
-                          <object class="GtkCellRendererText" id="tx_id"/>
-                          <attributes>
-                            <attribute name="text">2</attribute>
-                          </attributes>
+                          <object class="GtkTreeViewColumn">
+                            <property name="resizable">True</property>
+                            <property name="sizing">fixed</property>
+                            <property name="fixed-width">430</property>
+                            <property name="title" translatable="yes">ID</property>
+                            <property name="expand">True</property>
+                            <child>
+                              <object class="GtkCellRendererText" id="tx_id"/>
+                              <attributes>
+                                <attribute name="text">2</attribute>
+                              </attributes>
+                            </child>
+                          </object>
                         </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkTreeViewColumn">
-                        <property name="sizing">fixed</property>
-                        <property name="fixed-width">15</property>
-                        <property name="title" translatable="yes">Amount (BTC)</property>
-                        <property name="expand">True</property>
                         <child>
-                          <object class="GtkCellRendererText" id="amount"/>
-                          <attributes>
-                            <attribute name="text">3</attribute>
-                          </attributes>
+                          <object class="GtkTreeViewColumn">
+                            <property name="sizing">fixed</property>
+                            <property name="fixed-width">15</property>
+                            <property name="title" translatable="yes">Amount (BTC)</property>
+                            <property name="expand">True</property>
+                            <child>
+                              <object class="GtkCellRendererText" id="amount"/>
+                              <attributes>
+                                <attribute name="text">3</attribute>
+                              </attributes>
+                            </child>
+                          </object>
                         </child>
                       </object>
                     </child>
