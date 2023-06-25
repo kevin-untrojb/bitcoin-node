@@ -29,7 +29,6 @@ pub enum ViewObject {
     NewBlock(String),
     NewTx(String),
     CloseApplication,
-    BlockBroadcastingError(String),
     UpdateButtonPoiStatus(String)
 }
 
@@ -52,6 +51,9 @@ pub fn create_view() -> Sender<ViewObject> {
     let app_manager = ApplicationManager::new(sender.clone());
     let app_manager_mutex = Arc::new(Mutex::new(app_manager));
 
+    let selected_tx = ViewObjectData{id: "poi".to_string(), text: "".to_string() };
+    let shared_tx = Arc::new(Mutex::new(selected_tx));
+
     let builder = Builder::from_string(glade_src);
     let window: Window;
     if let Some(res) = builder.object("window") {
@@ -73,6 +75,8 @@ pub fn create_view() -> Sender<ViewObject> {
     create_combobox_wallet_list(&builder, manager_create_wallet);
 
     let builder_receiver_clone = builder.clone();
+    let shared_tx_receiver = shared_tx.clone();
+    let sender_clone = sender.clone();
     receiver.attach(None, move |view_object: ViewObject| {
         match view_object {
             ViewObject::Label(data) => {
@@ -93,6 +97,8 @@ pub fn create_view() -> Sender<ViewObject> {
             }
             ViewObject::UploadTransactions(transactions) => {
                 upload_transactions_table(&builder_receiver_clone, transactions);
+                let _ = sender_clone.send(ViewObject::UpdateButtonPoiStatus("".to_string()));
+
             }
             ViewObject::CloseApplication => {
                 gtk::main_quit();
@@ -122,14 +128,18 @@ pub fn create_view() -> Sender<ViewObject> {
             ViewObject::NewTx(message) => {
                 //open_message_dialog(false, &builder_receiver_clone, message);
             }
-            ViewObject::BlockBroadcastingError(message) => {
-                open_message_dialog(true, &builder_receiver_clone, message);
-            }
             ViewObject::UpdateButtonPoiStatus(tx_id) => {
                 if let Some(button) = builder_receiver_clone.object::<Button>("poi") {
                     if tx_id != ""{
                         button.set_sensitive(true);
-                    } else {button.set_sensitive(false)}
+                        if !shared_tx_receiver.lock().is_err(){
+                            let mut shared_tx_guard = shared_tx_receiver.lock().unwrap(); 
+                            shared_tx_guard.text = tx_id;
+                            drop(shared_tx_guard)
+                        }
+                    } else {
+                        button.set_sensitive(false)
+                    }
                 }
             }
         }
@@ -161,7 +171,8 @@ pub fn create_view() -> Sender<ViewObject> {
     handle_row_transaction_selected(sender_row_transaction_clone, builder.clone());
 
     let manager_poi: Arc<Mutex<ApplicationManager>> = app_manager_mutex.clone();
-    handle_poi(manager_poi, builder.clone());
+    let shared_tx_handler = shared_tx.clone();
+    handle_poi(manager_poi, builder.clone(), shared_tx_handler);
 
     sender
 }
@@ -176,8 +187,7 @@ fn handle_row_transaction_selected(sender: Sender<ViewObject>,
                 let tx_id = match model.value(&iter, 2).get::<String>() {
                     Ok(value) => value,
                     Err(_) => "Error al obtener tx id de selected row".to_string()
-                }; // chequear este match
-                println!("Row selected - tx_id: {}", tx_id);
+                }; 
                 let _ = sender.send(ViewObject::UpdateButtonPoiStatus(tx_id));
             }
         });
@@ -186,10 +196,18 @@ fn handle_row_transaction_selected(sender: Sender<ViewObject>,
 }
 
 fn handle_poi(manager_poi: Arc<Mutex<ApplicationManager>>,
-    builder: Builder){
+    builder: Builder, shared_tx: Arc<Mutex<ViewObjectData>>){
         if let Some(button) = builder.object::<Button>("poi") {
             button.connect_clicked(move |_| {
-                println!("Selected tx: todo save tx_id and send to app_manager")
+                if !shared_tx.lock().is_err(){
+                    let tx_id: String;
+                    let mut shared_tx_guard = shared_tx.lock().unwrap(); 
+                    tx_id = shared_tx_guard.text.clone();
+                    drop(shared_tx_guard);
+
+                    println!("Selected tx: {} send to app_manager", tx_id);
+
+                }
             });
         } 
 }

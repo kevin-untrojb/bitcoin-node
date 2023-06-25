@@ -3,7 +3,7 @@ use glib::Sender;
 use gtk::MessageType;
 use gtk::{prelude::*, traits::WidgetExt, Builder, Dialog, ResponseType};
 
-// Activa spinner y muestra mensaje. Realizar llamada antes de hacer operacion y usar end_loading una vez que termine.
+/// Activa spinner y muestra mensaje. Realizar llamada antes de hacer operacion y usar end_loading una vez que termine.
 pub fn start_loading(sender: Sender<ViewObject>, text: String) {
     let id: String = "loading_message".to_string();
 
@@ -18,6 +18,7 @@ pub fn start_loading(sender: Sender<ViewObject>, text: String) {
     let _ = sender.send(ViewObject::Label(view_object_data));
 }
 
+/// Finaliza loading. Oculta spinner y label 
 pub fn end_loading(sender: Sender<ViewObject>) {
     let id: String = "loading_message".to_string();
 
@@ -35,8 +36,8 @@ pub fn end_loading(sender: Sender<ViewObject>) {
     let _ = sender.send(ViewObject::Label(view_object_data));
 }
 
-// Info message: app_manager.sender_frontend.send(ViewObject::Error(InterfaceError::enum));
-// Error message: app_manager.sender_frontend.send(ViewObject::Message(InterfaceMessage::enum));
+/// Info message: app_manager.sender_frontend.send(ViewObject::Error(InterfaceError::enum));
+/// Error message: app_manager.sender_frontend.send(ViewObject::Message(InterfaceMessage::enum));
 pub fn open_message_dialog(error: bool, builder: &Builder, message: String) {
     if let Some(dialog) = builder.object::<Dialog>("message_dialog") {
         dialog.show_all();
