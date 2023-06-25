@@ -4,11 +4,13 @@ use crate::{common::utils_bytes::parse_varint, errores::NodoBitcoinError};
 const MSG_BLOCK: u32 = 2;
 const MSG_TX: u32 = 1;
 
+/// Representa un inventario del protocolo Bitcoin
 pub struct Inventory {
     inv_type: u32,
     hash: Vec<u8>,
 }
 
+/// Representa un mensaje GetData del protocolo Bitcoin
 pub struct GetDataMessage {
     count: u8,
     inventory: Vec<Inventory>,
