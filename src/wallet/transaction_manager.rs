@@ -57,6 +57,9 @@ pub enum TransactionMessages {
     Shutdowned,
 }
 
+// crear un type que cubra esta tupla (Account, u32, Uint256, bool, i128)
+pub type PendingByAccount = (Account, u32, Uint256, bool, i128);
+
 impl TransactionManager {
     fn handle_message(&mut self, message: TransactionMessages) {
         match message {
@@ -95,7 +98,7 @@ impl TransactionManager {
                         None => Vec::new(),
                     };
                 // juntar los dos vectores
-                let mut tx_by_account = tx_by_account.clone();
+                let mut tx_by_account = tx_by_account;
                 tx_by_account.extend(tx_pending_by_account);
 
                 // ordernar por timestamp descendente
@@ -166,7 +169,7 @@ impl TransactionManager {
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 let sender_app_manager_clone = self.sender_app_manager.clone();
                 thread::spawn(move || {
-                    _ = match init_block_broadcasting(
+                    match init_block_broadcasting(
                         logger.clone(),
                         admin_connections,
                         sender_tx_manager,
@@ -213,7 +216,7 @@ impl TransactionManager {
                     Ok(accounts) => accounts,
                     Err(_) => vec![],
                 };
-                if accounts_to_update.len() > 0 {
+                if !accounts_to_update.is_empty() {
                     for (account, index, txid, is_tx_in, value) in accounts_to_update.iter() {
                         // crear una TxReport
                         // agregarla al hashmap del utxoset
@@ -226,14 +229,8 @@ impl TransactionManager {
                             Err(_) => 0,
                         };
 
-                        let tx_report = TxReport::new(
-                            true,
-                            unix_timestamp.clone(),
-                            txid.clone(),
-                            value.clone(),
-                            is_tx_in.clone(),
-                            index.clone(),
-                        );
+                        let tx_report =
+                            TxReport::new(true, unix_timestamp, *txid, *value, *is_tx_in, *index);
                         self.utxos
                             .tx_report_pending_by_accounts
                             .entry(account.public_key.clone())
@@ -275,11 +272,8 @@ impl TransactionManager {
                 match &self.sender_block_broadcasting {
                     Some(sender) => {
                         _ = sender.send(BlockBroadcastingMessages::ShutDown);
-                        return;
                     }
-                    None => {
-                        return;
-                    }
+                    None => {}
                 };
             }
             TransactionMessages::Shutdowned => {
@@ -297,7 +291,7 @@ impl TransactionManager {
     fn validar_tx_propia(
         &self,
         tx: Transaction,
-    ) -> Result<Vec<(Account, u32, Uint256, bool, i128)>, NodoBitcoinError> {
+    ) -> Result<Vec<PendingByAccount>, NodoBitcoinError> {
         let logger = self.logger.clone();
         let tx_id = tx.txid()?;
         let accounts = self.accounts.clone();
@@ -306,8 +300,7 @@ impl TransactionManager {
         let mut accounts_index_is_in = vec![];
         for (index, tx_out) in tx.output.iter().enumerate() {
             let account_ok = UTXOSet::validar_output(accounts.clone(), tx_out);
-            if account_ok.is_ok() {
-                let account_ok = account_ok.unwrap();
+            if let Ok(account_ok) = account_ok {
                 accounts_tx.push(account_ok.clone());
                 let item = (
                     account_ok.clone(),
@@ -327,8 +320,7 @@ impl TransactionManager {
         }
         for (index, tx_in) in tx.input.iter().enumerate() {
             let account_key_tx_in = utxo_set.validar_input(tx_in.clone());
-            if account_key_tx_in.is_ok() {
-                let account_name = account_key_tx_in.unwrap();
+            if let Ok(account_name) = account_key_tx_in {
                 for account in accounts.iter() {
                     if account.public_key == account_name {
                         let previous_tx_id = Uint256::from_be_bytes(tx_in.previous_output.hash);
@@ -342,13 +334,7 @@ impl TransactionManager {
                         }
 
                         accounts_tx.push(account.clone());
-                        let item = (
-                            account.clone(),
-                            index as u32,
-                            tx_id,
-                            true,
-                            (value as i128) * (-1_i128),
-                        );
+                        let item = (account.clone(), index as u32, tx_id, true, -(value as i128));
                         accounts_index_is_in.push(item);
                         let msg = format!(
                             "Tx {:?} from account: {:?} pending to be mined.",
@@ -451,11 +437,11 @@ fn initialize_utxos_from_file(
     // filtrar los bloxks por sólo aquellos que tiene transacciones
     let blocks_with_tx = blocks
         .into_iter()
-        .filter(|block| block.txns.len() > 0)
+        .filter(|block| !block.txns.is_empty())
         .collect::<Vec<SerializedBlock>>();
 
     println!("blocks with tx {:?}", blocks_with_tx.len());
-    utxo_set.update_from_blocks(blocks_with_tx, accounts.clone())?;
+    utxo_set.update_from_blocks(blocks_with_tx, accounts)?;
     Ok(utxo_set)
 }
 

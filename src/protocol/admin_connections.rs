@@ -24,17 +24,13 @@ impl Connection {
     pub fn write_message(&self, message: &[u8]) -> Result<(), NodoBitcoinError> {
         let connection = self.tcp.lock();
         match connection {
-            Ok(mut connection) => {
-                let _ = match connection.write(message) {
-                    Ok(_) => {
-                        return Ok(());
-                    }
-                    Err(error) => {
-                        self.log_error_msg(format!{"No se pudo escribir el mensaje en la connection {}: {}.", self.id, error});
-                        return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
-                    }
-                };
-            }
+            Ok(mut connection) => match connection.write(message) {
+                Ok(_) => Ok(()),
+                Err(error) => {
+                    self.log_error_msg(format!{"No se pudo escribir el mensaje en la connection {}: {}.", self.id, error});
+                    Err(NodoBitcoinError::NoSePuedeEscribirLosBytes)
+                }
+            },
             Err(_) => {
                 println!("No se pudo lockear el TcpStream");
                 Err(NodoBitcoinError::NoSePuedeEscribirLosBytes)

@@ -205,6 +205,12 @@ const ACCOUNT_FOR_TXID_INDEX_FILENAME: &str = "account_for_txid_index.dat";
 const TX_REPORT_BY_ACCOUNT_FILENAME: &str = "tx_report_by_accounts.dat";
 const TX_REPORT_PENDING_BY_ACCOUNT_FILENAME: &str = "tx_report_pending_by_accounts.dat";
 
+impl Default for UTXOSet {
+    fn default() -> Self {
+        UTXOSet::new()
+    }
+}
+
 impl UTXOSet {
     pub fn new() -> Self {
         UTXOSet {
@@ -235,7 +241,7 @@ impl UTXOSet {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn eliminar_tx_report_pending(&self, tx_report_to_delete: TxReport) {
@@ -275,7 +281,7 @@ impl UTXOSet {
 
         let tx_report_by_accounts = self
             .tx_report_by_accounts
-            .entry(current_account.clone())
+            .entry(current_account)
             .or_default();
         tx_report_by_accounts.push(tx_report.clone());
         Some(tx_report)
@@ -288,9 +294,9 @@ impl UTXOSet {
         pending: bool,
         tx_in_index: u32,
         key: (Uint256, u32),
-        previous_tx_id: Uint256,
-        output_index: u32,
     ) -> Option<TxReport> {
+        let (previous_tx_id, output_index) = key;
+
         let account = self.account_for_txid_index[&key].clone();
 
         let utxos_for_account = self.utxos_for_account[&account].clone();
@@ -306,7 +312,7 @@ impl UTXOSet {
             is_pending: pending,
             timestamp,
             tx_id,
-            amount: (value as i128) * (-1_i128),
+            amount: -(value as i128),
             is_tx_in: true,
             index: tx_in_index,
         };
@@ -315,10 +321,7 @@ impl UTXOSet {
             return None;
         }
 
-        let tx_report_by_accounts = self
-            .tx_report_by_accounts
-            .entry(account.clone())
-            .or_default();
+        let tx_report_by_accounts = self.tx_report_by_accounts.entry(account).or_default();
         tx_report_by_accounts.push(tx_report.clone());
         Some(tx_report)
     }
@@ -442,8 +445,6 @@ impl UTXOSet {
                             false,
                             tx_in_index as u32,
                             key,
-                            previous_tx_id,
-                            output_index,
                         ) {
                             Some(tx_report) => {
                                 self.eliminar_tx_report_pending(tx_report.clone());
@@ -530,7 +531,7 @@ impl UTXOSet {
         let sizeof_usize: usize = mem::size_of::<usize>();
         let mut hashmap: HashMap<String, Vec<Utxo>> = HashMap::new();
         let mut offset = 0;
-        let buffer_len = buffer.len() as usize;
+        let buffer_len = buffer.len();
         if buffer_len < 4 {
             return Ok((0_u32, hashmap));
         }
@@ -631,7 +632,7 @@ impl UTXOSet {
         let sizeof_usize: usize = mem::size_of::<usize>();
         let mut hashmap: HashMap<String, Vec<TxReport>> = HashMap::new();
         let mut offset = 0;
-        let buffer_len = buffer.len() as usize;
+        let buffer_len = buffer.len();
         if buffer_len < 4 {
             return Ok(hashmap);
         }
@@ -704,7 +705,7 @@ impl UTXOSet {
             Self::load_bytes_from_file(UTXO_FOR_ACCOUNT_FILENAME.to_string())?;
 
         let (timestamp, hash_utxos_for_account) =
-            Self::load_utxos_for_account_and_timestamp(buffer_utxos_for_account.clone())?;
+            Self::load_utxos_for_account_and_timestamp(buffer_utxos_for_account)?;
         self.last_timestamp = timestamp;
         self.utxos_for_account = hash_utxos_for_account;
 

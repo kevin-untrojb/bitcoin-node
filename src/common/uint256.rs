@@ -88,7 +88,7 @@ impl Uint256 {
         result
     }
 
-    pub fn to_hexa_le_string(&self) -> String {
+    pub fn to_hexa_le_string(self) -> String {
         let mut result = String::new();
         for i in 0..NUM_BYTES {
             result.push_str(&format!("{:02x}", self.0[NUM_BYTES - i - 1]));

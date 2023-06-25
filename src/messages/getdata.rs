@@ -33,7 +33,7 @@ impl GetDataMessage {
 
     /// Crea un GetDataMessage para cuando se recibe una transacción a partir del mensaje inv
     /// Devuelve un struct del mensaje GetDataMessage
-    pub fn new_for_tx(inv_msg: &Vec<u8>) -> Result<GetDataMessage, NodoBitcoinError> {
+    pub fn new_for_tx(inv_msg: &[u8]) -> Result<GetDataMessage, NodoBitcoinError> {
         let mut inventory = Vec::new();
         let (size_bytes, count) = parse_varint(inv_msg);
 

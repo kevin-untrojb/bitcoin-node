@@ -49,7 +49,7 @@ pub fn init_block_broadcasting(
     let thread_logger_shutdown = logger.clone();
     let sender_mutex_clone = sender_mutex.clone();
     thread::spawn(move || {
-        while let Ok(message) = receiver.recv() {
+        if let Ok(message) = receiver.recv() {
             match message {
                 BlockBroadcastingMessages::ShutDown => {
                     let senders_locked = match sender_mutex_clone.lock() {
@@ -67,7 +67,6 @@ pub fn init_block_broadcasting(
                     }
 
                     drop(senders_locked);
-                    return;
                 }
             }
         }

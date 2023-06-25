@@ -131,9 +131,9 @@ pub fn create_view() -> Sender<ViewObject> {
             }
             ViewObject::UpdateButtonPoiStatus(tx_id) => {
                 if let Some(button) = builder_receiver_clone.object::<Button>("poi") {
-                    if tx_id != "" {
+                    if !tx_id.is_empty() {
                         button.set_sensitive(true);
-                        if !shared_tx_receiver.lock().is_err() {
+                        if shared_tx_receiver.lock().is_ok() {
                             let mut shared_tx_guard = shared_tx_receiver.lock().unwrap();
                             shared_tx_guard.text = tx_id;
                             drop(shared_tx_guard)
@@ -171,9 +171,9 @@ pub fn create_view() -> Sender<ViewObject> {
     let sender_row_transaction_clone = sender.clone();
     handle_row_transaction_selected(sender_row_transaction_clone, builder.clone());
 
-    let manager_poi: Arc<Mutex<ApplicationManager>> = app_manager_mutex.clone();
-    let shared_tx_handler = shared_tx.clone();
-    handle_poi(manager_poi, builder.clone(), shared_tx_handler);
+    let manager_poi: Arc<Mutex<ApplicationManager>> = app_manager_mutex;
+    let shared_tx_handler = shared_tx;
+    handle_poi(manager_poi, builder, shared_tx_handler);
 
     sender
 }
@@ -201,10 +201,9 @@ fn handle_poi(
 ) {
     if let Some(button) = builder.object::<Button>("poi") {
         button.connect_clicked(move |_| {
-            if !shared_tx.lock().is_err() {
-                let tx_id: String;
+            if shared_tx.lock().is_ok() {
                 let shared_tx_guard = shared_tx.lock().unwrap();
-                tx_id = shared_tx_guard.text.clone();
+                let tx_id = shared_tx_guard.text.clone();
                 drop(shared_tx_guard);
 
                 println!("Selected tx: {} send to app_manager", tx_id);
@@ -484,15 +483,14 @@ fn upload_transactions_table(builder: &Builder, transactions: Vec<TxReport>) {
     list_store.clear();
 
     for transaction in transactions {
-        let status;
-        if transaction.is_pending {
-            status = "Pending".to_string()
+        let status = if transaction.is_pending {
+            "Pending".to_string()
         } else {
-            status = "Confirmed".to_string()
+            "Confirmed".to_string()
         };
         let is_pending = &status as &dyn ToValue;
         let date = &timestamp_to_datetime(transaction.timestamp as i64).to_string() as &dyn ToValue;
-        let tx_id = &(&transaction.tx_id).to_hexa_le_string() as &dyn ToValue;
+        let tx_id = &transaction.tx_id.to_hexa_le_string() as &dyn ToValue;
         let amount = &(transaction.amount as i64) as &dyn ToValue;
 
         list_store.insert_with_values(None, &[(0, is_pending), (1, date), (2, tx_id), (3, amount)]);
