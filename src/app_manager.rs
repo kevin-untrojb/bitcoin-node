@@ -162,8 +162,8 @@ impl ApplicationManager {
         let logger = self.logger.clone();
 
         let message = format!(
-            "Enviando tx a {:?}. Monto: {:?}. Fee: {:?} ...",
-            target_address, target_amount, fee
+            "Enviando tx desde {:?} a {:?}. Monto: {:?}. Fee: {:?} ...",
+            account.public_key, target_address, target_amount, fee
         );
         log_info_message(self.logger.clone(), message);
 
@@ -212,6 +212,7 @@ impl ApplicationManager {
             Some(account) => account,
             None => return Err(NodoBitcoinError::NoHayCuentaSeleccionada),
         };
+        println!("current_account: {:?}", current_account.public_key);
         Ok(current_account)
     }
 
@@ -343,6 +344,12 @@ impl ApplicationManager {
         }
         // cambio el current_account
         self.current_account = current_account;
+        if self.current_account.is_some() {
+            println!(
+                "current_account: {:?}",
+                self.current_account.clone().unwrap().public_key
+            );
+        }
         self.send_messages_to_get_values()
     }
 }

@@ -5,7 +5,7 @@ use crate::{
         transaction::{create_tx_to_send, Transaction},
     },
     errores::NodoBitcoinError,
-    log::{log_error_message, LogMessages},
+    log::{log_error_message, log_info_message, LogMessages},
     messages::messages_header::make_header,
     wallet::{user::Account, uxto_set::UTXOSet},
 };
@@ -27,6 +27,10 @@ pub fn send_tx(
     for connection in admin_connections.get_connections() {
         match connection.write_message(&tx_msg) {
             Ok(_) => {
+                log_info_message(
+                    logger.clone(),
+                    format! {"Nueva transacción enviada correctamente a un peer: {}.", connection.id},
+                );
                 continue;
             }
             Err(error) => {

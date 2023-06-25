@@ -391,6 +391,8 @@ fn send_new_tx(
         utxos_by_account,
     )?;
 
+    println!("tx_obj_bytes: {:02X?}", tx_obj.serialize()?);
+
     let admin_connections = match admin_connections {
         Some(admin_connections) => admin_connections,
         None => return Err(NodoBitcoinError::NoSePuedeEnviarTransaccion),
