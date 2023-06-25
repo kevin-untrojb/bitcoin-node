@@ -27,10 +27,10 @@ pub fn send_tx(
     for connection in admin_connections.get_connections() {
         if connection.write_message(&tx_msg).is_err() {
             log_error_message(
-                logger,
+                logger.clone(),
                 "Error al enviar la nueva transacción a un peer.".to_string(),
             );
-            return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
+            continue;
         }
     }
 

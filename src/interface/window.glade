@@ -639,7 +639,7 @@ Untrojb Kevin</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTreeView">
+                  <object class="GtkTreeView" id="transactions_tree_view">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="valign">start</property>
@@ -648,7 +648,6 @@ Untrojb Kevin</property>
                     <property name="search-column">0</property>
                     <property name="enable-grid-lines">both</property>
                     <property name="tooltip-column">2</property>
-                    <signal name="row-activated" handler="row_selected_handler" object="tx_id" swapped="no"/>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
                     </child>

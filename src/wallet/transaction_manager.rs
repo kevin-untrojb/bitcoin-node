@@ -125,8 +125,11 @@ impl TransactionManager {
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 let sender_app_manager_clone = self.sender_app_manager.clone();
                 thread::spawn(move || {
-                    if init_block_broadcasting(logger, admin_connections, sender_tx_manager).is_err(){
-                        sender_app_manager_clone.send(ApplicationManagerMessages::BlockBroadcastingError);
+                    if init_block_broadcasting(logger, admin_connections, sender_tx_manager)
+                        .is_err()
+                    {
+                        sender_app_manager_clone
+                            .send(ApplicationManagerMessages::BlockBroadcastingError);
                     };
                 });
                 self.sender_app_manager
@@ -140,13 +143,17 @@ impl TransactionManager {
                 for tx in txns {
                     self.update_pendings(tx.txid().unwrap());
                 }
-                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
-                self.sender_app_manager.send(ApplicationManagerMessages::NewBlock);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::NewBlock);
             }
             TransactionMessages::NewTx(tx) => {
                 self.tx_pendings.insert(tx.txid().unwrap(), tx);
-                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
-                self.sender_app_manager.send(ApplicationManagerMessages::NewTx);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::NewTx);
             }
             TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
                 self.sender_block_broadcasting = Some(sender_block_broadcasting);

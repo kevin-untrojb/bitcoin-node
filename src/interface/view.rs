@@ -2,15 +2,16 @@ use glib::Sender;
 use gtk::{
     prelude::*,
     traits::{ButtonExt, WidgetExt},
-    Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, Window, TreeViewColumn, CellRendererToggle,
+    Builder, Button, CellRendererToggle, Dialog, Entry, Label, MenuItem, ResponseType, Spinner,
+    TreeViewColumn, Window, TreeView,
 };
 use gtk::{CellRendererText, ComboBox, ListStore};
-use std::{sync::{Arc, Mutex}};
+use std::sync::{Arc, Mutex};
 
 use std::println;
 
-use crate::{wallet::user::Account, common::utils_timestamp::timestamp_to_datetime};
 use crate::{app_manager::ApplicationManager, blockchain::transaction::Transaction};
+use crate::{common::utils_timestamp::timestamp_to_datetime, wallet::user::Account};
 use crate::{
     errores::{InterfaceError, InterfaceMessage},
     wallet::uxto_set::TxReport,
@@ -28,7 +29,8 @@ pub enum ViewObject {
     NewBlock(String),
     NewTx(String),
     CloseApplication,
-    BlockBroadcastingError(String)
+    BlockBroadcastingError(String),
+    UpdateButtonPoiStatus(String)
 }
 
 pub struct ViewObjectData {
@@ -74,15 +76,12 @@ pub fn create_view() -> Sender<ViewObject> {
     receiver.attach(None, move |view_object: ViewObject| {
         match view_object {
             ViewObject::Label(data) => {
-                if let Some(label) = builder_receiver_clone.object::<Label>(&data.id)
-                {
+                if let Some(label) = builder_receiver_clone.object::<Label>(&data.id) {
                     label.set_text(&data.text);
                 }
             }
             ViewObject::Spinner(data) => {
-                if let Some(spinner) =
-                    builder_receiver_clone.object::<Spinner>(&data.id)
-                {
+                if let Some(spinner) = builder_receiver_clone.object::<Spinner>(&data.id) {
                     spinner.set_active(data.active);
                 }
             }
@@ -93,7 +92,6 @@ pub fn create_view() -> Sender<ViewObject> {
                 open_message_dialog(false, &builder_receiver_clone, message.to_string());
             }
             ViewObject::UploadTransactions(transactions) => {
-                println!("Actualizar transactions {}", transactions.len());
                 upload_transactions_table(&builder_receiver_clone, transactions);
             }
             ViewObject::CloseApplication => {
@@ -127,6 +125,13 @@ pub fn create_view() -> Sender<ViewObject> {
             ViewObject::BlockBroadcastingError(message) => {
                 open_message_dialog(true, &builder_receiver_clone, message);
             }
+            ViewObject::UpdateButtonPoiStatus(tx_id) => {
+                if let Some(button) = builder_receiver_clone.object::<Button>("poi") {
+                    if tx_id != ""{
+                        button.set_sensitive(true);
+                    } else {button.set_sensitive(false)}
+                }
+            }
         }
         glib::Continue(true)
     });
@@ -142,7 +147,7 @@ pub fn create_view() -> Sender<ViewObject> {
         builder.clone(),
     );
 
-    let manager_transaction: Arc<Mutex<ApplicationManager>> = app_manager_mutex;
+    let manager_transaction: Arc<Mutex<ApplicationManager>> = app_manager_mutex.clone();
     let sender_transaction_clone = sender.clone();
     handle_transaction(
         manager_transaction,
@@ -150,9 +155,43 @@ pub fn create_view() -> Sender<ViewObject> {
         builder.clone(),
     );
 
-    handle_modal_about(builder);
+    handle_modal_about(builder.clone());
+
+    let sender_row_transaction_clone = sender.clone();
+    handle_row_transaction_selected(sender_row_transaction_clone, builder.clone());
+
+    let manager_poi: Arc<Mutex<ApplicationManager>> = app_manager_mutex.clone();
+    handle_poi(manager_poi, builder.clone());
 
     sender
+}
+
+fn handle_row_transaction_selected(sender: Sender<ViewObject>,
+    builder: Builder){
+    let tree_view: TreeView;
+    if let Some(res) = builder.object::<TreeView>("transactions_tree_view") {
+        tree_view = res;
+        tree_view.connect_cursor_changed(move |tree_view| {
+            if let Some((model, iter)) = tree_view.selection().selected() {
+                let tx_id = match model.value(&iter, 2).get::<String>() {
+                    Ok(value) => value,
+                    Err(_) => "Error al obtener tx id de selected row".to_string()
+                }; // chequear este match
+                println!("Row selected - tx_id: {}", tx_id);
+                let _ = sender.send(ViewObject::UpdateButtonPoiStatus(tx_id));
+            }
+        });
+    
+    };
+}
+
+fn handle_poi(manager_poi: Arc<Mutex<ApplicationManager>>,
+    builder: Builder){
+        if let Some(button) = builder.object::<Button>("poi") {
+            button.connect_clicked(move |_| {
+                println!("Selected tx: todo save tx_id and send to app_manager")
+            });
+        } 
 }
 
 fn satoshis_to_btc_string(satoshis: u64) -> String {
@@ -411,8 +450,7 @@ fn add_wallet_combobox(builder: &Builder, account: &Account) {
     list_store.insert_with_values(None, &[(0, name)]);
 }
 
-fn upload_transactions_table(builder: &Builder, transactions: Vec<TxReport>){
-
+fn upload_transactions_table(builder: &Builder, transactions: Vec<TxReport>) {
     let list_store: ListStore;
     if let Some(res) = builder.object::<ListStore>("transactions") {
         list_store = res;
@@ -420,23 +458,18 @@ fn upload_transactions_table(builder: &Builder, transactions: Vec<TxReport>){
         return;
     };
 
-    /*
-       pub is_pending: bool,
-    pub timestamp: u32,
-    pub tx_id: Uint256,
-    pub amount: i128,
-     */
-
     for transaction in transactions {
-    let status;
-    if transaction.is_pending {
-        status = "Pending".to_string()
-    } else {status = "Confirmed".to_string()};
-    let is_pending = &status as &dyn ToValue;
-    let date = &timestamp_to_datetime(transaction.timestamp as i64).to_string() as &dyn ToValue;
-    let tx_id = &(&transaction.tx_id).to_hexa_string() as &dyn ToValue;
-    let amount = &(transaction.amount as i64) as &dyn ToValue;
+        let status;
+        if transaction.is_pending {
+            status = "Pending".to_string()
+        } else {
+            status = "Confirmed".to_string()
+        };
+        let is_pending = &status as &dyn ToValue;
+        let date = &timestamp_to_datetime(transaction.timestamp as i64).to_string() as &dyn ToValue;
+        let tx_id = &(&transaction.tx_id).to_hexa_string() as &dyn ToValue;
+        let amount = &(transaction.amount as i64) as &dyn ToValue;
 
-    list_store.insert_with_values(None, &[(0, is_pending), (1, date), (2, tx_id), (3, amount)]);
+        list_store.insert_with_values(None, &[(0, is_pending), (1, date), (2, tx_id), (3, amount)]);
     }
 }

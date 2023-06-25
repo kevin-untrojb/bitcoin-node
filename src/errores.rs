@@ -155,7 +155,7 @@ pub enum InterfaceError {
     EmptyFields,
     TargetAmountNotValid,
     FeeNotValid,
-    TransactionNotSent
+    TransactionNotSent,
 }
 
 impl Error for InterfaceError {}
@@ -176,7 +176,10 @@ impl fmt::Display for InterfaceError {
                 write!(f, "El Fee debe ser numérico.")
             }
             InterfaceError::TransactionNotSent => {
-                write!(f, "Hubo un error al enviar la transaccion. Intente nuevamente.")
+                write!(
+                    f,
+                    "Hubo un error al enviar la transaccion. Intente nuevamente."
+                )
             }
         }
     }
@@ -185,7 +188,7 @@ impl fmt::Display for InterfaceError {
 #[derive(Debug, PartialEq)]
 pub enum InterfaceMessage {
     CreateAccount,
-    TransactionSent
+    TransactionSent,
 }
 
 impl fmt::Display for InterfaceMessage {

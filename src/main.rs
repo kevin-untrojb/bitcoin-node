@@ -13,7 +13,7 @@ mod wallet;
 
 use std::{env, println};
 
-use crate::blockchain::transaction::{TxIn,TxOut, Transaction};
+use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::uint256::Uint256;
 use crate::protocol::send_tx::{_mock_tx_obj, send_tx};
 use crate::{log::create_logger_actor, protocol::connection::connect};

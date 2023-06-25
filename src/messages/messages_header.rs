@@ -9,7 +9,6 @@ use crate::errores::NodoBitcoinError;
 
 const MAGIC_NUMBER_TESTNET: [u8; 4] = [0x0b, 0x11, 0x09, 0x07];
 
-
 /// Crea los bytes del header de los mensajes
 /// Recibe el comando del mensaje al que corresponde el header y su payload
 pub fn make_header(command: String, payload: &Vec<u8>) -> Result<Vec<u8>, NodoBitcoinError> {

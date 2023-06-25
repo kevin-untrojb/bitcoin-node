@@ -1,2 +1,2 @@
-pub mod view;
 pub mod public;
+pub mod view;

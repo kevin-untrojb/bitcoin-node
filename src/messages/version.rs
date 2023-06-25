@@ -1,6 +1,9 @@
 use std::net::SocketAddr;
 
-use crate::{errores::NodoBitcoinError, messages::messages_header::make_header, common::utils_bytes::string_to_bytes};
+use crate::{
+    common::utils_bytes::string_to_bytes, errores::NodoBitcoinError,
+    messages::messages_header::make_header,
+};
 pub struct VersionMessage {
     version: u32,
     services: u64,

@@ -1,6 +1,5 @@
 use crate::{
-    blockchain::{blockheader::BlockHeader},
-    common::utils_bytes::parse_varint,
+    blockchain::blockheader::BlockHeader, common::utils_bytes::parse_varint,
     errores::NodoBitcoinError,
 };
 
@@ -24,4 +23,3 @@ pub fn deserealize_sin_guardar(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>,
 
     Ok(block_headers)
 }
-

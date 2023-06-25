@@ -5,7 +5,7 @@ use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::file::{
     escribir_archivo, escribir_archivo_bloque, existe_archivo_headers, leer_ultimo_header,
 };
-use crate::common::utils_timestamp::{timestamp_to_datetime, obtener_timestamp_dia};
+use crate::common::utils_timestamp::{obtener_timestamp_dia, timestamp_to_datetime};
 use crate::config;
 use crate::errores::NodoBitcoinError;
 use crate::log::{log_error_message, log_info_message, LogMessages};

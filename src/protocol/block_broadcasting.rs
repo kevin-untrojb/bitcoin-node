@@ -28,7 +28,7 @@ pub enum BlockBroadcastingMessages {
 
 /// Escucha "infinitamente" por mensajes de los nodos de la red
 /// Recibe nuevos bloques y transacciones y se los envía al Transaction Manager
-/// Se cortarán los hilos cuando se reciba un mensaje ShutDown 
+/// Se cortarán los hilos cuando se reciba un mensaje ShutDown
 pub fn init_block_broadcasting(
     logger: Sender<LogMessages>,
     mut admin_connections: AdminConnections,
@@ -37,7 +37,10 @@ pub fn init_block_broadcasting(
     let blocks = Arc::new(Mutex::new(SerializedBlock::read_blocks_from_file()?));
     let mut threads = vec![];
     let (sender, receiver) = channel();
-    if sender_tx_manager.send(TransactionMessages::SenderBlockBroadcasting(sender)).is_err(){
+    if sender_tx_manager
+        .send(TransactionMessages::SenderBlockBroadcasting(sender))
+        .is_err()
+    {
         return Err(NodoBitcoinError::NoSePudoConectar);
     };
     let senders: Vec<Sender<BlockBroadcastingMessages>> = Vec::new();
@@ -58,7 +61,7 @@ pub fn init_block_broadcasting(
                         "Inicio cierre hilos block broadcasting.".to_string(),
                     );
                     for sender in senders_locked.iter() {
-                        if sender.send(BlockBroadcastingMessages::ShutDown).is_err(){
+                        if sender.send(BlockBroadcastingMessages::ShutDown).is_err() {
                             return;
                         };
                     }

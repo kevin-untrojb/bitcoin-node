@@ -1,7 +1,7 @@
 use super::admin_connections::AdminConnections;
 use crate::config;
 use crate::errores::NodoBitcoinError;
-use crate::log::{log_info_message, LogMessages, log_error_message};
+use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::messages::messages_header::check_header;
 use crate::messages::messages_header::make_header;
 use crate::messages::version::VersionMessage;
@@ -13,7 +13,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 
-/// Recorre lista de direccions e intenta conectarse a cada una de ellas 
+/// Recorre lista de direccions e intenta conectarse a cada una de ellas
 /// Si la conexión se realizó con éxito, se guarda esa conexión en el administrador de conexiones
 pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitcoinError> {
     let mut admin_connections = AdminConnections::new();
@@ -28,10 +28,11 @@ pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitc
                             logger.clone(),
                             format!("Conexión establecida: {:?}", address),
                         );
-                        let duration = connection.set_read_timeout(Some(Duration::new(10,0)));
-                        if duration.is_err(){
+                        let duration = connection.set_read_timeout(Some(Duration::new(10, 0)));
+                        if duration.is_err() {
                             log_error_message(
-                                logger.clone(),"Error al setear read timeout.".to_string()
+                                logger.clone(),
+                                "Error al setear read timeout.".to_string(),
                             );
                         }
                         admin_connections.add(connection, id)?;
@@ -50,7 +51,7 @@ pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitc
 /// Se realiza el handshake con una conexión
 /// Si se envían con éxito los mensajes version y verack y también se reciben los mismos con éxito
 /// se considera que la conexión ha sido establecida con éxito.
-/// 
+///
 /// También se envía un mensaje sendHeaders para establecer de qué forma se quiere recibir los bloques nuevos
 fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, NodoBitcoinError> {
     let timestamp = Utc::now().timestamp() as u64;
@@ -104,7 +105,6 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
 
     Ok(socket)
 }
-
 
 /// Obtiene las distintas direcciones de una semilla DNS
 pub fn get_address() -> Vec<SocketAddr> {
