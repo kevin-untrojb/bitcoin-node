@@ -13,17 +13,13 @@ mod wallet;
 
 use std::{env, println};
 
-use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::uint256::Uint256;
 use crate::protocol::send_tx::_mock_tx_obj;
 use crate::protocol::send_tx::send_tx;
-use crate::wallet::user::Account;
 use crate::{log::create_logger_actor, protocol::connection::connect};
 use errores::NodoBitcoinError;
 use interface::view::{self};
-
-use crate::wallet::uxto_set::UTXOSet;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -56,7 +52,7 @@ fn _send_tx_main() {
     }
 }
 
-fn new_tx() {
+fn _new_tx() {
     let args: Vec<String> = env::args().collect();
     let do_steps = || -> Result<(), NodoBitcoinError> {
         config::inicializar(args)?;

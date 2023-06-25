@@ -5,7 +5,7 @@ use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::file::{
     escribir_archivo, escribir_archivo_bloque, existe_archivo_headers, leer_ultimo_header,
 };
-use crate::common::utils_timestamp::{_timestamp_to_datetime, obtener_timestamp_dia};
+use crate::common::utils_timestamp::{obtener_timestamp_dia, timestamp_to_datetime};
 use crate::config;
 use crate::errores::NodoBitcoinError;
 use crate::log::{log_error_message, log_info_message, LogMessages};
@@ -146,7 +146,7 @@ fn get_headers_filtrados(
         .filter(|header| header.time >= timestamp_ini)
         .collect();
     let last_header = blockheaders[blockheaders.len() - 1];
-    let datetime = _timestamp_to_datetime(last_header.time.into());
+    let datetime = timestamp_to_datetime(last_header.time.into());
     log_info_message(
         logger,
         format!(

@@ -1,6 +1,9 @@
 use std::net::SocketAddr;
 
-use crate::{errores::NodoBitcoinError, messages::messages_header::make_header};
+use crate::{
+    common::utils_bytes::string_to_bytes, errores::NodoBitcoinError,
+    messages::messages_header::make_header,
+};
 pub struct VersionMessage {
     version: u32,
     services: u64,
@@ -28,14 +31,7 @@ const DEFAULT_START_HEIGHT: i32 = 0;
 const DEFAULT_RELAY: u8 = 1;
 
 impl VersionMessage {
-    fn string_to_bytes(s: &str, fixed_size: usize) -> Vec<u8> {
-        let mut bytes = s.as_bytes().to_vec();
-        match bytes.len() < fixed_size {
-            true => bytes.resize(fixed_size, 0),
-            false => bytes.truncate(fixed_size),
-        }
-        bytes
-    }
+    /// Crea un nuevo VersionMessage y lo devuelve
     pub fn new(version: u32, timestamp: u64, addr_recv_socket: SocketAddr) -> VersionMessage {
         let services = DEFAULT_SERVICES;
         let addr_trans_services = DEFAULT_SERVICES;
@@ -70,6 +66,7 @@ impl VersionMessage {
         }
     }
 
+    /// Serializa un mensaje Version y devuelve los bytes del mismo
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut payload = Vec::new();
         let mut msg = Vec::new();
@@ -78,10 +75,10 @@ impl VersionMessage {
         payload.extend_from_slice(&(self.services).to_le_bytes());
         payload.extend_from_slice(&(self.timestamp).to_le_bytes());
         payload.extend_from_slice(&(self.addr_recv_services).to_le_bytes());
-        payload.extend_from_slice(&Self::string_to_bytes(&self.addr_recv_ip, 16));
+        payload.extend_from_slice(&string_to_bytes(&self.addr_recv_ip, 16));
         payload.extend_from_slice(&(self.addr_recv_port).to_be_bytes());
         payload.extend_from_slice(&(self.addr_trans_services).to_le_bytes());
-        payload.extend_from_slice(&Self::string_to_bytes(&self.addr_trans_ip, 16));
+        payload.extend_from_slice(&string_to_bytes(&self.addr_trans_ip, 16));
         payload.extend_from_slice(&(self.addr_trans_port).to_be_bytes());
         payload.extend_from_slice(&(self.nonce).to_le_bytes());
         payload.extend_from_slice(&(self.user_agent_bytes).to_le_bytes());

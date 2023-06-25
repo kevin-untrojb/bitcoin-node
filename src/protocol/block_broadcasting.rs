@@ -26,6 +26,9 @@ pub enum BlockBroadcastingMessages {
     ShutDown,
 }
 
+/// Escucha "infinitamente" por mensajes de los nodos de la red
+/// Recibe nuevos bloques y transacciones y se los envía al Transaction Manager
+/// Se cortarán los hilos cuando se reciba un mensaje ShutDown
 pub fn init_block_broadcasting(
     logger: Sender<LogMessages>,
     mut admin_connections: AdminConnections,

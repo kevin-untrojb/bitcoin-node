@@ -38,7 +38,6 @@ pub enum NodoBitcoinError {
 
     // wallet
     NoHayCuentaSeleccionada,
-    ErrorAlCrearLaCuenta,
     CuentaNoEncontrada,
     NoSePuedeEnviarTransaccion,
     ErrorAlActualizarUTXOS,
@@ -137,9 +136,6 @@ impl fmt::Display for NodoBitcoinError {
             NodoBitcoinError::NoHayCuentaSeleccionada => {
                 write!(f, "ERROR: No hay ninguna cuenta seleccionada.")
             }
-            NodoBitcoinError::ErrorAlCrearLaCuenta => {
-                write!(f, "ERROR: No se puede crear la cuenta.")
-            }
             NodoBitcoinError::CuentaNoEncontrada => {
                 write!(f, "ERROR: No se encuentra la cuenta.")
             }
@@ -159,7 +155,7 @@ pub enum InterfaceError {
     EmptyFields,
     TargetAmountNotValid,
     FeeNotValid,
-    TransactionNotSent
+    TransactionNotSent,
 }
 
 impl Error for InterfaceError {}
@@ -180,7 +176,10 @@ impl fmt::Display for InterfaceError {
                 write!(f, "El Fee debe ser numérico.")
             }
             InterfaceError::TransactionNotSent => {
-                write!(f, "Hubo un error al enviar la transaccion. Intente nuevamente.")
+                write!(
+                    f,
+                    "Hubo un error al enviar la transaccion. Intente nuevamente."
+                )
             }
         }
     }
@@ -189,7 +188,7 @@ impl fmt::Display for InterfaceError {
 #[derive(Debug, PartialEq)]
 pub enum InterfaceMessage {
     CreateAccount,
-    TransactionSent
+    TransactionSent,
 }
 
 impl fmt::Display for InterfaceMessage {

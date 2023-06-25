@@ -4,22 +4,16 @@ use std::str::from_utf8;
 use bitcoin_hashes::sha256d;
 use bitcoin_hashes::Hash;
 
+use crate::common::utils_bytes::string_to_bytes;
 use crate::errores::NodoBitcoinError;
 
 const MAGIC_NUMBER_TESTNET: [u8; 4] = [0x0b, 0x11, 0x09, 0x07];
 
-fn string_to_bytes(s: String, fixed_size: usize) -> Vec<u8> {
-    let mut bytes = s.as_bytes().to_vec();
-    match bytes.len() < fixed_size {
-        true => bytes.resize(fixed_size, 0),
-        false => bytes.truncate(fixed_size),
-    }
-    bytes
-}
-
+/// Crea los bytes del header de los mensajes
+/// Recibe el comando del mensaje al que corresponde el header y su payload
 pub fn make_header(command: String, payload: &Vec<u8>) -> Result<Vec<u8>, NodoBitcoinError> {
     let mut result = Vec::new();
-    let magic = MAGIC_NUMBER_TESTNET; //Obtenerlo de config despues
+    let magic = MAGIC_NUMBER_TESTNET;
 
     let payload_size = payload.len() as u32;
     let hash = sha256d::Hash::hash(payload);
@@ -29,7 +23,7 @@ pub fn make_header(command: String, payload: &Vec<u8>) -> Result<Vec<u8>, NodoBi
         .write_all(&magic)
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
     result
-        .write_all(&string_to_bytes(command, 12))
+        .write_all(&string_to_bytes(&command, 12))
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
     result
         .write_all(&payload_size.to_le_bytes())
@@ -41,6 +35,8 @@ pub fn make_header(command: String, payload: &Vec<u8>) -> Result<Vec<u8>, NodoBi
     Ok(result)
 }
 
+/// Chequea que el header del mensaje recibido sea correcto
+/// Devuelve el comando del mensaje y el largo del payload
 pub fn check_header(header: &[u8]) -> Result<(String, usize), NodoBitcoinError> {
     if header.len() < 24 {
         return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
@@ -51,7 +47,6 @@ pub fn check_header(header: &[u8]) -> Result<(String, usize), NodoBitcoinError> 
     let magic_num = &header[offset..offset + 4];
 
     if magic_num != MAGIC_NUMBER_TESTNET {
-        //println!("magic number error");
         return Err(NodoBitcoinError::MagicNumberIncorrecto);
     }
 
