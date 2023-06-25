@@ -273,7 +273,11 @@ impl TransactionManager {
                     Some(sender) => {
                         _ = sender.send(BlockBroadcastingMessages::ShutDown);
                     }
-                    None => {}
+                    None => {
+                        _ = self
+                            .sender_app_manager
+                            .send(ApplicationManagerMessages::ShutDowned);
+                    }
                 };
             }
             TransactionMessages::Shutdowned => {
