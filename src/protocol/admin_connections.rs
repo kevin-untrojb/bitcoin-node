@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     errores::NodoBitcoinError,
-    log::{log_error_message, LogMessages},
+    log::{log_error_message, log_info_message, LogMessages},
 };
 
 #[derive(Clone)]
@@ -24,13 +24,18 @@ impl Connection {
     pub fn write_message(&self, message: &[u8]) -> Result<(), NodoBitcoinError> {
         let connection = self.tcp.lock();
         match connection {
-            Ok(mut connection) => match connection.write(message) {
-                Ok(_) => Ok(()),
-                Err(error) => {
-                    self.log_error_msg(format!{"No se pudo escribir el mensaje en la connection {}: {}.", self.id, error});
-                    Err(NodoBitcoinError::NoSePuedeEscribirLosBytes)
+            Ok(mut connection) => {
+                match connection.write(message) {
+                    Ok(_) => {
+                        self.log_info_msg(format!{"Nueva transacción enviada correctamente a un peer: {}.", self.id});
+                        Ok(())
+                    }
+                    Err(error) => {
+                        self.log_error_msg(format!{"No se pudo escribir el mensaje en la connection {}: {}.", self.id, error});
+                        Err(NodoBitcoinError::NoSePuedeEscribirLosBytes)
+                    }
                 }
-            },
+            }
             Err(_) => {
                 println!("No se pudo lockear el TcpStream");
                 Err(NodoBitcoinError::NoSePuedeEscribirLosBytes)
@@ -82,6 +87,14 @@ impl Connection {
                 println!("No se pudo lockear el TcpStream");
                 Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
             }
+        }
+    }
+    fn log_info_msg(&self, log_msg: String) {
+        match &self.logger {
+            Some(log) => {
+                log_info_message(log.clone(), format!("connection:: {}", log_msg));
+            }
+            None => {}
         }
     }
     fn log_error_msg(&self, log_msg: String) {
