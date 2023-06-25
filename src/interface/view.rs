@@ -457,6 +457,7 @@ fn upload_transactions_table(builder: &Builder, transactions: Vec<TxReport>) {
     } else {
         return;
     };
+    list_store.clear();
 
     for transaction in transactions {
         let status;
