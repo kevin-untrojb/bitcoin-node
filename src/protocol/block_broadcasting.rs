@@ -34,7 +34,10 @@ pub fn init_block_broadcasting(
     let blocks = Arc::new(Mutex::new(SerializedBlock::read_blocks_from_file()?));
     let mut threads = vec![];
     let (sender, receiver) = channel();
-    if sender_tx_manager.send(TransactionMessages::SenderBlockBroadcasting(sender)).is_err(){
+    if sender_tx_manager
+        .send(TransactionMessages::SenderBlockBroadcasting(sender))
+        .is_err()
+    {
         return Err(NodoBitcoinError::NoSePudoConectar);
     };
     let senders: Vec<Sender<BlockBroadcastingMessages>> = Vec::new();
@@ -55,7 +58,7 @@ pub fn init_block_broadcasting(
                         "Inicio cierre hilos block broadcasting.".to_string(),
                     );
                     for sender in senders_locked.iter() {
-                        if sender.send(BlockBroadcastingMessages::ShutDown).is_err(){
+                        if sender.send(BlockBroadcastingMessages::ShutDown).is_err() {
                             return;
                         };
                     }
@@ -196,7 +199,7 @@ pub fn init_block_broadcasting(
                         log_info_message(thread_logger.clone(), "Tx recibido.".to_string());
                         let tx = match Transaction::deserialize(&tx_read){
                             Ok(tx) => {
-                                let msj = format!("Transacción nueva descerializada correctamente: {:?}", tx.txid().unwrap().to_hexa_string());
+                                let msj = format!("Transacción nueva descerializada correctamente: {:?}", tx.txid().unwrap().to_hexa_le_string());
                                 log_info_message(thread_logger.clone(), msj);
                                 tx
                             },

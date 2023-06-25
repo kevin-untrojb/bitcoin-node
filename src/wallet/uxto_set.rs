@@ -3,9 +3,11 @@ use crate::blockchain::transaction::{Transaction, TxIn, TxOut};
 use crate::common::uint256::Uint256;
 use crate::common::utils_file::{read_decoded_string_offset, save_encoded_len_bytes};
 use crate::errores::NodoBitcoinError;
+use crate::log::{log_error_message, log_info_message, LogMessages};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::sync::mpsc::Sender;
 use std::{fmt, mem};
 
 use super::user::Account;
@@ -676,6 +678,7 @@ mod tests {
             transaction::{Outpoint, TxIn, TxOut},
         },
         common::decoder::{decode_base58, p2pkh_script_serialized},
+        log::create_logger_actor,
     };
 
     use super::*;

@@ -54,9 +54,13 @@ impl ApplicationManager {
             Err(_) => Vec::new(),
         };
         let (sender_app_manager, receiver_app_manager) = channel();
-        let tx_manager = create_transaction_manager(accounts.clone(), sender_app_manager.clone());
-        _ = tx_manager.send(TransactionMessages::LoadSavedUTXOS);
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+        let tx_manager = create_transaction_manager(
+            accounts.clone(),
+            logger.clone(),
+            sender_app_manager.clone(),
+        );
+        _ = tx_manager.send(TransactionMessages::LoadSavedUTXOS);
         let mut app_manager = ApplicationManager {
             current_account: None,
             sender_shut_down: None,

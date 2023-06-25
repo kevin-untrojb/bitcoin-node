@@ -22,6 +22,7 @@ pub struct TransactionManager {
     pub utxos: UTXOSet,
     tx_pendings: HashMap<Uint256, Transaction>,
     accounts: Vec<Account>,
+    logger: Sender<LogMessages>,
     sender_app_manager: Sender<ApplicationManagerMessages>,
     sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
     admin_connections: Option<AdminConnections>,
@@ -125,8 +126,11 @@ impl TransactionManager {
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 let sender_app_manager_clone = self.sender_app_manager.clone();
                 thread::spawn(move || {
-                    if init_block_broadcasting(logger, admin_connections, sender_tx_manager).is_err(){
-                        sender_app_manager_clone.send(ApplicationManagerMessages::BlockBroadcastingError);
+                    if init_block_broadcasting(logger, admin_connections, sender_tx_manager)
+                        .is_err()
+                    {
+                        sender_app_manager_clone
+                            .send(ApplicationManagerMessages::BlockBroadcastingError);
                     };
                 });
                 self.sender_app_manager
@@ -140,8 +144,10 @@ impl TransactionManager {
                 for tx in txns {
                     self.update_pendings(tx.txid().unwrap());
                 }
-                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
-                self.sender_app_manager.send(ApplicationManagerMessages::NewBlock);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::NewBlock);
             }
             TransactionMessages::NewTx(tx) => {
                 let accounts_to_update = match self.validar_tx_propia(tx.clone()) {
@@ -155,8 +161,10 @@ impl TransactionManager {
                     );
                 }
                 self.tx_pendings.insert(tx.txid().unwrap(), tx);
-                self.sender_app_manager.send(ApplicationManagerMessages::TransactionManagerUpdate);
-                self.sender_app_manager.send(ApplicationManagerMessages::NewTx);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
+                self.sender_app_manager
+                    .send(ApplicationManagerMessages::NewTx);
             }
             TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
                 self.sender_block_broadcasting = Some(sender_block_broadcasting);
@@ -203,13 +211,21 @@ impl TransactionManager {
     }
 
     fn validar_tx_propia(&self, tx: Transaction) -> Result<Vec<Account>, NodoBitcoinError> {
+        let logger = self.logger.clone();
         let accounts = self.accounts.clone();
         let utxo_set = self.utxos.clone();
         let mut accounts_tx = vec![];
         for tx_out in tx.output.iter() {
             let account_ok = UTXOSet::validar_output(accounts.clone(), tx_out);
             if account_ok.is_ok() {
-                accounts_tx.push(account_ok.unwrap());
+                let account_ok = account_ok.unwrap();
+                accounts_tx.push(account_ok.clone());
+                let msg = format!(
+                    "Tx {:?} from account: {:?} pending to be mined.",
+                    tx.txid().unwrap().to_hexa_le_string(),
+                    account_ok.public_key
+                );
+                log_info_message(logger.clone(), msg);
             }
         }
         for tx_in in tx.input.iter() {
@@ -219,6 +235,12 @@ impl TransactionManager {
                 for account in accounts.iter() {
                     if account.public_key == account_name && !accounts_tx.contains(account) {
                         accounts_tx.push(account.clone());
+                        let msg = format!(
+                            "Tx {:?} from account: {:?} pending to be mined.",
+                            tx.txid().unwrap().to_hexa_le_string(),
+                            account.public_key
+                        );
+                        log_info_message(logger.clone(), msg);
                     }
                 }
             }
@@ -233,7 +255,7 @@ fn update_utxos_from_file(
     accounts: Vec<Account>,
 ) -> Result<UTXOSet, NodoBitcoinError> {
     log_info_message(logger.clone(), "Actualizando UTXOS ...".to_string());
-    let uxos_updated = match initialize_utxos_from_file(utxo_set, accounts) {
+    let uxos_updated = match initialize_utxos_from_file(utxo_set, accounts, logger.clone()) {
         Ok(uxtos) => uxtos,
         Err(_) => {
             log_error_message(logger, "Error al inicializar UTXOS".to_string());
@@ -280,6 +302,7 @@ fn send_new_tx(
 
 pub fn create_transaction_manager(
     accounts: Vec<Account>,
+    logger: Sender<LogMessages>,
     app_sender: Sender<ApplicationManagerMessages>,
 ) -> Sender<TransactionMessages> {
     let (sender, receiver) = channel();
@@ -288,6 +311,7 @@ pub fn create_transaction_manager(
         utxos: UTXOSet::new(),
         tx_pendings: HashMap::new(),
         accounts,
+        logger,
         sender_block_broadcasting: None,
         sender_app_manager: app_sender,
         admin_connections: None,
@@ -307,6 +331,7 @@ pub fn create_transaction_manager(
 fn initialize_utxos_from_file(
     mut utxo_set: UTXOSet,
     accounts: Vec<Account>,
+    logger: Sender<LogMessages>,
 ) -> Result<UTXOSet, NodoBitcoinError> {
     let blocks = SerializedBlock::read_blocks_from_file()?;
     // filtrar los bloxks por sólo aquellos que tiene transacciones

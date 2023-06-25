@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    io::{Read, Write, ErrorKind},
+    io::{ErrorKind, Read, Write},
     net::TcpStream,
     sync::{Arc, Mutex},
 };
@@ -36,10 +36,10 @@ impl Connection {
             Ok(mut connection) => match connection.read(buf) {
                 Ok(bytes_read) => Ok(Some(bytes_read)),
                 Err(error) => {
-                    if error.kind() == ErrorKind::WouldBlock{
-                        println!("No se pudo leer el mensaje");
+                    if error.kind() == ErrorKind::WouldBlock {
+                        //println!("No se pudo leer el mensaje");
                         Ok(None)
-                    }else{
+                    } else {
                         Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
                     }
                 }
@@ -58,11 +58,10 @@ impl Connection {
                 Err(error) => {
                     if error.kind() == ErrorKind::WouldBlock {
                         Ok(())
-                    }else{
+                    } else {
                         println!("No se pudo leer exact message");
                         Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
                     }
-                    
                 }
             },
             Err(_) => {

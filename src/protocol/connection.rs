@@ -1,7 +1,7 @@
 use super::admin_connections::AdminConnections;
 use crate::config;
 use crate::errores::NodoBitcoinError;
-use crate::log::{log_info_message, LogMessages, log_error_message};
+use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::messages::messages_header::check_header;
 use crate::messages::messages_header::make_header;
 use crate::messages::version::VersionMessage;
@@ -28,10 +28,11 @@ pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitc
                             logger.clone(),
                             format!("Conexión establecida: {:?}", address),
                         );
-                        let duration = connection.set_read_timeout(Some(Duration::new(10,0)));
-                        if duration.is_err(){
+                        let duration = connection.set_read_timeout(Some(Duration::new(10, 0)));
+                        if duration.is_err() {
                             log_error_message(
-                                logger.clone(),"Error al setear read timeout.".to_string()
+                                logger.clone(),
+                                "Error al setear read timeout.".to_string(),
                             );
                         }
                         admin_connections.add(connection, id)?;
