@@ -25,10 +25,10 @@ pub enum ViewObject {
     Message(InterfaceMessage),
     UploadTransactions(Vec<TxReport>),
     UploadAmounts((u64, i128)),
-    NewBlock(String),
-    NewTx(String),
+    _NewBlock(String),
+    _NewTx(String),
     CloseApplication,
-    UpdateButtonPoiStatus(String)
+    UpdateButtonPoiStatus(String),
 }
 
 pub struct ViewObjectData {
@@ -50,7 +50,10 @@ pub fn create_view() -> Sender<ViewObject> {
     let app_manager = ApplicationManager::new(sender.clone());
     let app_manager_mutex = Arc::new(Mutex::new(app_manager));
 
-    let selected_tx = ViewObjectData{id: "poi".to_string(), text: "".to_string() };
+    let selected_tx = ViewObjectData {
+        id: "poi".to_string(),
+        text: "".to_string(),
+    };
     let shared_tx = Arc::new(Mutex::new(selected_tx));
 
     let builder = Builder::from_string(glade_src);
@@ -97,7 +100,6 @@ pub fn create_view() -> Sender<ViewObject> {
             ViewObject::UploadTransactions(transactions) => {
                 upload_transactions_table(&builder_receiver_clone, transactions);
                 let _ = sender_clone.send(ViewObject::UpdateButtonPoiStatus("".to_string()));
-
             }
             ViewObject::CloseApplication => {
                 gtk::main_quit();
@@ -121,18 +123,18 @@ pub fn create_view() -> Sender<ViewObject> {
                     label.set_text(&btc_total);
                 }
             }
-            ViewObject::NewBlock(_message) => {
+            ViewObject::_NewBlock(_message) => {
                 //open_message_dialog(false, &builder_receiver_clone, message);
             }
-            ViewObject::NewTx(_message) => {
+            ViewObject::_NewTx(_message) => {
                 //open_message_dialog(false, &builder_receiver_clone, message);
             }
             ViewObject::UpdateButtonPoiStatus(tx_id) => {
                 if let Some(button) = builder_receiver_clone.object::<Button>("poi") {
                     if tx_id != "" {
                         button.set_sensitive(true);
-                        if !shared_tx_receiver.lock().is_err(){
-                            let mut shared_tx_guard = shared_tx_receiver.lock().unwrap(); 
+                        if !shared_tx_receiver.lock().is_err() {
+                            let mut shared_tx_guard = shared_tx_receiver.lock().unwrap();
                             shared_tx_guard.text = tx_id;
                             drop(shared_tx_guard)
                         }
@@ -184,29 +186,31 @@ fn handle_row_transaction_selected(sender: Sender<ViewObject>, builder: Builder)
             if let Some((model, iter)) = tree_view.selection().selected() {
                 let tx_id = match model.value(&iter, 2).get::<String>() {
                     Ok(value) => value,
-                    Err(_) => "Error al obtener tx id de selected row".to_string()
-                }; 
+                    Err(_) => "Error al obtener tx id de selected row".to_string(),
+                };
                 let _ = sender.send(ViewObject::UpdateButtonPoiStatus(tx_id));
             }
         });
     };
 }
 
-fn handle_poi(manager_poi: Arc<Mutex<ApplicationManager>>,
-    builder: Builder, shared_tx: Arc<Mutex<ViewObjectData>>){
-        if let Some(button) = builder.object::<Button>("poi") {
-            button.connect_clicked(move |_| {
-                if !shared_tx.lock().is_err(){
-                    let tx_id: String;
-                    let mut shared_tx_guard = shared_tx.lock().unwrap(); 
-                    tx_id = shared_tx_guard.text.clone();
-                    drop(shared_tx_guard);
+fn handle_poi(
+    _manager_poi: Arc<Mutex<ApplicationManager>>,
+    builder: Builder,
+    shared_tx: Arc<Mutex<ViewObjectData>>,
+) {
+    if let Some(button) = builder.object::<Button>("poi") {
+        button.connect_clicked(move |_| {
+            if !shared_tx.lock().is_err() {
+                let tx_id: String;
+                let shared_tx_guard = shared_tx.lock().unwrap();
+                tx_id = shared_tx_guard.text.clone();
+                drop(shared_tx_guard);
 
-                    println!("Selected tx: {} send to app_manager", tx_id);
-
-                }
-            });
-        } 
+                println!("Selected tx: {} send to app_manager", tx_id);
+            }
+        });
+    }
 }
 
 fn satoshis_u64_to_btc_string(satoshis: u64) -> String {

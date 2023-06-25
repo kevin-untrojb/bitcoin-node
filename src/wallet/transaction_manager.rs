@@ -64,11 +64,25 @@ impl TransactionManager {
                 let available_amount = self.utxos.get_available(account.clone()).unwrap_or(0);
                 let pending_amount = self.utxos.get_pending(account).unwrap_or(0);
 
-                self.sender_app_manager
+                match self
+                    .sender_app_manager
                     .send(ApplicationManagerMessages::GetAmountsByAccount(
                         available_amount,
                         pending_amount,
-                    ));
+                    )) {
+                    Ok(_) => {}
+                    Err(_) => {
+                        log_error_message(
+                            self.logger.clone(),
+                            "Error al enviar mensaje a ApplicationManagerMessages::GetAmountsByAccount".to_string(),
+                        );
+                        _ = self.sender_app_manager.send(
+                            ApplicationManagerMessages::ApplicationError(
+                                "Updating wallet data error".to_string(),
+                            ),
+                        );
+                    }
+                }
             }
             TransactionMessages::GetTxReportByAccount(account) => {
                 let tx_by_account = match self.utxos.tx_report_by_accounts.get(&account) {
@@ -87,14 +101,27 @@ impl TransactionManager {
                 // ordernar por timestamp descendente
                 tx_by_account.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
 
-                self.sender_app_manager
-                    .send(ApplicationManagerMessages::GetTxReportByAccount(
-                        tx_by_account,
-                    ));
+                match self.sender_app_manager.send(
+                    ApplicationManagerMessages::GetTxReportByAccount(tx_by_account),
+                ) {
+                    Ok(_) => {}
+                    Err(_) => {
+                        log_error_message(
+                            self.logger.clone(),
+                            "Error al enviar mensaje a ApplicationManagerMessages::GetTxReportByAccount".to_string(),
+                        );
+                        _ = self.sender_app_manager.send(
+                            ApplicationManagerMessages::ApplicationError(
+                                "Updating wallet data error".to_string(),
+                            ),
+                        );
+                    }
+                }
             }
             TransactionMessages::_UpdateFromBlocks((blocks, accounts, result)) => {
-                result.send(self.utxos.update_from_blocks(blocks, accounts));
-                self.sender_app_manager
+                _ = result.send(self.utxos.update_from_blocks(blocks, accounts));
+                _ = self
+                    .sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::AddAccount(accounts, logger) => {
@@ -113,7 +140,8 @@ impl TransactionManager {
                 };
                 self.utxos = utxos_updated;
                 log_info_message(logger, "UTXOS actualizadas".to_string());
-                self.sender_app_manager
+                _ = self
+                    .sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::InitBlockBroadcasting((
@@ -138,14 +166,24 @@ impl TransactionManager {
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 let sender_app_manager_clone = self.sender_app_manager.clone();
                 thread::spawn(move || {
-                    if init_block_broadcasting(logger, admin_connections, sender_tx_manager)
-                        .is_err()
-                    {
-                        let _ = sender_app_manager_clone
-                            .send(ApplicationManagerMessages::BlockBroadcastingError);
+                    _ = match init_block_broadcasting(
+                        logger.clone(),
+                        admin_connections,
+                        sender_tx_manager,
+                    ) {
+                        Ok(_) => todo!(),
+                        Err(_) => {
+                            log_error_message(
+                                logger,
+                                "Error al iniciar el block broadcasting.".to_string(),
+                            );
+                            _ = sender_app_manager_clone
+                                .send(ApplicationManagerMessages::BlockBroadcastingError);
+                        }
                     };
                 });
-                let _ = self.sender_app_manager
+                _ = self
+                    .sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::NewBlock(block) => {
@@ -156,9 +194,11 @@ impl TransactionManager {
                 for tx in txns {
                     self.update_pendings(tx.txid().unwrap());
                 }
-                self.sender_app_manager
+                _ = self
+                    .sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
-                self.sender_app_manager
+                _ = self
+                    .sender_app_manager
                     .send(ApplicationManagerMessages::NewBlock);
             }
             TransactionMessages::NewTx(tx) => {
@@ -201,10 +241,12 @@ impl TransactionManager {
                             .push(tx_report.clone());
                     }
                 }
-                self.tx_pendings.insert(tx.txid().unwrap(), tx);
-                self.sender_app_manager
+                self.tx_pendings.insert(tx_id, tx);
+                _ = self
+                    .sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
-                self.sender_app_manager
+                _ = self
+                    .sender_app_manager
                     .send(ApplicationManagerMessages::NewTx);
             }
             TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
@@ -232,7 +274,7 @@ impl TransactionManager {
                 let _ = self.utxos.save();
                 match &self.sender_block_broadcasting {
                     Some(sender) => {
-                        sender.send(BlockBroadcastingMessages::ShutDown);
+                        _ = sender.send(BlockBroadcastingMessages::ShutDown);
                         return;
                     }
                     None => {
@@ -241,7 +283,8 @@ impl TransactionManager {
                 };
             }
             TransactionMessages::Shutdowned => {
-                self.sender_app_manager
+                _ = self
+                    .sender_app_manager
                     .send(ApplicationManagerMessages::ShutDowned);
             }
         }
@@ -423,7 +466,7 @@ pub fn _update_from_transactions(
     accounts: Vec<Account>,
 ) -> Result<(), NodoBitcoinError> {
     let (sender, receiver) = channel();
-    manager.send(TransactionMessages::_UpdateFromBlocks((
+    _ = manager.send(TransactionMessages::_UpdateFromBlocks((
         blocks, accounts, sender,
     )));
 

@@ -10,7 +10,7 @@ use crate::{
     config,
     errores::{InterfaceError, InterfaceMessage, NodoBitcoinError},
     interface::{
-        public::{end_loading, start_loading},
+        public::{end_loading, show_message, start_loading},
         view::ViewObject,
     },
     log::{create_logger_actor, log_info_message, LogMessages},
@@ -44,6 +44,7 @@ pub enum ApplicationManagerMessages {
     NewBlock,
     NewTx,
     BlockBroadcastingError,
+    ApplicationError(String),
 }
 
 impl ApplicationManager {
@@ -123,8 +124,12 @@ impl ApplicationManager {
                 //let _ = self.sender_frontend.send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
             }
             ApplicationManagerMessages::BlockBroadcastingError => {
-                let _ = self.sender_frontend
+                let _ = self
+                    .sender_frontend
                     .send(ViewObject::Error(InterfaceError::BlockBroadcastingError));
+            }
+            ApplicationManagerMessages::ApplicationError(message) => {
+                show_message(self.sender_frontend.clone(), message);
             }
         }
     }
@@ -195,7 +200,8 @@ impl ApplicationManager {
 
         log_info_message(self.logger.clone(), "Cerrando aplicación...".to_string());
         _ = Account::save_all_accounts(self.accounts.clone());
-        self.sender_app_manager
+        _ = self
+            .sender_app_manager
             .send(ApplicationManagerMessages::ShutDown);
 
         Ok(())
@@ -296,12 +302,30 @@ impl ApplicationManager {
             None => return Err(NodoBitcoinError::InvalidAccount),
         };
         let manager = self.tx_manager.clone();
-        manager.send(TransactionMessages::GetTxReportByAccount(
+        match manager.send(TransactionMessages::GetTxReportByAccount(
             current_account_ok.public_key.clone(),
-        ));
-        manager.send(TransactionMessages::GetAvailableAndPending(
+        )) {
+            Ok(_) => {}
+            Err(_) => {
+                show_message(
+                    self.sender_frontend.clone(),
+                    "Updating wallet tx error".to_string(),
+                );
+                return Err(NodoBitcoinError::InvalidAccount);
+            }
+        }
+        match manager.send(TransactionMessages::GetAvailableAndPending(
             current_account_ok.public_key,
-        ));
+        )) {
+            Ok(_) => {}
+            Err(_) => {
+                show_message(
+                    self.sender_frontend.clone(),
+                    "Updating wallet data error".to_string(),
+                );
+                return Err(NodoBitcoinError::InvalidAccount);
+            }
+        }
         start_loading(
             self.sender_frontend.clone(),
             "Updating wallet data ... ".to_string(),

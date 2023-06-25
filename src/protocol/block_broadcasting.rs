@@ -81,10 +81,11 @@ pub fn init_block_broadcasting(
         let sender_mutex_connection = sender_mutex.clone();
         threads.push(thread::spawn(move || {
             let (sender_thread, receiver_thread) = channel();
-            let senders_locked = match sender_mutex_connection.lock(){
-                Ok(mut senders_locked) => senders_locked.push(sender_thread),
+            let mut senders_locked = match sender_mutex_connection.lock(){
+                Ok(senders_locked) => senders_locked,
                 Err(_) => return,
             };
+            senders_locked.push(sender_thread);
             drop(senders_locked);
             loop {
                 if let Ok(message) = receiver_thread.try_recv() {
