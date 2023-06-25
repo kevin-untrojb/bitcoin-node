@@ -27,11 +27,12 @@ pub fn send_tx(
     for connection in admin_connections.get_connections() {
         match connection.write_message(&tx_msg) {
             Ok(_) => {
-               continue;
+                continue;
             }
-            Err(error) =>{
+            Err(error) => {
                 log_error_message(
-                    logger.clone(),format!{"Error al enviar la nueva transacción a un peer: {}.",error},
+                    logger.clone(),
+                    format! {"Error al enviar la nueva transacción a un peer: {}.",error},
                 );
                 continue;
             }

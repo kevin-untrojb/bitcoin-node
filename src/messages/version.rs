@@ -6,8 +6,8 @@ use crate::{
 };
 
 /// Representa un mensaje Version del protocolo Bitcoin
-/// 
-/// # Campos 
+///
+/// # Campos
 /// * version: la versión más alta del protocolo que soporta el nodo transmisor
 /// * services: los servicios que soporta el nodo transmisor
 /// * timestamp: el tiempo actual del nodo transmisor

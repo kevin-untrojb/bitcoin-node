@@ -208,12 +208,12 @@ pub fn init_block_broadcasting(
                             },
                             Err(_) => {
                                 log_error_message(thread_logger.clone(), "No se pudo guardar la nueva transacción recibida en block broadcasting.".to_string());
-                                return;
+                                continue;
                             }
                         };
 
                         if thread_sender_tx_manager.send(TransactionMessages::NewTx(tx)).is_err(){
-                            return;
+                            continue;
                         };
                         log_info_message(thread_logger.clone(), "Nueva transacción enviada al manager".to_string());
                     }
