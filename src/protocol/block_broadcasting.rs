@@ -62,7 +62,7 @@ pub fn init_block_broadcasting(
                     );
                     for sender in senders_locked.iter() {
                         if sender.send(BlockBroadcastingMessages::ShutDown).is_err() {
-                            return;
+                            continue;
                         };
                     }
 
@@ -92,7 +92,7 @@ pub fn init_block_broadcasting(
                         BlockBroadcastingMessages::ShutDown => {
                             log_info_message(
                                 thread_logger,
-                                "Hilo block broadcasting cerrado correctamente.".to_string(),
+                                format!{"Hilo de conexión {} cerrado correctamente.", socket.id}
                             );
                             return;
                         }
@@ -103,7 +103,7 @@ pub fn init_block_broadcasting(
                 if socket.read_message(&mut buffer).is_err() {
                     log_error_message(
                         thread_logger.clone(),
-                        "Error al leer el header del mensaje en broadcasting".to_string(),
+                        format!("Error al leer el header del mensaje en broadcasting en conexión {}", socket.id),
                     );
                     return;
                 }
@@ -114,7 +114,7 @@ pub fn init_block_broadcasting(
                         if socket.read_message(&mut header).is_err() {
                             log_error_message(
                                 thread_logger.clone(),
-                                "Error al leer el mensaje en broadcasting".to_string(),
+                                format!("Error al leer el mensaje en broadcasting en conexión {}", socket.id),
                             );
                             return;
                         }
@@ -135,14 +135,14 @@ pub fn init_block_broadcasting(
                     if socket.write_message(&pong_msg).is_err() {
                         log_error_message(
                             thread_logger.clone(),
-                            "Error al escribir el mensaje pong".to_string(),
+                            format!("Error al escribir el mensaje pong en conexión {}", socket.id),
                         );
                         return;
                     }
                 }
 
                 if command == "inv" {
-                    log_info_message(thread_logger.clone(), "Mensaje inv recibido".to_string());
+                    log_info_message(thread_logger.clone(), format!("Mensaje inv recibido en conexión {}", socket.id));
                     let get_data = match GetDataMessage::new_for_tx(&header) {
                         Ok(get_data) => {
                             get_data
@@ -157,7 +157,7 @@ pub fn init_block_broadcasting(
                         Err(_) => {
                             log_error_message(
                                 thread_logger.clone(),
-                                "Error al serializar el get_data.".to_string(),
+                                format!("Error al serializar el get_data en conexión {}.", socket.id),
                             );
                             continue;
                         }
@@ -166,7 +166,7 @@ pub fn init_block_broadcasting(
                     if socket.write_message(&get_data_message).is_err() {
                         log_error_message(
                             thread_logger,
-                            "Error al escribir el mensaje get_data".to_string(),
+                            format!("Error al escribir el mensaje get_data en conexión {}", socket.id),
                         );
                         return;
                     }
@@ -175,7 +175,7 @@ pub fn init_block_broadcasting(
                     if socket.read_message(&mut buffer).is_err() {
                         log_error_message(
                             thread_logger,
-                            "Error al leer el header mensaje en broadcasting.".to_string(),
+                            format!("Error al leer el header mensaje en broadcasting en conexión {}.", socket.id),
                         );
                         return;
                     }
@@ -186,7 +186,7 @@ pub fn init_block_broadcasting(
                             if socket.read_message(&mut tx_read).is_err() {
                                 log_error_message(
                                     thread_logger,
-                                    "Error al leer el mensaje en broadcasting.".to_string(),
+                                    format!("Error al leer el mensaje en broadcasting en conexión {}.", socket.id),
                                 );
                                 return;
                             }
@@ -199,20 +199,21 @@ pub fn init_block_broadcasting(
                     };
 
                     if command == "tx" {
-                        log_info_message(thread_logger.clone(), "Tx recibido.".to_string());
+                        log_info_message(thread_logger.clone(), format!("Tx recibido en conexión {}.", socket.id));
                         let tx = match Transaction::deserialize(&tx_read){
                             Ok(tx) => {
-                                log_info_message(thread_logger.clone(), "Transacción nueva descerializada correctamente".to_string());
+                                let msj = format!("Transacción nueva descerializada correctamente: {:?}", tx.txid().unwrap().to_hexa_le_string());
+                                log_info_message(thread_logger.clone(), msj);
                                 tx
                             },
                             Err(_) => {
                                 log_error_message(thread_logger.clone(), "No se pudo guardar la nueva transacción recibida en block broadcasting.".to_string());
-                                return;
+                                continue;
                             }
                         };
 
                         if thread_sender_tx_manager.send(TransactionMessages::NewTx(tx)).is_err(){
-                            return;
+                            continue;
                         };
                         log_info_message(thread_logger.clone(), "Nueva transacción enviada al manager".to_string());
                     }
@@ -228,7 +229,7 @@ pub fn init_block_broadcasting(
                         Err(_) => {
                             log_error_message(
                                 thread_logger,
-                                "Error al calcular el hash del header.".to_string(),
+                                format!("Error al calcular el hash del header en conexión {}.", socket.id),
                             );
                             return;
                         }
@@ -241,7 +242,7 @@ pub fn init_block_broadcasting(
                         Err(_) => {
                             log_error_message(
                                 thread_logger.clone(),
-                                "Error al serializar el get_data.".to_string(),
+                                format!("Error al serializar el get_data en conexión {}.", socket.id),
                             );
                             continue;
                         }
@@ -250,7 +251,7 @@ pub fn init_block_broadcasting(
                     if socket.write_message(&get_data_message).is_err() {
                         log_error_message(
                             thread_logger,
-                            "Error al escribir el mensaje get data en broadcasting".to_string(),
+                            format!("Error al escribir el mensaje get data en broadcasting en conexión {}", socket.id),
                         );
                         return;
                     }
@@ -259,7 +260,7 @@ pub fn init_block_broadcasting(
                     if socket.read_message(&mut buffer).is_err() {
                         log_error_message(
                             thread_logger,
-                            "Error al leer el header mensaje en broadcasting.".to_string(),
+                            format!("Error al leer el header mensaje en broadcasting en conexión {}.", socket.id),
                         );
                         return;
                     }
@@ -270,7 +271,7 @@ pub fn init_block_broadcasting(
                             if socket.read_message(&mut block_read).is_err() {
                                 log_error_message(
                                     thread_logger,
-                                    "Error al leer el mensaje en broadcasting.".to_string(),
+                                    format!("Error al leer el mensaje en broadcasting en conexión {}.", socket.id),
                                 );
                                 return;
                             }
@@ -288,7 +289,9 @@ pub fn init_block_broadcasting(
                             Err(_) => continue,
                         };
 
-                        pow_poi_validation(thread_logger.clone(), block.clone());
+                        if !pow_poi_validation(thread_logger.clone(), block.clone()) {
+                            continue
+                        }
 
                         let cloned_result = shared_blocks.lock();
                         if let Ok(cloned) = cloned_result {

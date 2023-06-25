@@ -6,7 +6,7 @@ use super::file::{_leer_algunos_blocks, _leer_primer_block, leer_todos_blocks};
 use super::{blockheader::BlockHeader, transaction};
 use crate::common::utils_bytes;
 use crate::errores::NodoBitcoinError;
-use crate::merkle_tree::merkle_root::_MerkleRoot;
+use crate::merkle_tree::merkle_root::MerkleRoot;
 use transaction::Transaction;
 
 /// A struct representing a Bitcoin Serialized Block
@@ -81,15 +81,15 @@ impl SerializedBlock {
     }
 
     pub fn _tx_proof_of_inclusion(&self, tx: &Transaction) -> bool {
-        let tree = match self._local_merkle_tree() {
+        let tree = match self.local_merkle_tree() {
             Ok(tree) => tree,
             Err(_) => return false,
         };
         tree._proof_of_inclusion(tx)
     }
 
-    pub fn _local_merkle_tree(&self) -> Result<_MerkleRoot, NodoBitcoinError> {
-        let local_merkle = match _MerkleRoot::_from_block(self) {
+    pub fn local_merkle_tree(&self) -> Result<MerkleRoot, NodoBitcoinError> {
+        let local_merkle = match MerkleRoot::from_block(self) {
             Ok(calculated_merkle) => calculated_merkle,
             Err(_) => return Err(NodoBitcoinError::NoSePuedeArmarElArbol),
         };
@@ -98,7 +98,7 @@ impl SerializedBlock {
 
     pub fn is_valid_merkle(&self) -> bool {
         let current_merkle = self.header.merkle_root_hash;
-        let local_merkle = match self._local_merkle_tree() {
+        let local_merkle = match self.local_merkle_tree() {
             Ok(calculated_merkle) => calculated_merkle,
             Err(_) => return false,
         };

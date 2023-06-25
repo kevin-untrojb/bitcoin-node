@@ -4,6 +4,24 @@ use crate::{
     common::utils_bytes::string_to_bytes, errores::NodoBitcoinError,
     messages::messages_header::make_header,
 };
+
+/// Representa un mensaje Version del protocolo Bitcoin
+///
+/// # Campos
+/// * version: la versión más alta del protocolo que soporta el nodo transmisor
+/// * services: los servicios que soporta el nodo transmisor
+/// * timestamp: el tiempo actual del nodo transmisor
+/// * addr_recv_sevices: los servicios que soporta el nodo receptor tal como los percibe el nodo transmisor
+/// * addr_recv_ip: la direccion IP del nodo receptor
+/// * addr_recv_port: el número de puerto del nodo receptor tal como lo percibe el nodo transmisor
+/// * addr_trans_services: los servicios que soporta el nodo transmisor
+/// * addr_trans_ip: dirección IP del nodo transmisor
+/// * addr_trans_port: el número de puerto del nodo transmisor
+/// * nonce: un nonce aleatorio que puede ayudar a un nodo a detectar una conexión consigo mismo.
+/// * user_agent_bytes: número de bytes del campo siguiente
+/// * user_agent: solamente es requerido si el campo anterior es > 0
+/// * start_height: la altura de la mejor blockchain del nodo transmisor
+/// * relay: es un flag, determina como se quieren recibir las nuevas transacciones
 pub struct VersionMessage {
     version: u32,
     services: u64,

@@ -36,7 +36,7 @@ pub struct ApplicationManager {
 }
 
 pub enum ApplicationManagerMessages {
-    GetAmountsByAccount(u64, u64),
+    GetAmountsByAccount(u64, i128),
     GetTxReportByAccount(Vec<TxReport>),
     ShutDowned,
     ShutDown,
@@ -53,9 +53,13 @@ impl ApplicationManager {
             Err(_) => Vec::new(),
         };
         let (sender_app_manager, receiver_app_manager) = channel();
-        let tx_manager = create_transaction_manager(accounts.clone(), sender_app_manager.clone());
-        _ = tx_manager.send(TransactionMessages::LoadSavedUTXOS);
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+        let tx_manager = create_transaction_manager(
+            accounts.clone(),
+            logger.clone(),
+            sender_app_manager.clone(),
+        );
+        _ = tx_manager.send(TransactionMessages::LoadSavedUTXOS);
         let mut app_manager = ApplicationManager {
             current_account: None,
             sender_app_manager,
@@ -83,6 +87,8 @@ impl ApplicationManager {
                 _ = self.send_messages_to_get_values();
             }
             ApplicationManagerMessages::GetAmountsByAccount(available_amount, pending_amount) => {
+                println!("available_amount: {:?}", available_amount);
+                println!("pending_amount: {:?}", pending_amount);
                 let _ = self.sender_frontend.send(ViewObject::UploadAmounts((
                     available_amount,
                     pending_amount,
@@ -111,14 +117,10 @@ impl ApplicationManager {
                 let _ = self.sender_frontend.send(ViewObject::CloseApplication);
             }
             ApplicationManagerMessages::NewBlock => {
-                let _ = self
-                    .sender_frontend
-                    .send(ViewObject::NewBlock("Nuevo bloque recibido".to_string()));
+                //let _ = self.sender_frontend.send(ViewObject::NewBlock("Nuevo bloque recibido".to_string()));
             }
             ApplicationManagerMessages::NewTx => {
-                let _ = self
-                    .sender_frontend
-                    .send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
+                //let _ = self.sender_frontend.send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
             }
             ApplicationManagerMessages::BlockBroadcastingError => {
                 let _ = self.sender_frontend

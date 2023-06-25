@@ -3,6 +3,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::app_manager::ApplicationManagerMessages;
 use crate::blockchain::block::SerializedBlock;
@@ -13,7 +14,7 @@ use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::protocol::admin_connections::AdminConnections;
 use crate::protocol::block_broadcasting::{init_block_broadcasting, BlockBroadcastingMessages};
 use crate::protocol::send_tx::send_tx;
-use crate::wallet::uxto_set::UTXOSet;
+use crate::wallet::uxto_set::{TxReport, UTXOSet};
 
 use super::user::Account;
 
@@ -22,6 +23,7 @@ pub struct TransactionManager {
     pub utxos: UTXOSet,
     tx_pendings: HashMap<Uint256, Transaction>,
     accounts: Vec<Account>,
+    logger: Sender<LogMessages>,
     sender_app_manager: Sender<ApplicationManagerMessages>,
     sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
     admin_connections: Option<AdminConnections>,
@@ -59,9 +61,8 @@ impl TransactionManager {
     fn handle_message(&mut self, message: TransactionMessages) {
         match message {
             TransactionMessages::GetAvailableAndPending(account) => {
-                let available_amount = self.utxos.get_available(account).unwrap_or(0);
-
-                let pending_amount = 0; //todo!
+                let available_amount = self.utxos.get_available(account.clone()).unwrap_or(0);
+                let pending_amount = self.utxos.get_pending(account).unwrap_or(0);
 
                 self.sender_app_manager
                     .send(ApplicationManagerMessages::GetAmountsByAccount(
@@ -74,6 +75,18 @@ impl TransactionManager {
                     Some(tx) => tx.clone(),
                     None => Vec::new(),
                 };
+                let tx_pending_by_account =
+                    match self.utxos.tx_report_pending_by_accounts.get(&account) {
+                        Some(tx) => tx.clone(),
+                        None => Vec::new(),
+                    };
+                // juntar los dos vectores
+                let mut tx_by_account = tx_by_account.clone();
+                tx_by_account.extend(tx_pending_by_account);
+
+                // ordernar por timestamp descendente
+                tx_by_account.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+
                 self.sender_app_manager
                     .send(ApplicationManagerMessages::GetTxReportByAccount(
                         tx_by_account,
@@ -149,6 +162,45 @@ impl TransactionManager {
                     .send(ApplicationManagerMessages::NewBlock);
             }
             TransactionMessages::NewTx(tx) => {
+                let tx_id = match tx.txid() {
+                    Ok(id) => id,
+                    Err(_) => return,
+                };
+                if self.tx_pendings.contains_key(&tx_id) {
+                    return;
+                }
+                let accounts_to_update = match self.validar_tx_propia(tx.clone()) {
+                    Ok(accounts) => accounts,
+                    Err(_) => vec![],
+                };
+                if accounts_to_update.len() > 0 {
+                    for (account, index, txid, is_tx_in, value) in accounts_to_update.iter() {
+                        // crear una TxReport
+                        // agregarla al hashmap del utxoset
+                        // enviar mensaje a la app manager
+
+                        // obtener el unixtimestamp actual
+                        let unix_timestamp: u32 = match SystemTime::now().duration_since(UNIX_EPOCH)
+                        {
+                            Ok(n) => n.as_secs() as u32,
+                            Err(_) => 0,
+                        };
+
+                        let tx_report = TxReport::new(
+                            true,
+                            unix_timestamp.clone(),
+                            txid.clone(),
+                            value.clone(),
+                            is_tx_in.clone(),
+                            index.clone(),
+                        );
+                        self.utxos
+                            .tx_report_pending_by_accounts
+                            .entry(account.public_key.clone())
+                            .or_insert(Vec::new())
+                            .push(tx_report.clone());
+                    }
+                }
                 self.tx_pendings.insert(tx.txid().unwrap(), tx);
                 self.sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
@@ -197,6 +249,75 @@ impl TransactionManager {
 
     fn update_pendings(&mut self, tx_id: Uint256) {
         self.tx_pendings.remove(&tx_id);
+    }
+
+    fn validar_tx_propia(
+        &self,
+        tx: Transaction,
+    ) -> Result<Vec<(Account, u32, Uint256, bool, i128)>, NodoBitcoinError> {
+        let logger = self.logger.clone();
+        let tx_id = tx.txid()?;
+        let accounts = self.accounts.clone();
+        let utxo_set = self.utxos.clone();
+        let mut accounts_tx = vec![];
+        let mut accounts_index_is_in = vec![];
+        for (index, tx_out) in tx.output.iter().enumerate() {
+            let account_ok = UTXOSet::validar_output(accounts.clone(), tx_out);
+            if account_ok.is_ok() {
+                let account_ok = account_ok.unwrap();
+                accounts_tx.push(account_ok.clone());
+                let item = (
+                    account_ok.clone(),
+                    index as u32,
+                    tx_id,
+                    false,
+                    tx_out.value as i128,
+                );
+                accounts_index_is_in.push(item);
+                let msg = format!(
+                    "Tx {:?} from account: {:?} pending to be mined.",
+                    tx.txid().unwrap().to_hexa_le_string(),
+                    account_ok.public_key
+                );
+                log_info_message(logger.clone(), msg);
+            }
+        }
+        for (index, tx_in) in tx.input.iter().enumerate() {
+            let account_key_tx_in = utxo_set.validar_input(tx_in.clone());
+            if account_key_tx_in.is_ok() {
+                let account_name = account_key_tx_in.unwrap();
+                for account in accounts.iter() {
+                    if account.public_key == account_name {
+                        let previous_tx_id = Uint256::from_be_bytes(tx_in.previous_output.hash);
+                        let output_index = tx_in.previous_output.index;
+                        let utxos_for_account = utxo_set.utxos_for_account[&account_name].clone();
+                        let mut value = 0;
+                        for utxo in utxos_for_account.iter() {
+                            if utxo.tx_id == previous_tx_id && utxo.output_index == output_index {
+                                value = utxo.tx_out.value;
+                            }
+                        }
+
+                        accounts_tx.push(account.clone());
+                        let item = (
+                            account.clone(),
+                            index as u32,
+                            tx_id,
+                            true,
+                            (value as i128) * (-1_i128),
+                        );
+                        accounts_index_is_in.push(item);
+                        let msg = format!(
+                            "Tx {:?} from account: {:?} pending to be mined.",
+                            tx.txid().unwrap().to_hexa_le_string(),
+                            account.public_key
+                        );
+                        log_info_message(logger.clone(), msg);
+                    }
+                }
+            }
+        }
+        Ok(accounts_index_is_in)
     }
 }
 
@@ -253,6 +374,7 @@ fn send_new_tx(
 
 pub fn create_transaction_manager(
     accounts: Vec<Account>,
+    logger: Sender<LogMessages>,
     app_sender: Sender<ApplicationManagerMessages>,
 ) -> Sender<TransactionMessages> {
     let (sender, receiver) = channel();
@@ -261,6 +383,7 @@ pub fn create_transaction_manager(
         utxos: UTXOSet::new(),
         tx_pendings: HashMap::new(),
         accounts,
+        logger,
         sender_block_broadcasting: None,
         sender_app_manager: app_sender,
         admin_connections: None,

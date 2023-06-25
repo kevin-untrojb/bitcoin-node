@@ -2,15 +2,14 @@ use glib::Sender;
 use gtk::{
     prelude::*,
     traits::{ButtonExt, WidgetExt},
-    Builder, Button, CellRendererToggle, Dialog, Entry, Label, MenuItem, ResponseType, Spinner,
-    TreeViewColumn, Window, TreeView,
+    Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, TreeView, Window,
 };
 use gtk::{CellRendererText, ComboBox, ListStore};
 use std::sync::{Arc, Mutex};
 
 use std::println;
 
-use crate::{app_manager::ApplicationManager, blockchain::transaction::Transaction};
+use crate::app_manager::ApplicationManager;
 use crate::{common::utils_timestamp::timestamp_to_datetime, wallet::user::Account};
 use crate::{
     errores::{InterfaceError, InterfaceMessage},
@@ -25,7 +24,7 @@ pub enum ViewObject {
     Error(InterfaceError),
     Message(InterfaceMessage),
     UploadTransactions(Vec<TxReport>),
-    UploadAmounts((u64, u64)),
+    UploadAmounts((u64, i128)),
     NewBlock(String),
     NewTx(String),
     CloseApplication,
@@ -104,33 +103,33 @@ pub fn create_view() -> Sender<ViewObject> {
                 gtk::main_quit();
             }
             ViewObject::UploadAmounts((available, pending)) => {
-                let mut total: u64 = 0;
+                let mut total: i128 = 0;
                 if let Some(label) = builder_receiver_clone.object::<Label>("available") {
-                    total += available;
-                    let btc_available = satoshis_to_btc_string(available);
+                    total += available as i128;
+                    let btc_available = satoshis_u64_to_btc_string(available);
                     label.set_text(&btc_available);
                 }
 
                 if let Some(label) = builder_receiver_clone.object::<Label>("pending") {
                     total += pending;
-                    let btc_pending = satoshis_to_btc_string(pending);
+                    let btc_pending = satoshis_i128_to_btc_string(pending);
                     label.set_text(&btc_pending);
                 }
 
                 if let Some(label) = builder_receiver_clone.object::<Label>("total") {
-                    let btc_total = satoshis_to_btc_string(total);
+                    let btc_total = satoshis_i128_to_btc_string(total);
                     label.set_text(&btc_total);
                 }
             }
-            ViewObject::NewBlock(message) => {
+            ViewObject::NewBlock(_message) => {
                 //open_message_dialog(false, &builder_receiver_clone, message);
             }
-            ViewObject::NewTx(message) => {
+            ViewObject::NewTx(_message) => {
                 //open_message_dialog(false, &builder_receiver_clone, message);
             }
             ViewObject::UpdateButtonPoiStatus(tx_id) => {
                 if let Some(button) = builder_receiver_clone.object::<Button>("poi") {
-                    if tx_id != ""{
+                    if tx_id != "" {
                         button.set_sensitive(true);
                         if !shared_tx_receiver.lock().is_err(){
                             let mut shared_tx_guard = shared_tx_receiver.lock().unwrap(); 
@@ -177,8 +176,7 @@ pub fn create_view() -> Sender<ViewObject> {
     sender
 }
 
-fn handle_row_transaction_selected(sender: Sender<ViewObject>,
-    builder: Builder){
+fn handle_row_transaction_selected(sender: Sender<ViewObject>, builder: Builder) {
     let tree_view: TreeView;
     if let Some(res) = builder.object::<TreeView>("transactions_tree_view") {
         tree_view = res;
@@ -191,7 +189,6 @@ fn handle_row_transaction_selected(sender: Sender<ViewObject>,
                 let _ = sender.send(ViewObject::UpdateButtonPoiStatus(tx_id));
             }
         });
-    
     };
 }
 
@@ -212,7 +209,12 @@ fn handle_poi(manager_poi: Arc<Mutex<ApplicationManager>>,
         } 
 }
 
-fn satoshis_to_btc_string(satoshis: u64) -> String {
+fn satoshis_u64_to_btc_string(satoshis: u64) -> String {
+    let btc = satoshis as f64 / 100_000_000.0;
+    format!("{:.8} BTC", btc)
+}
+
+fn satoshis_i128_to_btc_string(satoshis: i128) -> String {
     let btc = satoshis as f64 / 100_000_000.0;
     format!("{:.8} BTC", btc)
 }
@@ -486,7 +488,7 @@ fn upload_transactions_table(builder: &Builder, transactions: Vec<TxReport>) {
         };
         let is_pending = &status as &dyn ToValue;
         let date = &timestamp_to_datetime(transaction.timestamp as i64).to_string() as &dyn ToValue;
-        let tx_id = &(&transaction.tx_id).to_hexa_string() as &dyn ToValue;
+        let tx_id = &(&transaction.tx_id).to_hexa_le_string() as &dyn ToValue;
         let amount = &(transaction.amount as i64) as &dyn ToValue;
 
         list_store.insert_with_values(None, &[(0, is_pending), (1, date), (2, tx_id), (3, amount)]);

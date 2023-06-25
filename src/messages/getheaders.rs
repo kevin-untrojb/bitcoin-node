@@ -2,6 +2,7 @@ use crate::errores::NodoBitcoinError;
 
 use super::messages_header::make_header;
 
+/// Representa un mensaje GetHeaders del protocolo Bitcoin
 pub struct GetHeadersMessage {
     version: u32,
     num_hashes: u8,
