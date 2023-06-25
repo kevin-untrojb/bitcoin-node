@@ -2,8 +2,7 @@ use glib::Sender;
 use gtk::{
     prelude::*,
     traits::{ButtonExt, WidgetExt},
-    Builder, Button, CellRendererToggle, Dialog, Entry, Label, MenuItem, ResponseType, Spinner,
-    TreeView, TreeViewColumn, Window,
+    Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, TreeView, Window,
 };
 use gtk::{CellRendererText, ComboBox, ListStore};
 use std::sync::{Arc, Mutex};
@@ -116,10 +115,10 @@ pub fn create_view() -> Sender<ViewObject> {
                     label.set_text(&btc_total);
                 }
             }
-            ViewObject::NewBlock(message) => {
+            ViewObject::NewBlock(_message) => {
                 //open_message_dialog(false, &builder_receiver_clone, message);
             }
-            ViewObject::NewTx(message) => {
+            ViewObject::NewTx(_message) => {
                 //open_message_dialog(false, &builder_receiver_clone, message);
             }
             ViewObject::BlockBroadcastingError(message) => {
@@ -185,7 +184,7 @@ fn handle_row_transaction_selected(sender: Sender<ViewObject>, builder: Builder)
     };
 }
 
-fn handle_poi(manager_poi: Arc<Mutex<ApplicationManager>>, builder: Builder) {
+fn handle_poi(_manager_poi: Arc<Mutex<ApplicationManager>>, builder: Builder) {
     if let Some(button) = builder.object::<Button>("poi") {
         button.connect_clicked(move |_| {
             println!("Selected tx: todo save tx_id and send to app_manager")

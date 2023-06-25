@@ -244,7 +244,7 @@ impl UTXOSet {
         let is_tx_in = tx_report_to_delete.is_tx_in;
 
         let mut tx_report_pending_by_accounts = self.tx_report_pending_by_accounts.clone();
-        for (account, tx_reports) in tx_report_pending_by_accounts.iter_mut() {
+        for (_, tx_reports) in tx_report_pending_by_accounts.iter_mut() {
             tx_reports.retain(|tx_report| {
                 !(tx_report.tx_id == tx_id
                     && tx_report.index == index

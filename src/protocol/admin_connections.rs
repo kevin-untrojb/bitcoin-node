@@ -167,9 +167,12 @@ impl AdminConnections {
         let free_connection = self.find_free_connection();
         match self.connections.get_mut(&old_connection_id) {
             Some(mut res) => res.free = false,
-            None => println!("No se encontro la conexion"),
+            None => self.log_error_msg(format!(
+                "No se encontro la conexion {:?}",
+                old_connection_id
+            )),
         };
-        println!("Cambio de conexion");
+        self.log_error_msg("Cambio de conexion".to_string());
         free_connection
     }
 
@@ -177,7 +180,7 @@ impl AdminConnections {
     pub fn free_connection(&mut self, connection_id: i32) -> Result<(), NodoBitcoinError> {
         match self.connections.get_mut(&connection_id) {
             Some(mut res) => res.free = false,
-            None => println!("No se encontro la conexion"),
+            None => self.log_error_msg("No se encontro la conexion".to_string()),
         };
         Ok(())
     }

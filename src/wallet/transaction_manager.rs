@@ -186,7 +186,7 @@ impl TransactionManager {
                             Err(_) => 0,
                         };
 
-                        let mut tx_report = TxReport::new(
+                        let tx_report = TxReport::new(
                             true,
                             unix_timestamp.clone(),
                             txid.clone(),
