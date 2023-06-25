@@ -75,6 +75,18 @@ impl TransactionManager {
                     Some(tx) => tx.clone(),
                     None => Vec::new(),
                 };
+                let tx_pending_by_account =
+                    match self.utxos.tx_report_pending_by_accounts.get(&account) {
+                        Some(tx) => tx.clone(),
+                        None => Vec::new(),
+                    };
+                // juntar los dos vectores
+                let mut tx_by_account = tx_by_account.clone();
+                tx_by_account.extend(tx_pending_by_account);
+
+                // ordernar por timestamp descendente
+                tx_by_account.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+
                 self.sender_app_manager
                     .send(ApplicationManagerMessages::GetTxReportByAccount(
                         tx_by_account,
