@@ -121,10 +121,8 @@ impl ApplicationManager {
                     .send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
             }
             ApplicationManagerMessages::BlockBroadcastingError => {
-                self.sender_frontend
-                    .send(ViewObject::BlockBroadcastingError(
-                        "Ha ocurrido un error de conexión. Reinicie la aplicación.".to_string(),
-                    ));
+                let _ = self.sender_frontend
+                    .send(ViewObject::Error(InterfaceError::BlockBroadcastingError));
             }
         }
     }

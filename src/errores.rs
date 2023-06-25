@@ -156,6 +156,7 @@ pub enum InterfaceError {
     TargetAmountNotValid,
     FeeNotValid,
     TransactionNotSent,
+    BlockBroadcastingError
 }
 
 impl Error for InterfaceError {}
@@ -179,6 +180,12 @@ impl fmt::Display for InterfaceError {
                 write!(
                     f,
                     "Hubo un error al enviar la transaccion. Intente nuevamente."
+                )
+            }
+            InterfaceError::BlockBroadcastingError => {
+                write!(
+                    f,
+                    "Ha ocurrido un error de conexión. Reinicie la aplicación."
                 )
             }
         }
