@@ -25,12 +25,16 @@ pub fn send_tx(
     tx_msg.extend_from_slice(&payload);
 
     for connection in admin_connections.get_connections() {
-        if connection.write_message(&tx_msg).is_err() {
-            log_error_message(
-                logger.clone(),
-                "Error al enviar la nueva transacción a un peer.".to_string(),
-            );
-            continue;
+        match connection.write_message(&tx_msg) {
+            Ok(_) => {
+               continue;
+            }
+            Err(error) =>{
+                log_error_message(
+                    logger.clone(),format!{"Error al enviar la nueva transacción a un peer: {}.",error},
+                );
+                continue;
+            }
         }
     }
 
