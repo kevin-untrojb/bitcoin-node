@@ -137,16 +137,6 @@ impl AdminConnections {
 
     /// Devuelve las conexiones en un vector
     pub fn get_connections(&mut self) -> Vec<Connection> {
-        // obtener los Connection donde la key del hash self.connections es menor a 25
-
-        let connections_clone = self.connections.clone();
-
-        // obtener los valores del hashmap donde la clave sea menor a 25
-        let values = connections_clone
-            .into_iter()
-            .enumerate()
-            .filter(|(key, _)| *key < 25);
-
         let values = self.connections.values().cloned().collect();
         values
     }
