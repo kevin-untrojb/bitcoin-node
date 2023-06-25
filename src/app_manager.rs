@@ -36,7 +36,7 @@ pub struct ApplicationManager {
 }
 
 pub enum ApplicationManagerMessages {
-    GetAmountsByAccount(u64, u64),
+    GetAmountsByAccount(u64, i128),
     GetTxReportByAccount(Vec<TxReport>),
     ShutDowned,
     ShutDown,
@@ -87,6 +87,8 @@ impl ApplicationManager {
                 _ = self.send_messages_to_get_values();
             }
             ApplicationManagerMessages::GetAmountsByAccount(available_amount, pending_amount) => {
+                println!("available_amount: {:?}", available_amount);
+                println!("pending_amount: {:?}", pending_amount);
                 let _ = self.sender_frontend.send(ViewObject::UploadAmounts((
                     available_amount,
                     pending_amount,

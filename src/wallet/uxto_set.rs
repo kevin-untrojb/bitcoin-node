@@ -107,6 +107,24 @@ pub struct TxReport {
 }
 
 impl TxReport {
+    pub fn new(
+        is_pending: bool,
+        timestamp: u32,
+        tx_id: Uint256,
+        amount: i128,
+        is_tx_in: bool,
+        index: u32,
+    ) -> TxReport {
+        TxReport {
+            is_pending,
+            timestamp,
+            tx_id,
+            amount,
+            is_tx_in,
+            index,
+        }
+    }
+
     // serializar en una cadena de bytes el txreport
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut serialized = Vec::new();
@@ -167,6 +185,7 @@ pub struct UTXOSet {
     pub utxos_for_account: HashMap<String, Vec<Utxo>>,
     pub account_for_txid_index: HashMap<(Uint256, u32), String>,
     pub tx_report_by_accounts: HashMap<String, Vec<TxReport>>,
+    pub tx_report_pending_by_accounts: HashMap<String, Vec<TxReport>>,
     pub last_timestamp: u32,
 }
 
@@ -184,6 +203,7 @@ impl fmt::Display for UTXOSet {
 const UTXO_FOR_ACCOUNT_FILENAME: &str = "utxos_for_account.dat";
 const ACCOUNT_FOR_TXID_INDEX_FILENAME: &str = "account_for_txid_index.dat";
 const TX_REPORT_BY_ACCOUNT_FILENAME: &str = "tx_report_by_accounts.dat";
+const TX_REPORT_PENDING_BY_ACCOUNT_FILENAME: &str = "tx_report_pending_by_accounts.dat";
 
 impl UTXOSet {
     pub fn new() -> Self {
@@ -191,6 +211,7 @@ impl UTXOSet {
             utxos_for_account: HashMap::new(),
             account_for_txid_index: HashMap::new(),
             tx_report_by_accounts: HashMap::new(),
+            tx_report_pending_by_accounts: HashMap::new(),
             last_timestamp: 0,
         }
     }
@@ -217,13 +238,28 @@ impl UTXOSet {
         return false;
     }
 
+    fn eliminar_tx_report_pending(&self, tx_report_to_delete: TxReport) {
+        let tx_id = tx_report_to_delete.tx_id;
+        let index = tx_report_to_delete.index;
+        let is_tx_in = tx_report_to_delete.is_tx_in;
+
+        let mut tx_report_pending_by_accounts = self.tx_report_pending_by_accounts.clone();
+        for (account, tx_reports) in tx_report_pending_by_accounts.iter_mut() {
+            tx_reports.retain(|tx_report| {
+                !(tx_report.tx_id == tx_id
+                    && tx_report.index == index
+                    && tx_report.is_tx_in == is_tx_in)
+            });
+        }
+    }
+
     fn agregar_tx_report_desde_out(
         &mut self,
         current_account: String,
         utxo: Utxo,
         timestamp: u32,
         pending: bool,
-    ) {
+    ) -> Option<TxReport> {
         let tx_report = TxReport {
             is_pending: pending,
             timestamp,
@@ -234,14 +270,15 @@ impl UTXOSet {
         };
 
         if self.existe_tx_report_para_account(current_account.clone(), &tx_report) {
-            return;
+            return None;
         }
 
         let tx_report_by_accounts = self
             .tx_report_by_accounts
             .entry(current_account.clone())
             .or_default();
-        tx_report_by_accounts.push(tx_report);
+        tx_report_by_accounts.push(tx_report.clone());
+        Some(tx_report)
     }
 
     fn agregar_tx_report_desde_in(
@@ -253,7 +290,7 @@ impl UTXOSet {
         key: (Uint256, u32),
         previous_tx_id: Uint256,
         output_index: u32,
-    ) {
+    ) -> Option<TxReport> {
         let account = self.account_for_txid_index[&key].clone();
 
         let utxos_for_account = self.utxos_for_account[&account].clone();
@@ -275,14 +312,15 @@ impl UTXOSet {
         };
 
         if self.existe_tx_report_para_account(account.clone(), &tx_report) {
-            return;
+            return None;
         }
 
         let tx_report_by_accounts = self
             .tx_report_by_accounts
             .entry(account.clone())
             .or_default();
-        tx_report_by_accounts.push(tx_report);
+        tx_report_by_accounts.push(tx_report.clone());
+        Some(tx_report)
     }
 
     // verificar si existe una tx report para un account
@@ -379,12 +417,17 @@ impl UTXOSet {
                         tx,
                     );
 
-                    self.agregar_tx_report_desde_out(
+                    match self.agregar_tx_report_desde_out(
                         current_account.public_key.clone(),
                         utxo,
                         block.header.time,
                         false,
-                    );
+                    ) {
+                        Some(tx_report) => {
+                            self.eliminar_tx_report_pending(tx_report.clone());
+                        }
+                        None => continue,
+                    };
                 }
 
                 for (tx_in_index, tx_in) in tx.input.iter().enumerate() {
@@ -393,7 +436,7 @@ impl UTXOSet {
                     let key = (previous_tx_id, output_index);
 
                     if self.validar_input(tx_in.clone()).is_ok() {
-                        self.agregar_tx_report_desde_in(
+                        match self.agregar_tx_report_desde_in(
                             tx_id,
                             block.header.time,
                             false,
@@ -401,22 +444,14 @@ impl UTXOSet {
                             key,
                             previous_tx_id,
                             output_index,
-                        );
+                        ) {
+                            Some(tx_report) => {
+                                self.eliminar_tx_report_pending(tx_report.clone());
+                            }
+                            None => continue,
+                        }
                         self.eliminar_utxo(previous_tx_id, output_index, key);
                     }
-
-                    // if self.account_for_txid_index.contains_key(&key) {
-                    //     self.agregar_tx_report_desde_in(
-                    //         tx_id,
-                    //         block.header.time,
-                    //         false,
-                    //         tx_in_index as u32,
-                    //         key,
-                    //         previous_tx_id,
-                    //         output_index,
-                    //     );
-                    //     self.eliminar_utxo(previous_tx_id, output_index, key);
-                    // }
                 }
             }
             self.last_timestamp = block.header.time;
@@ -444,10 +479,21 @@ impl UTXOSet {
         Ok(balance)
     }
 
+    pub fn get_pending(&self, account: String) -> Result<i128, NodoBitcoinError> {
+        let mut balance = 0;
+        if let Some(tx_reports) = self.tx_report_pending_by_accounts.get(&account) {
+            for tx_report in tx_reports.iter() {
+                balance += tx_report.amount;
+            }
+        }
+        Ok(balance)
+    }
+
     /*
     pub utxos_for_account: HashMap<String, Vec<Utxo>>,
     pub account_for_txid_index: HashMap<(Uint256, u32), String>,
     pub tx_report_by_accounts: HashMap<String, Vec<TxReport>>,
+    pub tx_report_pending_by_accounts: HashMap<String, Vec<TxReport>>,
      */
 
     pub fn save_utxos_for_account(
@@ -617,6 +663,8 @@ impl UTXOSet {
             File::create(ACCOUNT_FOR_TXID_INDEX_FILENAME).expect("No se pudo crear el archivo");
         let file_tx_report_by_account =
             File::create(TX_REPORT_BY_ACCOUNT_FILENAME).expect("No se pudo crear el archivo");
+        let file_tx_report_pending_by_account = File::create(TX_REPORT_PENDING_BY_ACCOUNT_FILENAME)
+            .expect("No se pudo crear el archivo");
         Self::save_utxos_for_account(
             self.last_timestamp,
             self.utxos_for_account.clone(),
@@ -629,6 +677,10 @@ impl UTXOSet {
         Self::save_tx_report_by_accounts(
             self.tx_report_by_accounts.clone(),
             &mut &file_tx_report_by_account,
+        )?;
+        Self::save_tx_report_by_accounts(
+            self.tx_report_pending_by_accounts.clone(),
+            &mut &file_tx_report_pending_by_account,
         )?;
 
         Ok(())
@@ -663,6 +715,11 @@ impl UTXOSet {
         let buffer_tx_report_by_account =
             Self::load_bytes_from_file(TX_REPORT_BY_ACCOUNT_FILENAME.to_string())?;
         self.tx_report_by_accounts = Self::load_tx_report_by_accounts(buffer_tx_report_by_account)?;
+
+        let buffer_tx_report_pending_by_account =
+            Self::load_bytes_from_file(TX_REPORT_PENDING_BY_ACCOUNT_FILENAME.to_string())?;
+        self.tx_report_pending_by_accounts =
+            Self::load_tx_report_by_accounts(buffer_tx_report_pending_by_account)?;
 
         Ok(())
     }

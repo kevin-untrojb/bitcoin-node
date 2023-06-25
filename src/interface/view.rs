@@ -25,7 +25,7 @@ pub enum ViewObject {
     Error(InterfaceError),
     Message(InterfaceMessage),
     UploadTransactions(Vec<TxReport>),
-    UploadAmounts((u64, u64)),
+    UploadAmounts((u64, i128)),
     NewBlock(String),
     NewTx(String),
     CloseApplication,
@@ -98,21 +98,21 @@ pub fn create_view() -> Sender<ViewObject> {
                 gtk::main_quit();
             }
             ViewObject::UploadAmounts((available, pending)) => {
-                let mut total: u64 = 0;
+                let mut total: i128 = 0;
                 if let Some(label) = builder_receiver_clone.object::<Label>("available") {
-                    total += available;
-                    let btc_available = satoshis_to_btc_string(available);
+                    total += available as i128;
+                    let btc_available = satoshis_u64_to_btc_string(available);
                     label.set_text(&btc_available);
                 }
 
                 if let Some(label) = builder_receiver_clone.object::<Label>("pending") {
                     total += pending;
-                    let btc_pending = satoshis_to_btc_string(pending);
+                    let btc_pending = satoshis_i128_to_btc_string(pending);
                     label.set_text(&btc_pending);
                 }
 
                 if let Some(label) = builder_receiver_clone.object::<Label>("total") {
-                    let btc_total = satoshis_to_btc_string(total);
+                    let btc_total = satoshis_i128_to_btc_string(total);
                     label.set_text(&btc_total);
                 }
             }
@@ -193,7 +193,12 @@ fn handle_poi(manager_poi: Arc<Mutex<ApplicationManager>>, builder: Builder) {
     }
 }
 
-fn satoshis_to_btc_string(satoshis: u64) -> String {
+fn satoshis_u64_to_btc_string(satoshis: u64) -> String {
+    let btc = satoshis as f64 / 100_000_000.0;
+    format!("{:.8} BTC", btc)
+}
+
+fn satoshis_i128_to_btc_string(satoshis: i128) -> String {
     let btc = satoshis as f64 / 100_000_000.0;
     format!("{:.8} BTC", btc)
 }
