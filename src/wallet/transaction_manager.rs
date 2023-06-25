@@ -128,11 +128,11 @@ impl TransactionManager {
                     if init_block_broadcasting(logger, admin_connections, sender_tx_manager)
                         .is_err()
                     {
-                        sender_app_manager_clone
+                        let _ = sender_app_manager_clone
                             .send(ApplicationManagerMessages::BlockBroadcastingError);
                     };
                 });
-                self.sender_app_manager
+                let _ = self.sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::NewBlock(block) => {
