@@ -12,6 +12,7 @@ use crate::{
 };
 
 #[derive(Clone)]
+/// Representa una conexión a un nodo de la red y si esa conexión está siendo usada o no
 pub struct Connection {
     pub id: i32,
     pub tcp: Arc<Mutex<TcpStream>>,
@@ -19,6 +20,7 @@ pub struct Connection {
     logger: Option<Sender<LogMessages>>
 }
 impl Connection {
+    /// Escribe el mensaje recibido en la conexión
     pub fn write_message(&self, message: &[u8]) -> Result<(), NodoBitcoinError> {
         let connection = self.tcp.lock();
         match connection {
@@ -28,7 +30,7 @@ impl Connection {
                         return Ok(());
                     }
                     Err(error) =>{
-                        self.log_error_msg(format!{"no se pudo escribir el mensaje en la connection {}: {}.", self.id, error});
+                        self.log_error_msg(format!{"No se pudo escribir el mensaje en la connection {}: {}.", self.id, error});
                         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
                     }
                 };
@@ -40,6 +42,10 @@ impl Connection {
         }
     }
 
+    /// Lee un mensaje de la conexión en el buffer recibido
+    /// Si el error es de tipo WouldBlock, no se considera error ya que es debido al timeout seteado para el read
+    /// y se debe seguir el ciclo de lectura
+    /// Cualquier otro error indica que la conexión se cayó
     pub fn read_message(&self, buf: &mut [u8]) -> Result<Option<usize>, NodoBitcoinError> {
         let connection = self.tcp.lock();
         match connection {
@@ -95,6 +101,8 @@ impl Connection {
 }
 
 #[derive(Clone)]
+/// Administrador de conexiones, tiene todas las conexiones a los nodos de la red
+/// Es quien se encarga de dar conexiones libres a quien lo solicite para evitar que se crucen los mensajes
 pub struct AdminConnections {
     connections: HashMap<i32, Connection>,
     logger: Option<Sender<LogMessages>>
@@ -107,6 +115,8 @@ impl Default for AdminConnections {
 }
 
 impl AdminConnections {
+
+    /// Crea un administrador de conexiones
     pub fn new(logger: Option<Sender<LogMessages>>) -> AdminConnections {
         AdminConnections {
             connections: HashMap::new(),
@@ -114,6 +124,7 @@ impl AdminConnections {
         }
     }
 
+    /// Crea un Connection a partir del TcpStream recibido y lo guarda en el administrador
     pub fn add(&mut self, tcp: TcpStream, id: i32) -> Result<(), NodoBitcoinError> {
         let _ = &(self.connections).insert(
             id,
@@ -127,11 +138,15 @@ impl AdminConnections {
         Ok(())
     }
 
+    /// Devuelve las conexiones en un vector
     pub fn get_connections(&mut self) -> Vec<Connection> {
         let values = self.connections.values().cloned().collect();
         values
     }
 
+    /// Encuentra una conexión que no esté ocupada (free = true)
+    /// En caso de que se encuentre una, se pone como ocupada y se devuelve esa conexión y su id
+    /// Caso contrario, devuelve un error
     pub fn find_free_connection(&mut self) -> Result<(Connection, i32), NodoBitcoinError> {
         match self
             .connections
@@ -146,6 +161,8 @@ impl AdminConnections {
         }
     }
 
+    /// Busca una conexión libre y se pone como libre la conexión correspondiente al id recibido
+    /// Se devuelve la conexión libre en caso de ser encontrada.
     pub fn change_connection(
         &mut self,
         old_connection_id: i32,
@@ -159,22 +176,12 @@ impl AdminConnections {
         free_connection
     }
 
+    /// Libera la conexión correspondiente al id recibido
     pub fn free_connection(&mut self, connection_id: i32) -> Result<(), NodoBitcoinError> {
         match self.connections.get_mut(&connection_id) {
             Some(mut res) => res.free = false,
             None => println!("No se encontro la conexion"),
         };
         Ok(())
-    }
-
-    fn log_error_msg(&self,log_msg: String){
-        match &self.logger {
-            Some(log) =>{
-                log_error_message(
-                    log.clone(),format!("admin_connection::{}",log_msg),
-                );
-            }
-            None=> {}
-        }
     }
 }
