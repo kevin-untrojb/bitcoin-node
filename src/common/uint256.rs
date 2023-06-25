@@ -80,7 +80,7 @@ impl Uint256 {
         result
     }
 
-    pub fn to_hexa_be_string(&self) -> String {
+    pub fn _to_hexa_be_string(&self) -> String {
         let mut result = String::new();
         for i in 0..NUM_BYTES {
             result.push_str(&format!("{:02x}", self.0[i]));
@@ -312,7 +312,7 @@ mod tests {
         let hexa_string =
             "0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303".to_string();
 
-        assert_eq!(valor.to_hexa_be_string(), hexa_string);
+        assert_eq!(valor._to_hexa_be_string(), hexa_string);
     }
 
     #[test]

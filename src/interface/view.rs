@@ -3,14 +3,14 @@ use gtk::{
     prelude::*,
     traits::{ButtonExt, WidgetExt},
     Builder, Button, CellRendererToggle, Dialog, Entry, Label, MenuItem, ResponseType, Spinner,
-    TreeViewColumn, Window, TreeView,
+    TreeView, TreeViewColumn, Window,
 };
 use gtk::{CellRendererText, ComboBox, ListStore};
 use std::sync::{Arc, Mutex};
 
 use std::println;
 
-use crate::{app_manager::ApplicationManager, blockchain::transaction::Transaction};
+use crate::app_manager::ApplicationManager;
 use crate::{common::utils_timestamp::timestamp_to_datetime, wallet::user::Account};
 use crate::{
     errores::{InterfaceError, InterfaceMessage},
@@ -30,7 +30,7 @@ pub enum ViewObject {
     NewTx(String),
     CloseApplication,
     BlockBroadcastingError(String),
-    UpdateButtonPoiStatus(String)
+    UpdateButtonPoiStatus(String),
 }
 
 pub struct ViewObjectData {
@@ -127,9 +127,11 @@ pub fn create_view() -> Sender<ViewObject> {
             }
             ViewObject::UpdateButtonPoiStatus(tx_id) => {
                 if let Some(button) = builder_receiver_clone.object::<Button>("poi") {
-                    if tx_id != ""{
+                    if tx_id != "" {
                         button.set_sensitive(true);
-                    } else {button.set_sensitive(false)}
+                    } else {
+                        button.set_sensitive(false)
+                    }
                 }
             }
         }
@@ -166,8 +168,7 @@ pub fn create_view() -> Sender<ViewObject> {
     sender
 }
 
-fn handle_row_transaction_selected(sender: Sender<ViewObject>,
-    builder: Builder){
+fn handle_row_transaction_selected(sender: Sender<ViewObject>, builder: Builder) {
     let tree_view: TreeView;
     if let Some(res) = builder.object::<TreeView>("transactions_tree_view") {
         tree_view = res;
@@ -175,23 +176,21 @@ fn handle_row_transaction_selected(sender: Sender<ViewObject>,
             if let Some((model, iter)) = tree_view.selection().selected() {
                 let tx_id = match model.value(&iter, 2).get::<String>() {
                     Ok(value) => value,
-                    Err(_) => "Error al obtener tx id de selected row".to_string()
+                    Err(_) => "Error al obtener tx id de selected row".to_string(),
                 }; // chequear este match
                 println!("Row selected - tx_id: {}", tx_id);
                 let _ = sender.send(ViewObject::UpdateButtonPoiStatus(tx_id));
             }
         });
-    
     };
 }
 
-fn handle_poi(manager_poi: Arc<Mutex<ApplicationManager>>,
-    builder: Builder){
-        if let Some(button) = builder.object::<Button>("poi") {
-            button.connect_clicked(move |_| {
-                println!("Selected tx: todo save tx_id and send to app_manager")
-            });
-        } 
+fn handle_poi(manager_poi: Arc<Mutex<ApplicationManager>>, builder: Builder) {
+    if let Some(button) = builder.object::<Button>("poi") {
+        button.connect_clicked(move |_| {
+            println!("Selected tx: todo save tx_id and send to app_manager")
+        });
+    }
 }
 
 fn satoshis_to_btc_string(satoshis: u64) -> String {
@@ -468,7 +467,7 @@ fn upload_transactions_table(builder: &Builder, transactions: Vec<TxReport>) {
         };
         let is_pending = &status as &dyn ToValue;
         let date = &timestamp_to_datetime(transaction.timestamp as i64).to_string() as &dyn ToValue;
-        let tx_id = &(&transaction.tx_id).to_hexa_string() as &dyn ToValue;
+        let tx_id = &(&transaction.tx_id).to_hexa_le_string() as &dyn ToValue;
         let amount = &(transaction.amount as i64) as &dyn ToValue;
 
         list_store.insert_with_values(None, &[(0, is_pending), (1, date), (2, tx_id), (3, amount)]);

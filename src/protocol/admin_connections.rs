@@ -1,8 +1,8 @@
 use std::{
     collections::HashMap,
-    sync::mpsc::{self, channel, Sender},
-    io::{Read, Write, ErrorKind},
+    io::{ErrorKind, Read, Write},
     net::TcpStream,
+    sync::mpsc::Sender,
     sync::{Arc, Mutex},
 };
 
@@ -16,7 +16,7 @@ pub struct Connection {
     pub id: i32,
     pub tcp: Arc<Mutex<TcpStream>>,
     free: bool,
-    logger: Option<Sender<LogMessages>>
+    logger: Option<Sender<LogMessages>>,
 }
 impl Connection {
     pub fn write_message(&self, message: &[u8]) -> Result<(), NodoBitcoinError> {
@@ -27,7 +27,7 @@ impl Connection {
                     Ok(_) => {
                         return Ok(());
                     }
-                    Err(error) =>{
+                    Err(error) => {
                         self.log_error_msg(format!{"no se pudo escribir el mensaje en la connection {}: {}.", self.id, error});
                         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
                     }
@@ -82,14 +82,12 @@ impl Connection {
             }
         }
     }
-    fn log_error_msg(&self,log_msg: String){
+    fn log_error_msg(&self, log_msg: String) {
         match &self.logger {
-            Some(log) =>{
-                log_error_message(
-                    log.clone(),format!("connection:: {}",log_msg),
-                );
+            Some(log) => {
+                log_error_message(log.clone(), format!("connection:: {}", log_msg));
             }
-            None=> {}
+            None => {}
         }
     }
 }
@@ -97,7 +95,7 @@ impl Connection {
 #[derive(Clone)]
 pub struct AdminConnections {
     connections: HashMap<i32, Connection>,
-    logger: Option<Sender<LogMessages>>
+    logger: Option<Sender<LogMessages>>,
 }
 
 impl Default for AdminConnections {
@@ -110,7 +108,7 @@ impl AdminConnections {
     pub fn new(logger: Option<Sender<LogMessages>>) -> AdminConnections {
         AdminConnections {
             connections: HashMap::new(),
-            logger
+            logger,
         }
     }
 
@@ -121,7 +119,7 @@ impl AdminConnections {
                 id,
                 tcp: Arc::new(Mutex::new(tcp)),
                 free: true,
-                logger: self.logger.clone()
+                logger: self.logger.clone(),
             },
         );
         Ok(())
@@ -167,14 +165,12 @@ impl AdminConnections {
         Ok(())
     }
 
-    fn log_error_msg(&self,log_msg: String){
+    fn log_error_msg(&self, log_msg: String) {
         match &self.logger {
-            Some(log) =>{
-                log_error_message(
-                    log.clone(),format!("admin_connection::{}",log_msg),
-                );
+            Some(log) => {
+                log_error_message(log.clone(), format!("admin_connection::{}", log_msg));
             }
-            None=> {}
+            None => {}
         }
     }
 }

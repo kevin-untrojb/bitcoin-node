@@ -13,7 +13,7 @@ use crate::{
         public::{end_loading, start_loading},
         view::ViewObject,
     },
-    log::{create_logger_actor, log_error_message, log_info_message, LogMessages},
+    log::{create_logger_actor, log_info_message, LogMessages},
     protocol::{
         admin_connections::AdminConnections, connection::connect,
         initial_block_download::get_full_blockchain,

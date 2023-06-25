@@ -255,7 +255,7 @@ fn update_utxos_from_file(
     accounts: Vec<Account>,
 ) -> Result<UTXOSet, NodoBitcoinError> {
     log_info_message(logger.clone(), "Actualizando UTXOS ...".to_string());
-    let uxos_updated = match initialize_utxos_from_file(utxo_set, accounts, logger.clone()) {
+    let uxos_updated = match initialize_utxos_from_file(utxo_set, accounts) {
         Ok(uxtos) => uxtos,
         Err(_) => {
             log_error_message(logger, "Error al inicializar UTXOS".to_string());
@@ -331,7 +331,6 @@ pub fn create_transaction_manager(
 fn initialize_utxos_from_file(
     mut utxo_set: UTXOSet,
     accounts: Vec<Account>,
-    logger: Sender<LogMessages>,
 ) -> Result<UTXOSet, NodoBitcoinError> {
     let blocks = SerializedBlock::read_blocks_from_file()?;
     // filtrar los bloxks por sólo aquellos que tiene transacciones
