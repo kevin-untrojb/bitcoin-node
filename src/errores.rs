@@ -156,7 +156,7 @@ pub enum InterfaceError {
     TargetAmountNotValid,
     FeeNotValid,
     TransactionNotSent,
-    BlockBroadcastingError
+    BlockBroadcastingError,
 }
 
 impl Error for InterfaceError {}
