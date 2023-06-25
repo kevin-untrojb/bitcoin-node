@@ -102,7 +102,7 @@ impl SerializedBlock {
             Ok(calculated_merkle) => calculated_merkle,
             Err(_) => return false,
         };
-        let binding = local_merkle._root_hash();
+        let binding = local_merkle.root_hash();
         let local_merkle_hash = binding.as_slice();
         current_merkle == local_merkle_hash
     }

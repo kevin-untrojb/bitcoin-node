@@ -69,7 +69,7 @@ impl Uint256 {
         bytes
     }
 
-    pub fn _pow(&self, exponent: u32) -> Uint256 {
+    pub fn pow(&self, exponent: u32) -> Uint256 {
         let mut result = Uint256::_from_u64(1);
         let base = *self;
 
@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn test_pow() {
         let a = Uint256::_from_u64(256);
-        let b = a._pow(21);
+        let b = a.pow(21);
 
         let valor = Uint256([
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,

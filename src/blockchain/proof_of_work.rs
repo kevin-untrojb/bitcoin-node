@@ -24,7 +24,7 @@ fn _calculate_target(blockheader: &BlockHeader) -> Uint256 {
     let coeff_256 = Uint256::_from_u32(coeff_u32);
     let value256 = Uint256::_from_u32(256);
 
-    let potencia = value256._pow(exp - 3);
+    let potencia = value256.pow(exp - 3);
     coeff_256 * potencia
 }
 

@@ -38,7 +38,7 @@ impl MerkleRoot {
                 .map(|id| (id.clone().get_bytes(), true))
                 .collect::<HashMap<[u8; 32], bool>>();
 
-            let node = Self::_build_merkle_tree(&ids)?;
+            let node = Self::build_merkle_tree(&ids)?;
             root = Some(Box::new(node));
         }
         Ok(MerkleRoot {
@@ -47,7 +47,7 @@ impl MerkleRoot {
         })
     }
 
-    pub fn _root_hash(&self) -> Vec<u8> {
+    pub fn root_hash(&self) -> Vec<u8> {
         match &self.root {
             Some(node) => node.hash.clone(),
             None => vec![0; 32],
@@ -55,7 +55,7 @@ impl MerkleRoot {
     }
 
     // https://developer.bitcoin.org/reference/block_chain.html#merkle-trees
-    fn _build_merkle_tree(ordered_txids: &[Uint256]) -> Result<MerkleNode, NodoBitcoinError> {
+    fn build_merkle_tree(ordered_txids: &[Uint256]) -> Result<MerkleNode, NodoBitcoinError> {
         let mut nodes: Vec<MerkleNode> = ordered_txids
             .iter()
             .map(|id| MerkleNode {
@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn test_build_merkle_root_no_children() {
         let txids = vec![];
-        let merkle_root_result = MerkleRoot::_build_merkle_tree(&txids);
+        let merkle_root_result = MerkleRoot::build_merkle_tree(&txids);
         assert!(merkle_root_result.is_err());
 
         let merkle_root_error = merkle_root_result.unwrap_err();
@@ -163,7 +163,7 @@ mod tests {
     #[test]
     fn test_build_merkle_root_one_child() {
         let txids = vec![Uint256::_from_u32(1)];
-        let result_merkle_root = MerkleRoot::_build_merkle_tree(&txids);
+        let result_merkle_root = MerkleRoot::build_merkle_tree(&txids);
         assert!(result_merkle_root.is_ok());
 
         let merkle_root = result_merkle_root.unwrap();
@@ -194,7 +194,7 @@ mod tests {
             Uint256::from_be_bytes(bytes1),
             Uint256::from_be_bytes(bytes2),
         ];
-        let result_merkle_root = MerkleRoot::_build_merkle_tree(&txids);
+        let result_merkle_root = MerkleRoot::build_merkle_tree(&txids);
         assert!(result_merkle_root.is_ok());
 
         let merkle_root = result_merkle_root.unwrap();
@@ -219,7 +219,7 @@ mod tests {
             Uint256::_from_u32(2),
             Uint256::_from_u32(3),
         ];
-        let result_merkle_root = MerkleRoot::_build_merkle_tree(&txids);
+        let result_merkle_root = MerkleRoot::build_merkle_tree(&txids);
         assert!(result_merkle_root.is_ok());
 
         let merkle_root = result_merkle_root.unwrap();
@@ -255,7 +255,7 @@ mod tests {
             Uint256::_from_u32(3),
             Uint256::_from_u32(4),
         ];
-        let result_merkle_root = MerkleRoot::_build_merkle_tree(&txids);
+        let result_merkle_root = MerkleRoot::build_merkle_tree(&txids);
         assert!(result_merkle_root.is_ok());
 
         let merkle_root = result_merkle_root.unwrap();

@@ -379,7 +379,7 @@ impl TxIn {
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
         bytes
-            .write_all(&(self.previous_output._serialize()?))
+            .write_all(&(self.previous_output.serialize()?))
             .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
         let script_bytes_prefix =
@@ -479,7 +479,7 @@ impl fmt::Display for Outpoint {
 }
 
 impl Outpoint {
-    pub fn _serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
+    pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut bytes = Vec::new();
         bytes
             .write_all(&self.hash)
@@ -914,7 +914,7 @@ mod tests {
             123, 0, 0, 0, // index
         ];
 
-        let serialized = outpoint._serialize().unwrap();
+        let serialized = outpoint.serialize().unwrap();
 
         assert_eq!(serialized, expected_bytes);
     }
