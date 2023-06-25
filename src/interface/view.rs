@@ -324,10 +324,6 @@ fn send_transaction(
     if to_address.is_empty() || transaction_amount.is_empty() || transaction_fee.is_empty() {
         let _ = sender.send(ViewObject::Error(InterfaceError::EmptyFields));
     } else {
-        println!(
-            "DATA {} {} {}",
-            to_address, transaction_amount, transaction_fee
-        );
         let app_manager_thread = match app_manager.lock() {
             Ok(res) => res,
             Err(_) => return,

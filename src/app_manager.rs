@@ -212,7 +212,6 @@ impl ApplicationManager {
             Some(account) => account,
             None => return Err(NodoBitcoinError::NoHayCuentaSeleccionada),
         };
-        println!("current_account: {:?}", current_account.public_key);
         Ok(current_account)
     }
 
@@ -344,12 +343,6 @@ impl ApplicationManager {
         }
         // cambio el current_account
         self.current_account = current_account;
-        if self.current_account.is_some() {
-            println!(
-                "current_account: {:?}",
-                self.current_account.clone().unwrap().public_key
-            );
-        }
         self.send_messages_to_get_values()
     }
 }

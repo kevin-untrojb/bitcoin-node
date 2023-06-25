@@ -367,7 +367,6 @@ fn update_utxos_from_file(
             return Err(NodoBitcoinError::ErrorAlActualizarUTXOS);
         }
     };
-    log_info_message(logger, "UTXOS actualizadas".to_string());
     Ok(uxos_updated)
 }
 
@@ -394,8 +393,6 @@ fn send_new_tx(
         fee,
         utxos_by_account,
     )?;
-
-    println!("tx_obj_bytes: {:02X?}", tx_obj.serialize()?);
 
     let admin_connections = match admin_connections {
         Some(admin_connections) => admin_connections,
@@ -446,7 +443,6 @@ fn initialize_utxos_from_file(
         .filter(|block| !block.txns.is_empty())
         .collect::<Vec<SerializedBlock>>();
 
-    println!("blocks with tx {:?}", blocks_with_tx.len());
     utxo_set.update_from_blocks(blocks_with_tx, accounts)?;
     Ok(utxo_set)
 }
