@@ -734,7 +734,6 @@ mod tests {
             transaction::{Outpoint, TxIn, TxOut},
         },
         common::decoder::{decode_base58, p2pkh_script_serialized},
-        log::create_logger_actor,
     };
 
     use super::*;
