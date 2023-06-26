@@ -13,7 +13,7 @@ use super::block::SerializedBlock;
 
 /// A struct representing a Bitcoin transaction
 /// ### Bitcoin Core References
-/// https://developer.bitcoin.org/reference/transactions.html
+/// <https://developer.bitcoin.org/reference/transactions.html>
 ///
 /// # Fields
 ///

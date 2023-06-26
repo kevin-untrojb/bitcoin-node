@@ -17,7 +17,7 @@ use std::time::Duration;
 /// Si la conexión se realizó con éxito, se guarda esa conexión en el administrador de conexiones
 pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitcoinError> {
     let mut admin_connections = AdminConnections::new(Some(logger.clone()));
-    _ = add_connections(&mut admin_connections, logger.clone(), false);
+    _ = add_connections(&mut admin_connections, logger, false);
     Ok(admin_connections)
 }
 

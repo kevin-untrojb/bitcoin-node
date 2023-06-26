@@ -7,7 +7,7 @@ const HEADER_SIZE: usize = 80;
 
 /// A struct representing a Bitcoin Header
 /// ### Bitcoin Core References
-/// https://developer.bitcoin.org/reference/block_chain.html
+/// <https://developer.bitcoin.org/reference/block_chain.html>
 ///
 /// # Fields
 ///

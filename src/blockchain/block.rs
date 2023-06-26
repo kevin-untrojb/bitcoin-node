@@ -11,7 +11,7 @@ use transaction::Transaction;
 
 /// A struct representing a Bitcoin Serialized Block
 /// ### Bitcoin Core References
-/// https://developer.bitcoin.org/reference/block_chain.html#serialized-blocks
+/// <https://developer.bitcoin.org/reference/block_chain.html#serialized-blocks>
 ///
 /// # Fields
 ///
