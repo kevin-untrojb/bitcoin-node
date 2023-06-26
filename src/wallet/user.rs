@@ -45,7 +45,7 @@ impl Account {
             Ok(file) => file,
             Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
         };
-        // leer todos los bytes del archivo
+
         let mut buffer = vec![];
         match file.read_to_end(&mut buffer) {
             Ok(_) => {}
@@ -147,35 +147,4 @@ mod tests {
         assert_eq!(accounts[1].public_key, account2.public_key);
         assert_eq!(accounts[1].wallet_name, account2.wallet_name);
     }
-
-    // #[test]
-    // fn test_read() {
-    //     // Para probar si se creo bien desde interfaz
-    //     let read = Account::get_all_accounts().unwrap();
-    //     println!("{}", read[0].secret_key);
-    //     println!("{}", read[0].public_key);
-    //     println!("{}", read[0].wallet_name);
-    // }
-
-    // #[test]
-    // fn test_file() {
-    //     let secret_key = "cRJzHMCgDLsvttTH8R8t6LLcZgMDs1WtgwQXxk8bFFk7E2AJp1tw".to_string();
-    //     let public_key = "mnJvq7mbGiPNNhUne4FAqq27Q8xZrAsVun".to_string();
-    //     let wallet_name = "wallet1".to_string();
-    //     let account = Account::new(secret_key.clone(), public_key.clone(), wallet_name.clone());
-
-    //     let accounts = vec![account];
-
-    //     let saved = Account::save_all_accounts(accounts);
-    //     assert!(saved.is_ok());
-
-    //     let read = Account::get_all_accounts();
-    //     assert!(read.is_ok());
-
-    //     let accounts = read.unwrap();
-    //     assert_eq!(accounts.len(), 1);
-    //     assert_eq!(accounts[0].secret_key, secret_key);
-    //     assert_eq!(accounts[0].public_key, public_key);
-    //     assert_eq!(accounts[0].wallet_name, wallet_name);
-    // }
 }

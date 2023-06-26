@@ -195,7 +195,11 @@ impl TransactionManager {
                     .utxos
                     .update_from_blocks(vec![block], self.accounts.clone());
                 for tx in txns {
-                    self.update_pendings(tx.txid().unwrap());
+                    let txid = match tx.txid() {
+                        Ok(txid) => txid,
+                        Err(_) => continue,
+                    };
+                    self.update_pendings(txid);
                 }
                 _ = self
                     .sender_app_manager
@@ -310,7 +314,7 @@ impl TransactionManager {
                 accounts_index_is_in.push(item);
                 let msg = format!(
                     "Tx {:?} from account: {:?} pending to be mined.",
-                    tx.txid().unwrap().to_hexa_le_string(),
+                    tx.txid()?.to_hexa_le_string(),
                     account_ok.public_key
                 );
                 log_info_message(logger.clone(), msg);
@@ -418,7 +422,10 @@ pub fn create_transaction_manager(
     thread::spawn(move || {
         let tm = transaction_manager.clone();
         while let Ok(message) = receiver.recv() {
-            let mut manager = tm.lock().unwrap();
+            let mut manager = match tm.lock() {
+                Ok(manager) => manager,
+                Err(_) => continue,
+            };
             manager.handle_message(message);
         }
     });

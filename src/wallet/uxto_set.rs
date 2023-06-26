@@ -59,19 +59,33 @@ impl Utxo {
                 .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
         );
         offset += 32;
-        let output_index = u32::from_ne_bytes(bytes[offset..offset + 4].try_into().unwrap());
+        let output_index = u32::from_ne_bytes(
+            bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
-        let tx_out_len =
-            usize::from_ne_bytes(bytes[offset..offset + sizeof_usize].try_into().unwrap());
+        let tx_out_len = usize::from_ne_bytes(
+            bytes[offset..offset + sizeof_usize]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += sizeof_usize;
         let tx_out = TxOut::deserialize(&bytes[offset..offset + tx_out_len])?;
         offset += tx_out_len;
-        let pk_script_len =
-            usize::from_ne_bytes(bytes[offset..offset + sizeof_usize].try_into().unwrap());
+        let pk_script_len = usize::from_ne_bytes(
+            bytes[offset..offset + sizeof_usize]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += sizeof_usize;
         let pk_script = bytes[offset..offset + pk_script_len].to_vec();
         offset += pk_script_len;
-        let tx_len = usize::from_ne_bytes(bytes[offset..offset + sizeof_usize].try_into().unwrap());
+        let tx_len = usize::from_ne_bytes(
+            bytes[offset..offset + sizeof_usize]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += sizeof_usize;
         let tx = Transaction::deserialize(&bytes[offset..offset + tx_len])?;
 
@@ -144,7 +158,11 @@ impl TxReport {
         let mut offset = 0;
         let is_pending = bytes[0] != 0;
         offset += 1;
-        let timestamp = u32::from_ne_bytes(bytes[offset..offset + sizeof_u32].try_into().unwrap());
+        let timestamp = u32::from_ne_bytes(
+            bytes[offset..offset + sizeof_u32]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += sizeof_u32;
         let tx_id = Uint256::from_be_bytes(
             bytes[offset..offset + 32]
@@ -152,11 +170,19 @@ impl TxReport {
                 .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
         );
         offset += 32;
-        let amount = i128::from_ne_bytes(bytes[offset..offset + sizeof_i128].try_into().unwrap());
+        let amount = i128::from_ne_bytes(
+            bytes[offset..offset + sizeof_i128]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += sizeof_i128;
         let is_tx_in = bytes[offset] != 0;
         offset += 1;
-        let index = u32::from_ne_bytes(bytes[offset..offset + sizeof_u32].try_into().unwrap());
+        let index = u32::from_ne_bytes(
+            bytes[offset..offset + sizeof_u32]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
 
         Ok(TxReport {
             is_pending,
@@ -548,17 +574,27 @@ impl UTXOSet {
         }
         let binding = buffer.clone();
         let bytes = binding.as_slice();
-        let timestamp = u32::from_be_bytes(bytes[offset..offset + 4].try_into().unwrap());
+        let timestamp = u32::from_be_bytes(
+            bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
         offset += 4;
         while offset < buffer_len {
             let (key, new_offset) = read_decoded_string_offset(buffer.clone(), offset as u64)?;
             offset = new_offset as usize;
-            let len_hashmap =
-                usize::from_ne_bytes(bytes[offset..offset + sizeof_usize].try_into().unwrap());
+            let len_hashmap = usize::from_ne_bytes(
+                bytes[offset..offset + sizeof_usize]
+                    .try_into()
+                    .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+            );
             offset += sizeof_usize;
             for _ in 0..len_hashmap {
-                let len_utxo =
-                    usize::from_ne_bytes(bytes[offset..offset + sizeof_usize].try_into().unwrap());
+                let len_utxo = usize::from_ne_bytes(
+                    bytes[offset..offset + sizeof_usize]
+                        .try_into()
+                        .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+                );
                 offset += sizeof_usize;
                 let utxo_bytes = &bytes[offset..offset + len_utxo];
                 let utxo = Utxo::deserialize(utxo_bytes)?;
@@ -605,9 +641,17 @@ impl UTXOSet {
         let binding = buffer.clone();
         let bytes = binding.as_slice();
         while offset < buffer_len {
-            let tx_id = Uint256::from_be_bytes(bytes[offset..offset + 32].try_into().unwrap());
+            let tx_id = Uint256::from_be_bytes(
+                bytes[offset..offset + 32]
+                    .try_into()
+                    .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+            );
             offset += 32;
-            let output_index = u32::from_ne_bytes(bytes[offset..offset + 4].try_into().unwrap());
+            let output_index = u32::from_ne_bytes(
+                bytes[offset..offset + 4]
+                    .try_into()
+                    .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+            );
             offset += 4;
             let key = (tx_id, output_index);
             let (value, new_offset) = read_decoded_string_offset(buffer.clone(), offset as u64)?;
@@ -652,12 +696,18 @@ impl UTXOSet {
         while offset < buffer_len {
             let (key, new_offset) = read_decoded_string_offset(buffer.clone(), offset as u64)?;
             offset = new_offset as usize;
-            let len_hashmap =
-                usize::from_ne_bytes(bytes[offset..offset + sizeof_usize].try_into().unwrap());
+            let len_hashmap = usize::from_ne_bytes(
+                bytes[offset..offset + sizeof_usize]
+                    .try_into()
+                    .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+            );
             offset += sizeof_usize;
             for _ in 0..len_hashmap {
-                let len_tx_report =
-                    usize::from_ne_bytes(bytes[offset..offset + sizeof_usize].try_into().unwrap());
+                let len_tx_report = usize::from_ne_bytes(
+                    bytes[offset..offset + sizeof_usize]
+                        .try_into()
+                        .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+                );
                 offset += sizeof_usize;
                 let tx_report_bytes = &bytes[offset..offset + len_tx_report];
                 let tx_report = TxReport::deserialize(tx_report_bytes)?;

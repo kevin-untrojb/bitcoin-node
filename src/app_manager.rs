@@ -77,7 +77,13 @@ impl ApplicationManager {
         let app_manager_mutex = Arc::new(Mutex::new(app_manager));
         thread::spawn(move || {
             while let Ok(message) = receiver_app_manager.recv() {
-                let mut manager = app_manager_mutex.lock().unwrap();
+                let mut manager = match app_manager_mutex.lock() {
+                    Ok(manager) => manager,
+                    Err(_) => {
+                        println!("Error al obtener el lock del appmanager");
+                        continue;
+                    }
+                };
                 manager.handle_message(message);
             }
         });
