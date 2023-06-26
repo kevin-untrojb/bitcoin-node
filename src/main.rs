@@ -23,14 +23,15 @@ use interface::view::{self};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    _ = config::inicializar(args);
-
-    match gtk::init() {
-        Ok(_) => {
-            _ = view::create_view();
-            gtk::main();
-        }
-        Err(_) => println!("No se pudo inicializar GTK."),
+    match config::inicializar(args) {
+        Ok(_) => match gtk::init() {
+            Ok(_) => {
+                _ = view::create_view();
+                gtk::main();
+            }
+            Err(_) => println!("No se pudo inicializar GTK."),
+        },
+        Err(e) => println!("{}", e),
     }
 }
 

@@ -173,6 +173,7 @@ impl Ord for SerializedBlock {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -333,4 +334,33 @@ mod tests {
 
         assert_eq!(serialized, bloque_bytes);
     }
+
+    // #[test]
+    // fn test_is_valid_merkle_root() {
+    //     let args: Vec<String> = vec![];
+    //     let init_result = config::inicializar(args);
+    //     assert!(init_result.is_ok());
+
+    //     let blocks = SerializedBlock::read_blocks_from_file();
+    //     assert!(blocks.is_ok());
+    //     let blocks = blocks.unwrap();
+
+    //     let blocks_reverse = blocks
+    //         .iter()
+    //         .rev()
+    //         .collect::<Vec<&SerializedBlock>>()
+    //         .clone();
+
+    //     let mut is_valid_merkle_root = true;
+    //     for block in blocks_reverse {
+    //         is_valid_merkle_root = block.is_valid_merkle();
+    //         if !is_valid_merkle_root {
+    //             println!(
+    //                 "Block mined as {:?} UNIXTIME, is not valid",
+    //                 block.header.time
+    //             );
+    //             //return;
+    //         }
+    //     }
+    // }
 }

@@ -200,9 +200,6 @@ impl TransactionManager {
                 _ = self
                     .sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
-                _ = self
-                    .sender_app_manager
-                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::NewTx(tx) => {
                 let tx_id = match tx.txid() {
@@ -239,9 +236,6 @@ impl TransactionManager {
                     }
                 }
                 self.tx_pendings.insert(tx_id, tx);
-                _ = self
-                    .sender_app_manager
-                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
                 _ = self
                     .sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);

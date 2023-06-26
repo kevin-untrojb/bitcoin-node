@@ -2,7 +2,7 @@ use std::{error::Error, fmt};
 
 #[derive(Debug, PartialEq)]
 pub enum NodoBitcoinError {
-    _NoArgument,
+    NoArgument,
     NoExisteArchivo,
     NoExisteClave,
     ConfigLock,
@@ -48,8 +48,11 @@ impl Error for NodoBitcoinError {}
 impl fmt::Display for NodoBitcoinError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            NodoBitcoinError::_NoArgument => {
-                write!(f, "ERROR: No se especificó el nombre del archivo.")
+            NodoBitcoinError::NoArgument => {
+                write!(
+                    f,
+                    "ERROR: No se especificó la ubicación del archivo de configuración."
+                )
             }
             NodoBitcoinError::ConfigLock => {
                 write!(f, "ERROR: Error al lockear el config.")
