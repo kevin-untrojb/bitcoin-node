@@ -244,19 +244,30 @@ impl UTXOSet {
         false
     }
 
-    fn eliminar_tx_report_pending(&self, tx_report_to_delete: TxReport) {
+    fn eliminar_tx_report_pending(&mut self, tx_report_to_delete: TxReport) {
+        let hashmap = Self::eliminar_tx_report(
+            self.tx_report_pending_by_accounts.clone(),
+            tx_report_to_delete,
+        );
+        self.tx_report_pending_by_accounts = hashmap;
+    }
+
+    fn eliminar_tx_report(
+        mut tx_report_pending_by_accounts: HashMap<String, Vec<TxReport>>,
+        tx_report_to_delete: TxReport,
+    ) -> HashMap<String, Vec<TxReport>> {
         let tx_id = tx_report_to_delete.tx_id;
         let index = tx_report_to_delete.index;
         let is_tx_in = tx_report_to_delete.is_tx_in;
 
-        let mut tx_report_pending_by_accounts = self.tx_report_pending_by_accounts.clone();
-        for (_, tx_reports) in tx_report_pending_by_accounts.iter_mut() {
-            tx_reports.retain(|tx_report| {
+        for (_, value) in tx_report_pending_by_accounts.iter_mut() {
+            value.retain(|tx_report| {
                 !(tx_report.tx_id == tx_id
                     && tx_report.index == index
                     && tx_report.is_tx_in == is_tx_in)
             });
         }
+        tx_report_pending_by_accounts
     }
 
     fn agregar_tx_report_desde_out(
@@ -1220,5 +1231,56 @@ mod tests {
         assert_eq!(tx_reports[1].tx_id, tx_report3.tx_id);
         assert_eq!(tx_reports[1].is_tx_in, tx_report3.is_tx_in);
         assert_eq!(tx_reports[1].index, tx_report3.index);
+    }
+
+    #[test]
+    fn test_eliminar_tx_report_pending() {
+        let key1 = "key1".to_string();
+        let key2 = "key2".to_string();
+
+        let tx_report1 = TxReport {
+            is_pending: false,
+            timestamp: 123456789,
+            tx_id: Uint256::_from_u64(132456),
+            amount: -159,
+            is_tx_in: true,
+            index: 0,
+        };
+        let tx_report2 = TxReport {
+            is_pending: false,
+            timestamp: 123456789,
+            tx_id: Uint256::_from_u64(132456),
+            amount: 6545,
+            is_tx_in: false,
+            index: 1,
+        };
+
+        let tx_report3 = tx_report2.clone();
+
+        let mut hashmap: HashMap<String, Vec<TxReport>> = HashMap::new();
+        hashmap
+            .entry(key1.clone())
+            .or_default()
+            .push(tx_report1.clone());
+        hashmap
+            .entry(key2.clone())
+            .or_default()
+            .push(tx_report2.clone());
+        hashmap
+            .entry(key2.clone())
+            .or_default()
+            .push(tx_report3.clone());
+
+        assert!(hashmap.contains_key(&key1));
+        assert!(hashmap.contains_key(&key2));
+        let tx_reports = hashmap.get(&key1).unwrap();
+        assert_eq!(tx_reports.len(), 1);
+
+        // eliminar tx_report1 de hashmap en todos los key
+        let hashmap = UTXOSet::eliminar_tx_report(hashmap, tx_report1);
+        assert!(hashmap.contains_key(&key1));
+        assert!(hashmap.contains_key(&key2));
+        let tx_reports = hashmap.get(&key1).unwrap();
+        assert_eq!(tx_reports.len(), 0);
     }
 }

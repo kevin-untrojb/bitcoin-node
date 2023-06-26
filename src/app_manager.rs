@@ -33,6 +33,7 @@ pub struct ApplicationManager {
     sender_frontend: glib::Sender<ViewObject>,
     logger: mpsc::Sender<LogMessages>,
     sender_app_manager: Sender<ApplicationManagerMessages>,
+    shutdown_sent: bool,
 }
 
 pub enum ApplicationManagerMessages {
@@ -41,8 +42,8 @@ pub enum ApplicationManagerMessages {
     ShutDowned,
     ShutDown,
     TransactionManagerUpdate,
-    NewBlock,
-    NewTx,
+    _NewBlock,
+    _NewTx,
     BlockBroadcastingError,
     ApplicationError(String),
 }
@@ -68,6 +69,7 @@ impl ApplicationManager {
             sender_frontend,
             logger,
             tx_manager,
+            shutdown_sent: false,
         };
         app_manager.thread_download_blockchain();
         let ret_value = app_manager.clone();
@@ -88,7 +90,7 @@ impl ApplicationManager {
                 _ = self.send_messages_to_get_values();
             }
             ApplicationManagerMessages::GetAmountsByAccount(available_amount, pending_amount) => {
-                println!("pending_amount: {:?}", pending_amount);
+                //println!("pending_amount: {:?}", pending_amount);
                 let _ = self.sender_frontend.send(ViewObject::UploadAmounts((
                     available_amount,
                     pending_amount,
@@ -102,24 +104,39 @@ impl ApplicationManager {
                 end_loading(self.sender_frontend.clone());
             }
             ApplicationManagerMessages::ShutDown => {
+                self.shutdown_sent = true;
                 _ = self.tx_manager.send(TransactionMessages::ShutDown);
-                //self.sender_shut_down = Some(shut_down_sender);
             }
             ApplicationManagerMessages::ShutDowned => {
-                // if let Some(sender_shout_down) = &self.sender_shut_down {
-                //     let _ = sender_shout_down.send(Ok(()));
-                //     return;
-                // };
+                if !self.shutdown_sent {
+                    // no se envió ningun shutdown, hay que reiniciar las conexiones
+                    let sender_tx_manager = self.tx_manager.clone();
+                    let logger = self.logger.clone();
+                    let admin_connections = match connect(logger.clone()) {
+                        Ok(admin_connections) => admin_connections,
+                        Err(_) => {
+                            let _ = self
+                                .sender_frontend
+                                .send(ViewObject::Error(InterfaceError::BlockBroadcastingError));
+                            return;
+                        }
+                    };
+                    let _ = sender_tx_manager.send(TransactionMessages::InitBlockBroadcasting((
+                        admin_connections,
+                        logger,
+                        sender_tx_manager.clone(),
+                    )));
+                }
                 log_info_message(
                     self.logger.clone(),
                     "Aplicación cerrada exitosamente.".to_string(),
                 );
                 let _ = self.sender_frontend.send(ViewObject::CloseApplication);
             }
-            ApplicationManagerMessages::NewBlock => {
+            ApplicationManagerMessages::_NewBlock => {
                 //let _ = self.sender_frontend.send(ViewObject::NewBlock("Nuevo bloque recibido".to_string()));
             }
-            ApplicationManagerMessages::NewTx => {
+            ApplicationManagerMessages::_NewTx => {
                 //let _ = self.sender_frontend.send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
             }
             ApplicationManagerMessages::BlockBroadcastingError => {
@@ -191,7 +208,6 @@ impl ApplicationManager {
     }
 
     pub fn close(&self) -> Result<(), NodoBitcoinError> {
-        // TODO: cerrar los threads abiertos
         start_loading(
             self.sender_frontend.clone(),
             "Closing application... ".to_string(),

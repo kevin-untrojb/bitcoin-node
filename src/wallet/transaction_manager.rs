@@ -202,7 +202,7 @@ impl TransactionManager {
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
                 _ = self
                     .sender_app_manager
-                    .send(ApplicationManagerMessages::NewBlock);
+                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::NewTx(tx) => {
                 let tx_id = match tx.txid() {
@@ -244,7 +244,7 @@ impl TransactionManager {
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
                 _ = self
                     .sender_app_manager
-                    .send(ApplicationManagerMessages::NewTx);
+                    .send(ApplicationManagerMessages::TransactionManagerUpdate);
             }
             TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
                 self.sender_block_broadcasting = Some(sender_block_broadcasting);
