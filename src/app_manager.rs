@@ -126,6 +126,7 @@ impl ApplicationManager {
                         logger,
                         sender_tx_manager.clone(),
                     )));
+                    return;
                 }
                 log_info_message(
                     self.logger.clone(),
