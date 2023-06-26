@@ -126,20 +126,20 @@ pub fn init_block_broadcasting(
                     Err(_) => continue,
                 };
 
-                // if command == "ping" {
-                //     let pong_msg = match make_pong(&header) {
-                //         Ok(msg) => msg,
-                //         Err(_) => continue,
-                //     };
+                if command == "ping" {
+                    let pong_msg = match make_pong(&header) {
+                        Ok(msg) => msg,
+                        Err(_) => continue,
+                    };
 
-                //     if socket.write_message(&pong_msg).is_err() {
-                //         log_error_message(
-                //             thread_logger.clone(),
-                //             format!("Error al escribir el mensaje pong en conexión {}", socket.id),
-                //         );
-                //         return;
-                //     }
-                // }
+                    if socket.write_message(&pong_msg).is_err() {
+                        log_error_message(
+                            thread_logger.clone(),
+                            format!("Error al escribir el mensaje pong en conexión {}", socket.id),
+                        );
+                        return;
+                    }
+                }
 
                 if command == "inv" {
                     log_info_message(thread_logger.clone(), format!("Mensaje inv recibido en conexión {}", socket.id));
