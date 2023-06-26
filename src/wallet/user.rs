@@ -45,7 +45,7 @@ impl Account {
             Ok(file) => file,
             Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
         };
-        
+
         let mut buffer = vec![];
         match file.read_to_end(&mut buffer) {
             Ok(_) => {}

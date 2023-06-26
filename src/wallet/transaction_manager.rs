@@ -197,7 +197,7 @@ impl TransactionManager {
                 for tx in txns {
                     let txid = match tx.txid() {
                         Ok(txid) => txid,
-                        Err(_) => continue
+                        Err(_) => continue,
                     };
                     self.update_pendings(txid);
                 }
@@ -422,7 +422,7 @@ pub fn create_transaction_manager(
     thread::spawn(move || {
         let tm = transaction_manager.clone();
         while let Ok(message) = receiver.recv() {
-            let mut manager = match tm.lock(){
+            let mut manager = match tm.lock() {
                 Ok(manager) => manager,
                 Err(_) => continue,
             };

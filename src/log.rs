@@ -63,7 +63,7 @@ pub fn create_logger_actor(log_file_path: Result<String, NodoBitcoinError>) -> S
     thread::spawn(move || {
         let actor = actor;
         while let Ok(message) = receiver.recv() {
-            match actor.lock(){
+            match actor.lock() {
                 Ok(mut log_actor) => log_actor.handle_message(message),
                 Err(_) => continue,
             };
