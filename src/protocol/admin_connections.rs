@@ -173,7 +173,7 @@ impl AdminConnections {
 
     /// Devuelve las conexiones en un vector
     pub fn get_connections_for_send_tx(&mut self) -> Vec<Connection> {
-        let values = self.connections_for_send_tx.values().cloned().collect();
+        let values = self.connections.values().cloned().collect();
         values
     }
 

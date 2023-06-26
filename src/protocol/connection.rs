@@ -18,7 +18,6 @@ use std::time::Duration;
 pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitcoinError> {
     let mut admin_connections = AdminConnections::new(Some(logger.clone()));
     _ = add_connections(&mut admin_connections, logger.clone(), false);
-    _ = add_connections(&mut admin_connections, logger, true);
     Ok(admin_connections)
 }
 
