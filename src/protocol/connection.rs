@@ -126,8 +126,14 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
 /// Obtiene las distintas direcciones de una semilla DNS
 pub fn get_address() -> Vec<SocketAddr> {
     let mut seeds = Vec::new();
-    let url = config::get_valor("ADDRESS".to_owned()).unwrap();
-    let port = 18333;
+    let url = match config::get_valor("ADDRESS".to_owned()) {
+        Ok(res) => res,
+        Err(_) => return seeds,
+    };
+    let port = match config::get_valor("PORT".to_owned()) {
+        Ok(res) => res,
+        Err(_) => "18333".to_owned(),
+    };
 
     let seedhost = format!("{}:{}", url, port);
 
