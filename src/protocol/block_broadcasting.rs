@@ -100,7 +100,7 @@ pub fn init_block_broadcasting(
                 }
 
                 let mut buffer = [0u8; 24];
-                if socket.read_message(&mut buffer).is_err() {
+                if socket.read_exact_message(&mut buffer).is_err() {
                     log_error_message(
                         thread_logger.clone(),
                         format!("Error al leer el header del mensaje en broadcasting en conexión {}", socket.id),
@@ -172,7 +172,7 @@ pub fn init_block_broadcasting(
                     }
 
                     let mut buffer = [0u8; 24];
-                    if socket.read_message(&mut buffer).is_err() {
+                    if socket.read_exact_message(&mut buffer).is_err() {
                         log_error_message(
                             thread_logger,
                             format!("Error al leer el header mensaje en broadcasting en conexión {}.", socket.id),
@@ -290,7 +290,7 @@ pub fn init_block_broadcasting(
                         };
 
                         if !pow_poi_validation(thread_logger.clone(), block.clone()) {
-                            continue
+                            //continue
                         }
 
                         let cloned_result = shared_blocks.lock();
@@ -315,6 +315,8 @@ pub fn init_block_broadcasting(
     for thread in threads {
         let _ = thread.join();
     }
+
+    // si llegué porque quise o porque se cerraron todas
 
     _ = sender_tx_manager.send(TransactionMessages::Shutdowned);
 

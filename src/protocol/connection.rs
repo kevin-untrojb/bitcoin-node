@@ -17,6 +17,19 @@ use std::time::Duration;
 /// Si la conexión se realizó con éxito, se guarda esa conexión en el administrador de conexiones
 pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitcoinError> {
     let mut admin_connections = AdminConnections::new(Some(logger.clone()));
+    _ = add_connections(&mut admin_connections, logger.clone(), false);
+    _ = add_connections(&mut admin_connections, logger, true);
+    Ok(admin_connections)
+}
+
+/// Recorre lista de direccions e intenta conectarse a cada una de ellas
+/// Si la conexión se realizó con éxito, se guarda esa conexión en el administrador de conexiones
+fn add_connections(
+    admin_connection: &mut AdminConnections,
+    logger: Sender<LogMessages>,
+    add_for_send_tx: bool,
+) -> Result<(), NodoBitcoinError> {
+    //let mut admin_connections = AdminConnections::new(Some(logger.clone()));
     let addresses = get_address();
     let mut id: i32 = 0;
     for address in addresses.iter() {
@@ -28,14 +41,18 @@ pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitc
                             logger.clone(),
                             format!("Conexión establecida: {:?}", address),
                         );
-                        let duration = connection.set_read_timeout(Some(Duration::new(10, 0)));
-                        if duration.is_err() {
-                            log_error_message(
-                                logger.clone(),
-                                "Error al setear read timeout.".to_string(),
-                            );
+                        if add_for_send_tx {
+                            admin_connection.add_connection_for_send_tx(connection, id)?;
+                        } else {
+                            let duration = connection.set_read_timeout(Some(Duration::new(10, 0)));
+                            if duration.is_err() {
+                                log_error_message(
+                                    logger.clone(),
+                                    "Error al setear read timeout.".to_string(),
+                                );
+                            }
+                            admin_connection.add(connection, id)?;
                         }
-                        admin_connections.add(connection, id)?;
                         id += 1;
                     }
                     Err(_) => continue,
@@ -45,7 +62,7 @@ pub fn connect(logger: Sender<LogMessages>) -> Result<AdminConnections, NodoBitc
         };
     }
 
-    Ok(admin_connections)
+    Ok(())
 }
 
 /// Se realiza el handshake con una conexión

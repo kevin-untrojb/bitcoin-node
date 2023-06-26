@@ -24,7 +24,7 @@ pub fn send_tx(
     tx_msg.extend_from_slice(&header);
     tx_msg.extend_from_slice(&payload);
 
-    for connection in admin_connections.get_connections() {
+    for connection in admin_connections.get_connections_for_send_tx() {
         match connection.write_message(&tx_msg) {
             Ok(_) => {
                 log_info_message(

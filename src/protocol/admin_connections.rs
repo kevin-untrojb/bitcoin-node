@@ -107,6 +107,7 @@ impl Connection {
 /// Es quien se encarga de dar conexiones libres a quien lo solicite para evitar que se crucen los mensajes
 pub struct AdminConnections {
     connections: HashMap<i32, Connection>,
+    connections_for_send_tx: HashMap<i32, Connection>,
     logger: Option<Sender<LogMessages>>,
 }
 
@@ -121,6 +122,7 @@ impl AdminConnections {
     pub fn new(logger: Option<Sender<LogMessages>>) -> AdminConnections {
         AdminConnections {
             connections: HashMap::new(),
+            connections_for_send_tx: HashMap::new(),
             logger,
         }
     }
@@ -139,10 +141,35 @@ impl AdminConnections {
         Ok(())
     }
 
+    /// Crea un Connection a partir del TcpStream recibido y lo guarda en el administrador
+    pub fn add_connection_for_send_tx(
+        &mut self,
+        tcp: TcpStream,
+        id: i32,
+    ) -> Result<(), NodoBitcoinError> {
+        let _ = &(self.connections_for_send_tx).insert(
+            id,
+            Connection {
+                id,
+                tcp: Arc::new(Mutex::new(tcp)),
+                free: true,
+                logger: self.logger.clone(),
+            },
+        );
+        Ok(())
+    }
+
+    /// Devuelve las conexiones en un vector
+    pub fn get_connections_for_send_tx(&mut self) -> Vec<Connection> {
+        let values = self.connections_for_send_tx.values().cloned().collect();
+        values
+    }
+
     /// Devuelve las conexiones en un vector
     pub fn get_connections(&mut self) -> Vec<Connection> {
-        let values = self.connections.values().cloned().collect();
-        values
+        let values: Vec<_> = self.connections.values().cloned().collect();
+        let ten_values = values.iter().take(10).cloned().collect();
+        ten_values
     }
 
     /// Encuentra una conexión que no esté ocupada (free = true)
