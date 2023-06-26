@@ -276,7 +276,7 @@ impl UTXOSet {
         };
 
         if self.existe_tx_report_para_account(current_account.clone(), &tx_report) {
-            return None;
+            return Some(tx_report);
         }
 
         let tx_report_by_accounts = self
@@ -318,7 +318,7 @@ impl UTXOSet {
         };
 
         if self.existe_tx_report_para_account(account.clone(), &tx_report) {
-            return None;
+            return Some(tx_report);
         }
 
         let tx_report_by_accounts = self.tx_report_by_accounts.entry(account).or_default();

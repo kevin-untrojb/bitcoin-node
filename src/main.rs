@@ -224,7 +224,7 @@ fn _new_tx_signed() {
 
         tx_obj.sign_with_wif_compressed_key(0, private_key_wif, previous_tx)?;
 
-        let tx_obj_bytes = tx_obj.serialize()?;
+        let _tx_obj_bytes = tx_obj.serialize()?;
 
         let nombre_grupo = config::get_valor("NOMBRE_GRUPO".to_string())?;
         println!("Hello, Bitcoin! Somos {}", nombre_grupo);
