@@ -173,15 +173,26 @@ impl AdminConnections {
 
     /// Devuelve las conexiones en un vector
     pub fn get_connections_for_send_tx(&mut self) -> Vec<Connection> {
-        let values = self.connections.values().cloned().collect();
-        values
+        let values: Vec<_> = self.connections.values().cloned().collect();
+        let mut connections = Vec::new();
+        for value in values {
+            if value.id >= 10 {
+                connections.push(value);
+            }
+        }
+        connections
     }
 
     /// Devuelve las conexiones en un vector
     pub fn get_connections(&mut self) -> Vec<Connection> {
         let values: Vec<_> = self.connections.values().cloned().collect();
-        let ten_values = values.iter().take(10).cloned().collect();
-        ten_values
+        let mut connections = Vec::new();
+        for value in values {
+            if value.id < 10 {
+                connections.push(value);
+            }
+        }
+        connections
     }
 
     /// Encuentra una conexión que no esté ocupada (free = true)
