@@ -5,12 +5,21 @@ const MSG_BLOCK: u32 = 2;
 const MSG_TX: u32 = 1;
 
 /// Representa un inventario del protocolo Bitcoin
+///
+/// # Campos
+/// * inv_type: el tipo de objeto al que pertenece el hash
+/// * hash: hash SHA256(SHA256()) del objeto
+
 pub struct Inventory {
     inv_type: u32,
     hash: Vec<u8>,
 }
 
 /// Representa un mensaje GetData del protocolo Bitcoin
+///
+/// # Campos
+/// * count: cantidad de inventarios
+/// * inventory: vector de inventarios
 pub struct GetDataMessage {
     count: u8,
     inventory: Vec<Inventory>,

@@ -13,6 +13,12 @@ use crate::{
 
 #[derive(Clone)]
 /// Representa una conexión a un nodo de la red y si esa conexión está siendo usada o no
+///
+/// # Campos
+/// * id: identificador
+/// * tcp: conexión a un nodo
+/// * free: indica si la conexión está siendo usada o no
+/// * logger: sender al logger
 pub struct Connection {
     pub id: i32,
     pub tcp: Arc<Mutex<TcpStream>>,
@@ -105,6 +111,12 @@ impl Connection {
 #[derive(Clone)]
 /// Administrador de conexiones, tiene todas las conexiones a los nodos de la red
 /// Es quien se encarga de dar conexiones libres a quien lo solicite para evitar que se crucen los mensajes
+///
+/// # Campos
+/// * connections: diccionario donde la key es el id de la conexión y el value es un Connection
+/// * connectios_for_send_tx: diccionario igual al descripto anteriormente que será utilizado
+///     exclusivamente para enviar nuevas transacciones
+/// * logger: sender al logger
 pub struct AdminConnections {
     connections: HashMap<i32, Connection>,
     connections_for_send_tx: HashMap<i32, Connection>,

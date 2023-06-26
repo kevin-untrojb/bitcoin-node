@@ -11,6 +11,8 @@ use crate::{
 };
 use std::sync::mpsc;
 
+/// Se encarga de enviar la nueva transaccion en el mensaje tx
+/// a todos los nodos que pueda
 pub fn send_tx(
     mut admin_connections: AdminConnections,
     logger: mpsc::Sender<LogMessages>,
