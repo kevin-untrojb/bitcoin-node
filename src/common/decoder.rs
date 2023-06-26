@@ -32,7 +32,9 @@ pub fn signature_der(secret_key_hexa_bytes: &[u8], message: &[u8]) -> Signature 
 /// Private Key Hexadecimal Format (64 characters [0-9A-F])
 pub fn wif_to_hex(wif: &str) -> Result<Vec<u8>, NodoBitcoinError> {
     // Decode the base58-encoded WIF compressed private key
-    let decoded = bs58::decode(wif).into_vec().unwrap();
+    let decoded = bs58::decode(wif)
+        .into_vec()
+        .map_err(|_| NodoBitcoinError::DecodeError)?;
 
     // Ensure the decoded length is valid
     if decoded.len() < 34 {
