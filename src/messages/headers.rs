@@ -1,10 +1,11 @@
 use crate::{
-    blockchain::{blockheader::BlockHeader, file::escribir_archivo},
-    common::utils_bytes::parse_varint,
+    blockchain::blockheader::BlockHeader, common::utils_bytes::parse_varint,
     errores::NodoBitcoinError,
 };
 
-pub fn deserealize(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoinError> {
+/// Deserealiza el vector de bytes de headers recibidos
+/// Devuelve un vector de BlockHeaders deserealizados
+pub fn deserealize_sin_guardar(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoinError> {
     let (size_bytes, num_headers) = parse_varint(&headers);
     headers = headers[size_bytes..].to_vec();
     let mut block_headers = Vec::new();
@@ -17,7 +18,6 @@ pub fn deserealize(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoin
         }
 
         let block_header = BlockHeader::deserialize(&headers[start..end])?;
-        escribir_archivo(&headers[start..end])?;
         block_headers.push(block_header);
     }
 

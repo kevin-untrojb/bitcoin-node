@@ -2,6 +2,13 @@ use crate::errores::NodoBitcoinError;
 
 use super::messages_header::make_header;
 
+/// Representa un mensaje GetHeaders del protocolo Bitcoin
+///
+/// # Campos
+/// * version: versión del protocolo Bitcoin, la misma enviada en el mensaje Version
+/// * num_hashes: el número de hashes de headers que se proveen en el mensaje
+/// * start_block_hash: uno o mas hashes de headers
+/// * stop_block_hash: el hash del header del último heeader que está siendo pedido
 pub struct GetHeadersMessage {
     version: u32,
     num_hashes: u8,
@@ -10,6 +17,7 @@ pub struct GetHeadersMessage {
 }
 
 impl GetHeadersMessage {
+    /// Crea un mensaje GetHeadersMessage y lo devuelve
     pub fn new(
         version: u32,
         num_hashes: u8,
@@ -24,6 +32,7 @@ impl GetHeadersMessage {
         }
     }
 
+    /// Serializa un mensaje Get Headers y devuelve sus bytes
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut payload = Vec::new();
         let mut msg = Vec::new();

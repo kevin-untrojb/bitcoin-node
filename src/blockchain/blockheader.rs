@@ -1,11 +1,13 @@
+use super::proof_of_work;
 use crate::errores::NodoBitcoinError;
-use std::io::Write;
+use bitcoin_hashes::{sha256d, Hash};
+use std::{fmt, io::Write};
 
 const HEADER_SIZE: usize = 80;
 
 /// A struct representing a Bitcoin Header
 /// ### Bitcoin Core References
-/// https://developer.bitcoin.org/reference/block_chain.html
+/// <https://developer.bitcoin.org/reference/block_chain.html>
 ///
 /// # Fields
 ///
@@ -15,7 +17,7 @@ const HEADER_SIZE: usize = 80;
 /// * `time` - The Unix timestamp of the block's creation.
 /// * `n_bits` - The compressed target difficulty of the block in compact format.
 /// * `nonce` - A random number used in the mining process to try and find a valid block hash.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct BlockHeader {
     pub version: u32,
     pub previous_block_hash: [u8; 32],
@@ -23,6 +25,18 @@ pub struct BlockHeader {
     pub time: u32,
     pub n_bits: u32,
     pub nonce: u32,
+}
+
+impl fmt::Display for BlockHeader {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f, "BlockHeader:\nversion: {:?}\nprevious_block_hash: {:?}\nmerkle_root_hash: {:?}\ntime: {:?}",
+            self.version,
+            self.previous_block_hash,
+            self.merkle_root_hash,
+            self.time
+        )
+    }
 }
 
 impl BlockHeader {
@@ -100,6 +114,16 @@ impl BlockHeader {
             n_bits,
             nonce,
         })
+    }
+
+    pub fn hash(&self) -> Result<[u8; 32], NodoBitcoinError> {
+        let serialized = self.serialize()?;
+        let hash = sha256d::Hash::hash(&serialized);
+        Ok(*hash.as_byte_array())
+    }
+
+    pub fn _is_valid_pow(&self) -> bool {
+        proof_of_work::pow_validation(self).unwrap_or(false)
     }
 }
 

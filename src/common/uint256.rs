@@ -6,7 +6,7 @@ use std::{
 
 const NUM_BYTES: usize = 32;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Uint256([u8; NUM_BYTES]);
 
 impl Default for Uint256 {
@@ -44,25 +44,32 @@ impl Uint256 {
         Uint256(bytes)
     }
 
-    pub fn _from_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
+    pub fn from_be_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
         Uint256(bytes)
     }
 
-    pub fn _from_be_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
-        Uint256(bytes)
+    pub fn _reverse_endian(&mut self) -> Uint256 {
+        let bytes = self.get_bytes();
+        Uint256::from_le_bytes(bytes)
     }
 
-    pub fn _from_le_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
+    pub fn from_le_bytes(bytes: [u8; NUM_BYTES]) -> Uint256 {
         let mut bytes = bytes;
         bytes.reverse();
         Uint256(bytes)
     }
 
-    pub fn _to_bytes(&self) -> [u8; NUM_BYTES] {
+    pub fn get_bytes(&self) -> [u8; NUM_BYTES] {
         self.0
     }
 
-    pub fn _pow(&self, exponent: u32) -> Uint256 {
+    pub fn _get_le_bytes(&self) -> [u8; NUM_BYTES] {
+        let mut bytes = self.get_bytes();
+        bytes.reverse();
+        bytes
+    }
+
+    pub fn pow(&self, exponent: u32) -> Uint256 {
         let mut result = Uint256::_from_u64(1);
         let base = *self;
 
@@ -70,6 +77,22 @@ impl Uint256 {
             result = base * result;
         }
 
+        result
+    }
+
+    pub fn _to_hexa_be_string(&self) -> String {
+        let mut result = String::new();
+        for i in 0..NUM_BYTES {
+            result.push_str(&format!("{:02x}", self.0[i]));
+        }
+        result
+    }
+
+    pub fn to_hexa_le_string(self) -> String {
+        let mut result = String::new();
+        for i in 0..NUM_BYTES {
+            result.push_str(&format!("{:02x}", self.0[NUM_BYTES - i - 1]));
+        }
         result
     }
 }
@@ -179,6 +202,8 @@ impl fmt::Display for Uint256 {
 mod tests {
     use crate::common::uint256::Uint256;
 
+    use super::NUM_BYTES;
+
     #[test]
     fn test_nulti() {
         let a = Uint256([
@@ -237,7 +262,7 @@ mod tests {
     #[test]
     fn test_pow() {
         let a = Uint256::_from_u64(256);
-        let b = a._pow(21);
+        let b = a.pow(21);
 
         let valor = Uint256([
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
@@ -253,5 +278,56 @@ mod tests {
         let a = Uint256::_from_u64(123456789);
         let format = "Uint256([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 5B, CD, 15])".to_string();
         assert_eq!(format!("{:X?}", a), format);
+    }
+
+    #[test]
+    fn test_reverse_endian() {
+        let mut a = Uint256::_from_u64(123456789);
+        let b = a._reverse_endian();
+        for i in 0..NUM_BYTES {
+            assert_eq!(a.0[i], b.0[NUM_BYTES - i - 1]);
+        }
+    }
+
+    #[test]
+    fn test_get_bytes_from_le_bytes() {
+        let a = Uint256::_from_u64(123456789);
+
+        let bytes = a.get_bytes();
+        let from_be = Uint256::from_be_bytes(bytes);
+
+        for i in 0..NUM_BYTES {
+            assert_eq!(a.0[i], from_be.0[i]);
+        }
+    }
+
+    #[test]
+    fn test_to_hexa_be_string() {
+        let valor = Uint256([
+            0x01, 0x00, 0x00, 0x00, 0x01, 0x81, 0x3f, 0x79, 0x01, 0x1a, 0xcb, 0x80, 0x92, 0x5d,
+            0xfe, 0x69, 0xb3, 0xde, 0xf3, 0x55, 0xfe, 0x91, 0x4b, 0xd1, 0xd9, 0x6a, 0x3f, 0x5f,
+            0x71, 0xbf, 0x83, 0x03,
+        ]);
+
+        let hexa_string =
+            "0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303".to_string();
+
+        assert_eq!(valor._to_hexa_be_string(), hexa_string);
+    }
+
+    #[test]
+    fn test_to_hexa_le_string() {
+        let bytes: [u8; 32] = [
+            0x01, 0x00, 0x00, 0x00, 0x01, 0x81, 0x3f, 0x79, 0x01, 0x1a, 0xcb, 0x80, 0x92, 0x5d,
+            0xfe, 0x69, 0xb3, 0xde, 0xf3, 0x55, 0xfe, 0x91, 0x4b, 0xd1, 0xd9, 0x6a, 0x3f, 0x5f,
+            0x71, 0xbf, 0x83, 0x03,
+        ];
+
+        let valor = Uint256::from_le_bytes(bytes);
+
+        let hexa_string =
+            "0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303".to_string();
+
+        assert_eq!(valor.to_hexa_le_string(), hexa_string);
     }
 }

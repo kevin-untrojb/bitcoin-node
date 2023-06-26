@@ -1,23 +1,37 @@
 use super::messages_header::make_header;
-use crate::errores::NodoBitcoinError;
+use crate::{common::utils_bytes::parse_varint, errores::NodoBitcoinError};
 
 const MSG_BLOCK: u32 = 2;
+const MSG_TX: u32 = 1;
+
+/// Representa un inventario del protocolo Bitcoin
+///
+/// # Campos
+/// * inv_type: el tipo de objeto al que pertenece el hash
+/// * hash: hash SHA256(SHA256()) del objeto
 
 pub struct Inventory {
     inv_type: u32,
-    hash: [u8; 32],
+    hash: Vec<u8>,
 }
 
+/// Representa un mensaje GetData del protocolo Bitcoin
+///
+/// # Campos
+/// * count: cantidad de inventarios
+/// * inventory: vector de inventarios
 pub struct GetDataMessage {
     count: u8,
     inventory: Vec<Inventory>,
 }
 
 impl GetDataMessage {
+    /// Crea un GetDataMessage donde el inventory es del tipo BLOCK.
+    /// O sea que este mensaje servirá para pedir bloques.
     pub fn new(count: u8, hash: [u8; 32]) -> GetDataMessage {
         let inventory = Inventory {
             inv_type: MSG_BLOCK,
-            hash,
+            hash: hash.to_vec(),
         };
 
         GetDataMessage {
@@ -26,6 +40,38 @@ impl GetDataMessage {
         }
     }
 
+    /// Crea un GetDataMessage para cuando se recibe una transacción a partir del mensaje inv
+    /// Devuelve un struct del mensaje GetDataMessage
+    pub fn new_for_tx(inv_msg: &[u8]) -> Result<GetDataMessage, NodoBitcoinError> {
+        let mut inventory = Vec::new();
+        let (size_bytes, count) = parse_varint(inv_msg);
+
+        for i in 0..count {
+            let offset = (i * 36) + size_bytes;
+            let inv_type = u32::from_le_bytes([
+                inv_msg[offset],
+                inv_msg[offset + 1],
+                inv_msg[offset + 2],
+                inv_msg[offset + 3],
+            ]);
+
+            if inv_type != MSG_TX {
+                return Err(NodoBitcoinError::NoEsTransaccion);
+            }
+
+            inventory.push(Inventory {
+                inv_type,
+                hash: inv_msg[offset + 4..].to_vec(),
+            });
+        }
+
+        Ok(GetDataMessage {
+            count: count as u8,
+            inventory,
+        })
+    }
+
+    /// Serializa el mensaje GetData y devuelve los bytes del mismo
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut payload = Vec::new();
         let mut msg = Vec::new();

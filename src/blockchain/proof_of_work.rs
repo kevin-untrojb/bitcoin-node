@@ -4,7 +4,7 @@ use crate::{common::uint256::Uint256, errores::NodoBitcoinError};
 
 use super::blockheader::BlockHeader;
 
-fn _pow_validation(header: &BlockHeader) -> Result<bool, NodoBitcoinError> {
+pub fn pow_validation(header: &BlockHeader) -> Result<bool, NodoBitcoinError> {
     let target = _calculate_target(header);
     let header_bytes = header.serialize()?;
     _is_valid_pow(&header_bytes, target)
@@ -24,7 +24,7 @@ fn _calculate_target(blockheader: &BlockHeader) -> Uint256 {
     let coeff_256 = Uint256::_from_u32(coeff_u32);
     let value256 = Uint256::_from_u32(256);
 
-    let potencia = value256._pow(exp - 3);
+    let potencia = value256.pow(exp - 3);
     coeff_256 * potencia
 }
 
@@ -41,7 +41,7 @@ fn _calculate_hash(data: &[u8]) -> [u8; 32] {
 
 fn _calculate_proof(data: &[u8]) -> Uint256 {
     let hash = _calculate_hash(data);
-    Uint256::_from_le_bytes(hash)
+    Uint256::from_le_bytes(hash)
 }
 
 fn _is_valid_pow(data: &[u8], target_difficulty: Uint256) -> Result<bool, NodoBitcoinError> {
@@ -55,8 +55,7 @@ mod tests {
         blockchain::{
             blockheader::BlockHeader,
             proof_of_work::{
-                _calculate_hash, _calculate_proof, _calculate_target, _is_valid_pow,
-                _pow_validation,
+                _calculate_hash, _calculate_proof, _calculate_target, _is_valid_pow, pow_validation,
             },
         },
         common::uint256::Uint256,
@@ -104,7 +103,7 @@ mod tests {
         // pruebo con el BlokHeader del bloque génesis
         let block_header = blockheader_test_oreilly();
 
-        let validation_result = _pow_validation(&block_header);
+        let validation_result = pow_validation(&block_header);
         assert!(validation_result.is_ok());
 
         let is_valid = validation_result.unwrap();
@@ -117,7 +116,7 @@ mod tests {
         let mut block_header = blockheader_test_oreilly();
         // le cambio el nonce para que no pase la pow
         block_header.nonce = 0xFFFFFFFF;
-        let validation_result = _pow_validation(&block_header);
+        let validation_result = pow_validation(&block_header);
         assert!(validation_result.is_ok());
 
         let is_valid = validation_result.unwrap();
@@ -130,7 +129,7 @@ mod tests {
         let mut block_header = blockheader_test_oreilly();
         // le cambio el n_bits para que no pase la pow
         block_header.n_bits = 0xFFFFFFFF;
-        let validation_result = _pow_validation(&block_header);
+        let validation_result = pow_validation(&block_header);
         assert!(validation_result.is_ok());
 
         let is_valid = validation_result.unwrap();
@@ -149,7 +148,7 @@ mod tests {
     fn test_calculate_proof() {
         let header_bytes_array = bytes_block_oreilly();
         let proof = _calculate_proof(&header_bytes_array);
-        let proof_ok = Uint256::_from_le_bytes(bytes_hash_oreilly()); // la proof es el hash del bloque en little endian
+        let proof_ok = Uint256::from_le_bytes(bytes_hash_oreilly()); // la proof es el hash del bloque en little endian
         assert_eq!(proof, proof_ok);
     }
 
@@ -157,7 +156,7 @@ mod tests {
     fn test_calculate_target() {
         let block_header = blockheader_test_oreilly();
         let target_bl = _calculate_target(&block_header);
-        let target_ok = Uint256::_from_bytes(bytes_target_oreilly());
+        let target_ok = Uint256::from_be_bytes(bytes_target_oreilly());
         assert_eq!(target_bl, target_ok);
     }
 
@@ -178,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_is_valid_pow() {
-        let target = Uint256::_from_bytes(bytes_target_oreilly());
+        let target = Uint256::from_be_bytes(bytes_target_oreilly());
         let header = bytes_block_oreilly();
 
         let is_valid_pow_result = _is_valid_pow(&header, target);
@@ -190,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_is_invalid_pow() {
-        let target = Uint256::_from_bytes(bytes_target_oreilly());
+        let target = Uint256::from_be_bytes(bytes_target_oreilly());
         let header = bytes_block_oreilly();
 
         let is_valid_pow_result = _is_valid_pow(&header, target);

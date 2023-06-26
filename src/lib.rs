@@ -1,8 +1,12 @@
+pub mod app_manager;
 pub mod blockchain;
 pub mod common;
 pub mod config;
 pub mod errores;
+pub mod interface;
+pub mod log;
 pub mod merkle_tree;
 pub mod messages;
 pub mod parse_args;
 pub mod protocol;
+pub mod wallet;
