@@ -84,7 +84,7 @@ impl Connection {
             }
         }
     }
-    fn log_info_msg(&self, log_msg: String) {
+    fn _log_info_msg(&self, log_msg: String) {
         match &self.logger {
             Some(log) => {
                 log_info_message(log.clone(), format!("connection:: {}", log_msg));
