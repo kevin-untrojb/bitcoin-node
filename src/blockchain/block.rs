@@ -174,6 +174,10 @@ impl Ord for SerializedBlock {
 #[cfg(test)]
 mod tests {
 
+    use std::fmt::format;
+
+    use crate::config;
+
     use super::*;
 
     #[test]
@@ -335,32 +339,61 @@ mod tests {
         assert_eq!(serialized, bloque_bytes);
     }
 
-    // #[test]
-    // fn test_is_valid_merkle_root() {
-    //     let args: Vec<String> = vec![];
-    //     let init_result = config::inicializar(args);
-    //     assert!(init_result.is_ok());
+    #[test]
+    fn test_is_valid_merkle_root() {
+        let args: Vec<String> = vec!["x".to_string(), "src/nodo2.conf".to_string()];
+        let init_result = config::inicializar(args);
+        assert!(init_result.is_ok());
 
-    //     let blocks = SerializedBlock::read_blocks_from_file();
-    //     assert!(blocks.is_ok());
-    //     let blocks = blocks.unwrap();
+        let blocks = SerializedBlock::read_blocks_from_file();
+        assert!(blocks.is_ok());
+        let blocks = blocks.unwrap();
 
-    //     let blocks_reverse = blocks
-    //         .iter()
-    //         .rev()
-    //         .collect::<Vec<&SerializedBlock>>()
-    //         .clone();
+        let blocks_reverse = blocks
+            .iter()
+            .rev()
+            .collect::<Vec<&SerializedBlock>>()
+            .clone();
 
-    //     let mut is_valid_merkle_root = true;
-    //     for block in blocks_reverse {
-    //         is_valid_merkle_root = block.is_valid_merkle();
-    //         if !is_valid_merkle_root {
-    //             println!(
-    //                 "Block mined as {:?} UNIXTIME, is not valid",
-    //                 block.header.time
-    //             );
-    //             //return;
-    //         }
-    //     }
-    // }
+        let hash_header =
+            "0000000000000019b4b2be187733b0dc9cd16eaf84b4f9eaf00f0eda3e50095c".to_string();
+
+        let mut is_valid_merkle_root = true;
+        for block in blocks_reverse {
+            let hash = block.header.hash().unwrap();
+            // guardar en un string el hash en hexadecimal con 2 digitos por byte
+            let hash_hexa = hash
+                .iter()
+                .rev()
+                .map(|byte| format!("{:02x}", byte))
+                .collect::<Vec<String>>()
+                .join("");
+            is_valid_merkle_root = block.is_valid_merkle();
+
+            let txs = block.txns.len();
+
+            if hash_hexa == hash_header {
+                println!(
+                    "Block mined as {:?} UNIXTIME, hash {:?}, #txs {:?} is not valid",
+                    block.header.time, hash_hexa, txs
+                );
+
+                // recorro las txns del bloque y muestro en pantalla el hash de cada una
+                for tx in &block.txns {
+                    let hash = tx.txid().unwrap();
+                    let hash_hexa = hash.to_hexa_le_string();
+                    println!("Tx hash: {:?}", hash_hexa);
+                }
+                return;
+            }
+            // if !is_valid_merkle_root {
+            //     let txs = block.txns.len();
+            //     println!(
+            //         "Block mined as {:?} UNIXTIME, hash {:?}, #txs {:?} is not valid",
+            //         block.header.time, hash_hexa, txs
+            //     );
+            //     //return;
+            // }
+        }
+    }
 }
