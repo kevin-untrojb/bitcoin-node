@@ -13,7 +13,7 @@ use crate::{
         public::{end_loading, show_message, start_loading},
         view::ViewObject,
     },
-    log::{create_logger_actor, log_info_message, LogMessages},
+    log::{create_logger_actor, log_error_message, log_info_message, LogMessages},
     protocol::{
         admin_connections::AdminConnections, connection::connect,
         initial_block_download::get_full_blockchain,
@@ -45,6 +45,7 @@ pub enum ApplicationManagerMessages {
     _NewBlock,
     _NewTx,
     BlockBroadcastingError,
+    InitialDownloadError,
     ApplicationError(String),
 }
 
@@ -146,6 +147,18 @@ impl ApplicationManager {
             ApplicationManagerMessages::_NewTx => {
                 //let _ = self.sender_frontend.send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
             }
+            ApplicationManagerMessages::InitialDownloadError => {
+                // reinicia la descarga inicial
+                log_error_message(
+                    self.logger.clone(),
+                    "Error al descargar la blockchain. Reintentando...".to_string(),
+                );
+                show_message(
+                    self.sender_frontend.clone(),
+                    "Error al descargar la blockchain. Reintentando...".to_string(),
+                );
+                self.thread_download_blockchain();
+            }
             ApplicationManagerMessages::BlockBroadcastingError => {
                 let _ = self
                     .sender_frontend
@@ -242,6 +255,7 @@ impl ApplicationManager {
         let logger = self.logger.clone();
         let sender_frontend = self.sender_frontend.clone();
         let sender_tx_manager = self.tx_manager.clone();
+        let sender_app_manager = self.sender_app_manager.clone();
         thread::spawn(move || {
             let admin_connections = match ApplicationManager::download_blockchain(
                 sender_frontend.clone(),
@@ -249,10 +263,7 @@ impl ApplicationManager {
             ) {
                 Ok(admin_connections) => admin_connections,
                 Err(_) => {
-                    start_loading(
-                        sender_frontend,
-                        "Error al descargar la blockchain".to_string(),
-                    );
+                    _ = sender_app_manager.send(ApplicationManagerMessages::InitialDownloadError);
                     return;
                 }
             };

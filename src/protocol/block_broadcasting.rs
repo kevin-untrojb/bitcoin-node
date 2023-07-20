@@ -20,7 +20,7 @@ use std::{
     thread,
 };
 
-use super::{admin_connections::AdminConnections, initial_block_download::get_full_blockchain};
+use super::admin_connections::AdminConnections;
 
 pub enum BlockBroadcastingMessages {
     ShutDown,
@@ -101,7 +101,7 @@ pub fn init_block_broadcasting(
                 }
 
                 let mut buffer = [0u8; 24];
-                if socket.read_message(&mut buffer).is_err() {
+                if socket.read_exact_message(&mut buffer).is_err() {
                     log_error_message(
                         thread_logger.clone(),
                         format!("Error al leer el header del mensaje en broadcasting en conexión {}", socket.id),
@@ -173,7 +173,7 @@ pub fn init_block_broadcasting(
                     }
 
                     let mut buffer = [0u8; 24];
-                    if socket.read_message(&mut buffer).is_err() {
+                    if socket.read_exact_message(&mut buffer).is_err() {
                         log_error_message(
                             thread_logger,
                             format!("Error al leer el header mensaje en broadcasting en conexión {}.", socket.id),
@@ -291,27 +291,23 @@ pub fn init_block_broadcasting(
                         };
 
                         if !pow_poi_validation(thread_logger.clone(), block.clone()) {
-                            log_info_message(
-                                thread_logger.clone(),
-                                "Descargo bloque desde IBD".to_string(),
-                            );
-                            _ = get_full_blockchain(thread_logger.clone(), thread_admin_connections.clone());
-                        } else {
-                            let cloned_result = shared_blocks.lock();
-                            if let Ok(cloned) = cloned_result {
-                                guardar_header_y_bloque(thread_logger.clone(), block.clone(), cloned, header[0]);
-                                if thread_sender_tx_manager.send(TransactionMessages::NewBlock(block)).is_err(){
-                                    return;
-                                };
-                            } else {
-                                log_error_message(
-                                    thread_logger,
-                                    "Error al lockear el vector de bloques".to_string(),
-                                );
-                                return;
-                            }
+                            // continue;
                         }
-                    }
+                        
+                        let cloned_result = shared_blocks.lock();
+                        if let Ok(cloned) = cloned_result {
+                            guardar_header_y_bloque(thread_logger.clone(), block.clone(), cloned, header[0]);
+                            if thread_sender_tx_manager.send(TransactionMessages::NewBlock(block)).is_err(){
+                                return;
+                            };
+                        } else {
+                            log_error_message(
+                                thread_logger,
+                                "Error al lockear el vector de bloques".to_string(),
+                            );
+                            return;
+                        }
+                }
                 }
             }
         }));
