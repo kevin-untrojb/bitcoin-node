@@ -1,11 +1,14 @@
 use std::cmp::Ordering;
 use std::fmt;
 use std::io::Write;
+use std::sync::mpsc::Sender;
 
 use super::file::{_leer_algunos_blocks, _leer_primer_block, leer_todos_blocks};
+use super::proof_of_work::pow_validation;
 use super::{blockheader::BlockHeader, transaction};
 use crate::common::utils_bytes;
 use crate::errores::NodoBitcoinError;
+use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::merkle_tree::merkle_root::MerkleRoot;
 use transaction::Transaction;
 
@@ -145,6 +148,15 @@ impl SerializedBlock {
         }
         exist
     }
+
+    pub fn read_last_block_from_file() -> Result<SerializedBlock, NodoBitcoinError> {
+        let blocks = SerializedBlock::read_blocks_from_file()?;
+        let last_block = match blocks.last() {
+            Some(block) => block,
+            None => return Err(NodoBitcoinError::NoSePuedeLeerLosBytes),
+        };
+        Ok(last_block.clone())
+    }
 }
 
 impl PartialOrd for SerializedBlock {
@@ -169,6 +181,28 @@ impl Ord for SerializedBlock {
             None => Ordering::Equal,
         }
     }
+}
+
+pub fn pow_poi_validation(thread_logger: Sender<LogMessages>, block: SerializedBlock) -> bool {
+    let pow = match pow_validation(&block.header) {
+        Ok(pow) => {
+            log_info_message(thread_logger.clone(), "POW nuevo bloque válida".to_string());
+            pow
+        }
+        Err(_) => {
+            log_error_message(thread_logger, "POW nuevo bloque inválida".to_string());
+            return false;
+        }
+    };
+
+    let poi = block.is_valid_merkle();
+    if poi {
+        log_info_message(thread_logger, "POI nuevo bloque válida".to_string());
+    } else {
+        log_error_message(thread_logger, "POI nuevo bloque inválida".to_string());
+    }
+
+    pow && poi
 }
 
 #[cfg(test)]

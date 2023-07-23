@@ -7,6 +7,7 @@ use std::{
 };
 
 use crate::{
+    blockchain::block::{pow_poi_validation, SerializedBlock},
     config,
     errores::{InterfaceError, InterfaceMessage, NodoBitcoinError},
     interface::{
@@ -47,6 +48,7 @@ pub enum ApplicationManagerMessages {
     BlockBroadcastingError,
     InitialDownloadError,
     ApplicationError(String),
+    POIInvalido,
 }
 
 impl ApplicationManager {
@@ -166,6 +168,46 @@ impl ApplicationManager {
             }
             ApplicationManagerMessages::ApplicationError(message) => {
                 show_message(self.sender_frontend.clone(), message);
+            }
+            ApplicationManagerMessages::POIInvalido => {
+                log_info_message(
+                    self.logger.clone(),
+                    "Descargando nuevo bloque luego del POI inválido...".to_string(),
+                );
+
+                let last_block = match ApplicationManager::download_blockchain(
+                    self.sender_frontend.clone(),
+                    self.logger.clone(),
+                ) {
+                    Ok(_) => match SerializedBlock::read_last_block_from_file() {
+                        Ok(last_block) => last_block,
+                        Err(_) => {
+                            show_message(
+                                self.sender_frontend.clone(),
+                                "Error al obtener el último bloque descargado".to_string(),
+                            );
+                            return;
+                        }
+                    },
+                    Err(_) => {
+                        show_message(
+                            self.sender_frontend.clone(),
+                            "Error al obtener el último bloque descargado".to_string(),
+                        );
+                        return;
+                    }
+                };
+
+                if !pow_poi_validation(self.logger.clone(), last_block.clone()) {
+                    _ = self
+                        .sender_app_manager
+                        .send(ApplicationManagerMessages::POIInvalido);
+                } else {
+                    _ = self
+                        .tx_manager
+                        .send(TransactionMessages::NewBlock(last_block));
+                    end_loading(self.sender_frontend.clone());
+                }
             }
         }
     }

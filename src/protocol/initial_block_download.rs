@@ -384,6 +384,10 @@ fn thread_data(
         loop {
             let thread_buffer_result = read_bytes_data(logger.clone(), &cloned_connection);
             if thread_buffer_result.is_err() {
+                log_error_message(
+                    logger.clone(),
+                    format!("Error al leer el mensaje {:?}", thread_id_connection),
+                );
                 (cloned_connection, thread_id_connection) = unwrap_or_return!(write_bytes_data(
                     logger.clone(),
                     &get_data_message,
@@ -392,6 +396,13 @@ fn thread_data(
                     &admin_connections_mutex_thread,
                     0
                 ));
+                log_info_message(
+                    logger.clone(),
+                    format!(
+                        "Escribiendo en la nueva conexión {:?}",
+                        thread_id_connection
+                    ),
+                );
                 continue;
             }
             let thread_buffer = thread_buffer_result.unwrap();
@@ -405,13 +416,20 @@ fn thread_data(
                         .read_exact_message(&mut response_get_data)
                         .is_err()
                     {
-                        log_info_message(logger, "Error al leer el mensaje".to_string());
-                        return;
+                        log_error_message(
+                            logger.clone(),
+                            "Error al leer el mensaje de get_data".to_string(),
+                        );
+                        continue;
                     }
                     valid_command = command == "block";
                     (command, response_get_data)
                 }
                 Err(_) => {
+                    log_error_message(
+                        logger.clone(),
+                        format!("Error al leer el check_header {:?}", thread_id_connection),
+                    );
                     (cloned_connection, thread_id_connection) =
                         unwrap_or_return!(write_data_message_new_connection(
                             logger.clone(),
@@ -420,6 +438,13 @@ fn thread_data(
                             &admin_connections_mutex_thread,
                             0
                         ));
+                    log_info_message(
+                        logger.clone(),
+                        format!(
+                            "Escribiendo en la nueva conexión {:?}",
+                            thread_id_connection
+                        ),
+                    );
                     continue;
                 }
             };
