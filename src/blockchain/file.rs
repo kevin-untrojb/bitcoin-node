@@ -20,7 +20,6 @@ pub fn leer_todos_blocks() -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
     Ok(todos)
 }
 
-
 // usos: initial_block_broadcasting, block_broadcasting
 pub fn escribir_archivo(datos: &[u8]) -> Result<(), NodoBitcoinError> {
     let path = get_headers_filename()?;
@@ -150,7 +149,6 @@ pub fn leer_header_desde_archivo(index: u64) -> Result<Vec<u8>, NodoBitcoinError
 // ************************ Sin Uso ************************  //
 ///////////////////////////////////////////////////////////////
 
-
 pub fn _leer_algunos_blocks(cantidad: u32) -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
     let mut algunos = vec![];
     let mut offset = 0;
@@ -200,4 +198,3 @@ pub fn _leer_headers(ix: u64) -> Result<Vec<u8>, NodoBitcoinError> {
     let path = get_headers_filename()?;
     leer_bytes(path, offset, length)
 }
-

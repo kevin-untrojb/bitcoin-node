@@ -5,8 +5,10 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use super::user::Account;
 use crate::app_manager::ApplicationManagerMessages;
 use crate::blockchain::block::SerializedBlock;
+use crate::blockchain::file_manager::{read_blocks_from_file, FileMessages};
 use crate::blockchain::transaction::{create_tx_to_send, Transaction};
 use crate::common::uint256::Uint256;
 use crate::errores::NodoBitcoinError;
@@ -16,14 +18,13 @@ use crate::protocol::block_broadcasting::{init_block_broadcasting, BlockBroadcas
 use crate::protocol::send_tx::send_tx;
 use crate::wallet::uxto_set::{TxReport, UTXOSet};
 
-use super::user::Account;
-
 #[derive(Clone)]
 pub struct TransactionManager {
     pub utxos: UTXOSet,
     tx_pendings: HashMap<Uint256, Transaction>,
     accounts: Vec<Account>,
     logger: Sender<LogMessages>,
+    file_manager: Sender<FileMessages>,
     sender_app_manager: Sender<ApplicationManagerMessages>,
     sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
     admin_connections: Option<AdminConnections>,
@@ -130,7 +131,7 @@ impl TransactionManager {
             TransactionMessages::AddAccount(accounts, logger) => {
                 self.accounts = accounts;
                 self.utxos.last_timestamp = 0;
-                let utxos_updated = match update_utxos_from_file(
+                let utxos_updated = match self.update_utxos_from_file(
                     logger.clone(),
                     self.utxos.clone(),
                     self.accounts.clone(),
@@ -152,7 +153,7 @@ impl TransactionManager {
                 logger,
                 sender_tx_manager,
             )) => {
-                let utxos_updated = match update_utxos_from_file(
+                let utxos_updated = match self.update_utxos_from_file(
                     logger.clone(),
                     self.utxos.clone(),
                     self.accounts.clone(),
@@ -168,11 +169,13 @@ impl TransactionManager {
                 self.admin_connections = Some(admin_connections.clone());
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 let sender_app_manager_clone = self.sender_app_manager.clone();
+                let sender_file_manager = self.file_manager.clone();
                 thread::spawn(move || {
                     match init_block_broadcasting(
                         logger.clone(),
                         admin_connections,
                         sender_tx_manager,
+                        sender_file_manager,
                     ) {
                         Ok(_) => todo!(),
                         Err(_) => {
@@ -350,22 +353,39 @@ impl TransactionManager {
         }
         Ok(accounts_index_is_in)
     }
-}
 
-fn update_utxos_from_file(
-    logger: Sender<LogMessages>,
-    utxo_set: UTXOSet,
-    accounts: Vec<Account>,
-) -> Result<UTXOSet, NodoBitcoinError> {
-    log_info_message(logger.clone(), "Actualizando UTXOS ...".to_string());
-    let uxos_updated = match initialize_utxos_from_file(utxo_set, accounts) {
-        Ok(uxtos) => uxtos,
-        Err(_) => {
-            log_error_message(logger, "Error al inicializar UTXOS".to_string());
-            return Err(NodoBitcoinError::ErrorAlActualizarUTXOS);
-        }
-    };
-    Ok(uxos_updated)
+    fn update_utxos_from_file(
+        &mut self,
+        logger: Sender<LogMessages>,
+        utxo_set: UTXOSet,
+        accounts: Vec<Account>,
+    ) -> Result<UTXOSet, NodoBitcoinError> {
+        log_info_message(logger.clone(), "Actualizando UTXOS ...".to_string());
+        let uxos_updated = match self.initialize_utxos_from_file(utxo_set, accounts) {
+            Ok(uxtos) => uxtos,
+            Err(_) => {
+                log_error_message(logger, "Error al inicializar UTXOS".to_string());
+                return Err(NodoBitcoinError::ErrorAlActualizarUTXOS);
+            }
+        };
+        Ok(uxos_updated)
+    }
+
+    fn initialize_utxos_from_file(
+        &mut self,
+        mut utxo_set: UTXOSet,
+        accounts: Vec<Account>,
+    ) -> Result<UTXOSet, NodoBitcoinError> {
+        let blocks = read_blocks_from_file(self.file_manager.clone())?;
+        // filtrar los bloxks por sólo aquellos que tiene transacciones
+        let blocks_with_tx = blocks
+            .into_iter()
+            .filter(|block| !block.txns.is_empty())
+            .collect::<Vec<SerializedBlock>>();
+
+        utxo_set.update_from_blocks(blocks_with_tx, accounts)?;
+        Ok(utxo_set)
+    }
 }
 
 fn send_new_tx(
@@ -406,6 +426,7 @@ pub fn create_transaction_manager(
     accounts: Vec<Account>,
     logger: Sender<LogMessages>,
     app_sender: Sender<ApplicationManagerMessages>,
+    file_manager: Sender<FileMessages>,
 ) -> Sender<TransactionMessages> {
     let (sender, receiver) = channel();
 
@@ -414,6 +435,7 @@ pub fn create_transaction_manager(
         tx_pendings: HashMap::new(),
         accounts,
         logger,
+        file_manager,
         sender_block_broadcasting: None,
         sender_app_manager: app_sender,
         admin_connections: None,
@@ -431,21 +453,6 @@ pub fn create_transaction_manager(
     });
 
     sender
-}
-
-fn initialize_utxos_from_file(
-    mut utxo_set: UTXOSet,
-    accounts: Vec<Account>,
-) -> Result<UTXOSet, NodoBitcoinError> {
-    let blocks = SerializedBlock::read_blocks_from_file()?;
-    // filtrar los bloxks por sólo aquellos que tiene transacciones
-    let blocks_with_tx = blocks
-        .into_iter()
-        .filter(|block| !block.txns.is_empty())
-        .collect::<Vec<SerializedBlock>>();
-
-    utxo_set.update_from_blocks(blocks_with_tx, accounts)?;
-    Ok(utxo_set)
 }
 
 pub fn _update_from_transactions(

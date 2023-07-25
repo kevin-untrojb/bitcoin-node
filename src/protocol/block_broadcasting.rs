@@ -1,3 +1,4 @@
+use crate::blockchain::file_manager::{read_blocks_from_file, FileMessages};
 use crate::{
     blockchain::{
         block::SerializedBlock,
@@ -33,8 +34,9 @@ pub fn init_block_broadcasting(
     logger: Sender<LogMessages>,
     mut admin_connections: AdminConnections,
     sender_tx_manager: Sender<TransactionMessages>,
+    file_manager: Sender<FileMessages>,
 ) -> Result<(), NodoBitcoinError> {
-    let blocks = Arc::new(Mutex::new(SerializedBlock::read_blocks_from_file()?));
+    let blocks = Arc::new(Mutex::new(read_blocks_from_file(file_manager.clone())?));
     let mut threads = vec![];
     let (sender, receiver) = channel();
     if sender_tx_manager

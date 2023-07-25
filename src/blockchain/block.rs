@@ -123,7 +123,7 @@ impl SerializedBlock {
         }
         Ok(serialized_blocks)
     }
-
+    // TODO: terminar de migrar esta función
     pub fn read_blocks_from_file() -> Result<Vec<SerializedBlock>, NodoBitcoinError> {
         let block_bytes = leer_todos_blocks()?;
         let mut serialized_blocks = vec![];
