@@ -31,7 +31,10 @@ impl Connection {
         let connection = self.tcp.lock();
         match connection {
             Ok(mut connection) => match connection.write(message) {
-                Ok(_) => Ok(()),
+                Ok(_) => {
+                    drop(connection);
+                    Ok(())
+                }
                 Err(error) => {
                     self.log_error_msg(format!{"No se pudo escribir el mensaje en la connection {}: {}.", self.id, error});
                     Err(NodoBitcoinError::NoSePuedeEscribirLosBytes)
@@ -78,7 +81,6 @@ impl Connection {
                     if error.kind() == ErrorKind::WouldBlock {
                         Ok(())
                     } else {
-                        println!("No se pudo leer exact message");
                         self.log_error_msg(format!{"no se pudo leer exact mensaje en la connection {}: {}.", self.id, error});
                         Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
                     }

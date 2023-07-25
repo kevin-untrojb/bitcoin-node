@@ -50,6 +50,7 @@ pub enum TransactionMessages {
         ),
     ),
     SendTx(Account, String, u64, u64, Sender<LogMessages>),
+    POIInvalido,
     NewBlock(SerializedBlock),
     NewTx(Transaction),
     SenderBlockBroadcasting(Sender<BlockBroadcastingMessages>),
@@ -246,6 +247,12 @@ impl TransactionManager {
                 _ = self
                     .sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
+            }
+            TransactionMessages::POIInvalido => {
+                // Actualizar la blockchain con el flujo de Initial Block Download
+                _ = self
+                    .sender_app_manager
+                    .send(ApplicationManagerMessages::POIInvalido);
             }
             TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
                 self.sender_block_broadcasting = Some(sender_block_broadcasting);

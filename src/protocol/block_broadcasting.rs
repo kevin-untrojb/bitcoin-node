@@ -1,10 +1,9 @@
 use crate::blockchain::file_manager::{read_blocks_from_file, FileMessages};
 use crate::{
     blockchain::{
-        block::SerializedBlock,
+        block::{SerializedBlock, pow_poi_validation},
         blockheader::BlockHeader,
         file::{escribir_archivo, escribir_archivo_bloque},
-        proof_of_work::pow_validation,
         transaction::Transaction,
     },
     errores::NodoBitcoinError,
@@ -150,6 +149,7 @@ pub fn init_block_broadcasting(
                             get_data
                         },
                         Err(_) => {
+                            log_error_message(thread_logger.clone(), format!("Error al crear el get data para el inv en conexión {}", socket.id));
                             continue
                         },
                     };
@@ -292,9 +292,10 @@ pub fn init_block_broadcasting(
                         };
 
                         if !pow_poi_validation(thread_logger.clone(), block.clone()) {
-                            //continue
+                            _ = thread_sender_tx_manager.send(TransactionMessages::POIInvalido);
+                            continue;
                         }
-
+                        
                         let cloned_result = shared_blocks.lock();
                         if let Ok(cloned) = cloned_result {
                             guardar_header_y_bloque(thread_logger.clone(), block.clone(), cloned, header[0]);
@@ -308,7 +309,7 @@ pub fn init_block_broadcasting(
                             );
                             return;
                         }
-                    }
+                }
                 }
             }
         }));
@@ -341,28 +342,6 @@ fn escribir_header_y_bloque(
     log_info_message(logger, "Bloque nuevo guardado".to_string());
 
     Ok(())
-}
-
-fn pow_poi_validation(thread_logger: Sender<LogMessages>, block: SerializedBlock) -> bool {
-    let pow = match pow_validation(&block.header) {
-        Ok(pow) => {
-            log_info_message(thread_logger.clone(), "POW nuevo bloque válida".to_string());
-            pow
-        }
-        Err(_) => {
-            log_error_message(thread_logger, "POW nuevo bloque inválida".to_string());
-            return false;
-        }
-    };
-
-    let poi = block.is_valid_merkle();
-    if poi {
-        log_info_message(thread_logger, "POI nuevo bloque válida".to_string());
-    } else {
-        log_error_message(thread_logger, "POI nuevo bloque inválida".to_string());
-    }
-
-    pow && poi
 }
 
 fn guardar_header_y_bloque(

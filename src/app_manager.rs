@@ -8,13 +8,14 @@ use std::{
 
 use crate::{
     blockchain::file_manager::{FileManager, FileMessages},
+    blockchain::block::{pow_poi_validation, SerializedBlock},
     config,
     errores::{InterfaceError, InterfaceMessage, NodoBitcoinError},
     interface::{
         public::{end_loading, show_message, start_loading},
         view::ViewObject,
     },
-    log::{create_logger_actor, log_info_message, LogMessages},
+    log::{create_logger_actor, log_error_message, log_info_message, LogMessages},
     protocol::{
         admin_connections::AdminConnections, connection::connect,
         initial_block_download::get_full_blockchain,
@@ -47,7 +48,9 @@ pub enum ApplicationManagerMessages {
     _NewBlock,
     _NewTx,
     BlockBroadcastingError,
+    InitialDownloadError,
     ApplicationError(String),
+    POIInvalido,
 }
 
 impl ApplicationManager {
@@ -152,6 +155,18 @@ impl ApplicationManager {
             ApplicationManagerMessages::_NewTx => {
                 //let _ = self.sender_frontend.send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
             }
+            ApplicationManagerMessages::InitialDownloadError => {
+                // reinicia la descarga inicial
+                log_error_message(
+                    self.logger.clone(),
+                    "Error al descargar la blockchain. Reintentando...".to_string(),
+                );
+                show_message(
+                    self.sender_frontend.clone(),
+                    "Error al descargar la blockchain. Reintentando...".to_string(),
+                );
+                self.thread_download_blockchain();
+            }
             ApplicationManagerMessages::BlockBroadcastingError => {
                 let _ = self
                     .sender_frontend
@@ -159,6 +174,46 @@ impl ApplicationManager {
             }
             ApplicationManagerMessages::ApplicationError(message) => {
                 show_message(self.sender_frontend.clone(), message);
+            }
+            ApplicationManagerMessages::POIInvalido => {
+                log_info_message(
+                    self.logger.clone(),
+                    "Descargando nuevo bloque luego del POI inválido...".to_string(),
+                );
+
+                let last_block = match ApplicationManager::download_blockchain(
+                    self.sender_frontend.clone(),
+                    self.logger.clone(),
+                ) {
+                    Ok(_) => match SerializedBlock::read_last_block_from_file() {
+                        Ok(last_block) => last_block,
+                        Err(_) => {
+                            show_message(
+                                self.sender_frontend.clone(),
+                                "Error al obtener el último bloque descargado".to_string(),
+                            );
+                            return;
+                        }
+                    },
+                    Err(_) => {
+                        show_message(
+                            self.sender_frontend.clone(),
+                            "Error al obtener el último bloque descargado".to_string(),
+                        );
+                        return;
+                    }
+                };
+
+                if !pow_poi_validation(self.logger.clone(), last_block.clone()) {
+                    _ = self
+                        .sender_app_manager
+                        .send(ApplicationManagerMessages::POIInvalido);
+                } else {
+                    _ = self
+                        .tx_manager
+                        .send(TransactionMessages::NewBlock(last_block));
+                    end_loading(self.sender_frontend.clone());
+                }
             }
         }
     }
@@ -248,6 +303,7 @@ impl ApplicationManager {
         let logger = self.logger.clone();
         let sender_frontend = self.sender_frontend.clone();
         let sender_tx_manager = self.tx_manager.clone();
+        let sender_app_manager = self.sender_app_manager.clone();
         thread::spawn(move || {
             let admin_connections = match ApplicationManager::download_blockchain(
                 sender_frontend.clone(),
@@ -255,10 +311,7 @@ impl ApplicationManager {
             ) {
                 Ok(admin_connections) => admin_connections,
                 Err(_) => {
-                    start_loading(
-                        sender_frontend,
-                        "Error al descargar la blockchain".to_string(),
-                    );
+                    _ = sender_app_manager.send(ApplicationManagerMessages::InitialDownloadError);
                     return;
                 }
             };
