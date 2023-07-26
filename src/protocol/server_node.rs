@@ -1,6 +1,8 @@
 use std::{
     io::{stdin, BufRead, BufReader, Read, Write},
     net::{TcpListener, TcpStream},
+    thread::sleep,
+    time::Duration,
 };
 
 use crate::{config, errores::NodoBitcoinError};
@@ -16,18 +18,6 @@ pub fn init_listener() -> Result<(), NodoBitcoinError> {
     Ok(())
 }
 
-pub fn init_client(mensaje: String) -> Result<(), NodoBitcoinError> {
-    let port = match config::get_valor("PORT".to_owned()) {
-        Ok(res) => res,
-        Err(_) => "18333".to_owned(),
-    };
-
-    let address = "127.0.0.1:".to_owned() + &port;
-    let mut mensaje_a_enviar = mensaje.as_bytes();
-    client_run(&address, &mut mensaje_a_enviar).unwrap();
-    Ok(())
-}
-
 fn server_run(address: &str) -> std::io::Result<()> {
     let listener = TcpListener::bind(address)?;
     // accept devuelve una tupla (TcpStream, std::net::SocketAddr)
@@ -36,17 +26,19 @@ fn server_run(address: &str) -> std::io::Result<()> {
     println!("La socket addr del client: {:?}", socket_addr);
     // let mut client_stream : TcpStream = connection.0;
     // TcpStream implementa el trait Read, así que podemos trabajar como si fuera un archivo
-    handle_client(&mut client_stream)?;
+    handle_message(&mut client_stream)?;
     Ok(())
 }
 
 //
-fn handle_client(stream: &mut dyn Read) -> std::io::Result<()> {
-    let reader = BufReader::new(stream);
-    let mut lines = reader.lines();
-    // iteramos las lineas que recibimos de nuestro cliente
-    while let Some(Ok(line)) = lines.next() {
-        println!("Recibido: {:?}", line);
+fn handle_message(stream: &mut TcpStream) -> std::io::Result<()> {
+    loop {
+        let mut buffer_read = [0 as u8; 100];
+        let leidos = stream.read(&mut buffer_read).unwrap();
+        if leidos == 0 {
+            break;
+        }
+        println!("Recibido: {:?}", buffer_read);
     }
     Ok(())
 }
@@ -69,8 +61,25 @@ fn client_run(address: &str, stream: &mut dyn Read) -> std::io::Result<()> {
             socket.write(line.as_bytes())?;
             // El reader le quita el salto de linea, así que se lo mando aparte
             socket.write("\n".as_bytes())?;
+
+            sleep(Duration::from_millis(5000));
+            socket.write(line.as_bytes())?;
+            // El reader le quita el salto de linea, así que se lo mando aparte
+            socket.write("\n".as_bytes())?;
         }
     }
+    Ok(())
+}
+
+pub fn init_client(mensaje: String) -> Result<(), NodoBitcoinError> {
+    let port = match config::get_valor("PORT".to_owned()) {
+        Ok(res) => res,
+        Err(_) => "18333".to_owned(),
+    };
+
+    let address = "127.0.0.1:".to_owned() + &port;
+    let mut mensaje_a_enviar = mensaje.as_bytes();
+    client_run(&address, &mut mensaje_a_enviar).unwrap();
     Ok(())
 }
 
