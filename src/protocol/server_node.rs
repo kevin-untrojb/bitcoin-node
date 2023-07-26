@@ -16,14 +16,15 @@ pub fn init_listener() -> Result<(), NodoBitcoinError> {
     Ok(())
 }
 
-pub fn init_client() -> Result<(), NodoBitcoinError> {
+pub fn init_client(mensaje: String) -> Result<(), NodoBitcoinError> {
     let port = match config::get_valor("PORT".to_owned()) {
         Ok(res) => res,
         Err(_) => "18333".to_owned(),
     };
 
     let address = "127.0.0.1:".to_owned() + &port;
-    client_run(&address, &mut stdin()).unwrap();
+    let mut mensaje_a_enviar = mensaje.as_bytes();
+    client_run(&address, &mut mensaje_a_enviar).unwrap();
     Ok(())
 }
 
@@ -84,6 +85,6 @@ mod tests {
 
     #[test]
     fn test_run_client() {
-        init_client();
+        init_client("Hola, espero que esto llegue".to_string());
     }
 }
