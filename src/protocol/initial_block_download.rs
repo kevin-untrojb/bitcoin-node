@@ -5,6 +5,8 @@ use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::file::{
     escribir_archivo, escribir_archivo_bloque, existe_archivo_headers, leer_ultimo_header,
 };
+use crate::blockchain::file::get_headers_filename;
+use crate::blockchain::file::get_blocks_filename;
 use crate::common::utils_timestamp::{obtener_timestamp_dia, timestamp_to_datetime};
 use crate::config;
 use crate::errores::NodoBitcoinError;
@@ -633,10 +635,12 @@ fn guardar_headers_y_bloques(
     mut bloques_a_guardar: Vec<SerializedBlock>,
     blockheaders: Vec<BlockHeader>,
 ) -> Result<(), NodoBitcoinError> {
+    let headers_path = get_headers_filename()?;
+    let block_path = get_blocks_filename()?;
     log_info_message(logger.clone(), "Guardando headers...".to_string());
     for bh in blockheaders {
         let bytes = bh.serialize()?;
-        escribir_archivo(&bytes)?;
+        escribir_archivo(headers_path.clone(),&bytes)?;
     }
     log_info_message(logger.clone(), "Headers guardados".to_string());
 
@@ -646,7 +650,7 @@ fn guardar_headers_y_bloques(
         bloques_a_guardar.sort();
         for bloque in bloques_a_guardar {
             // guardar bloque
-            escribir_archivo_bloque(&bloque.serialize()?)?;
+            escribir_archivo_bloque(block_path.clone(),&bloque.serialize()?)?;
         }
         log_info_message(logger, "Bloques guardados".to_string());
     }

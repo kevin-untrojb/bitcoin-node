@@ -1,6 +1,6 @@
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::file::{
-    escribir_archivo, escribir_archivo_bloque, leer_todos_blocks,
+    escribir_archivo, escribir_archivo_bloque, leer_todos_blocks,get_headers_filename,get_blocks_filename
 };
 use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::{config, errores::NodoBitcoinError};
@@ -29,7 +29,7 @@ impl FileManager {
         let headers_file_name: String;
         let block_file_name: String;
 
-        match config::get_valor("NOMBRE_ARCHIVO_HEADERS".to_string()) {
+        match get_headers_filename()  {
             Ok(real_headers_file_name) => {
                 headers_file_name = real_headers_file_name;
             }
@@ -38,7 +38,7 @@ impl FileManager {
             }
         }
 
-        match config::get_valor("NOMBRE_ARCHIVO_BLOQUES".to_string()) {
+        match get_blocks_filename()  {
             Ok(real_block_file_name) => {
                 block_file_name = real_block_file_name;
             }
@@ -73,12 +73,12 @@ impl FileManager {
         match message {
             FileMessages::WriteHeadersAndBlockFile((block, header,result)) =>{
                 log_info_message(self.logger.clone(), "Guardando headers y bloques...".to_string());
-                if let Err(error) = escribir_archivo_bloque(&block){
+                if let Err(error) = escribir_archivo_bloque(self.block_file_name.clone(),&block){
                     result.send(Err(error));
                     return
                 }
                 log_info_message(self.logger.clone(), "Bloque nuevo guardado".to_string());
-                if let Err(error) = escribir_archivo(&header){
+                if let Err(error) = escribir_archivo(self.headers_file_name.clone(),&header){
                     result.send(Err(error));
                     return
                 }
@@ -89,10 +89,10 @@ impl FileManager {
                 result.send(leer_todos_blocks());
             }
             FileMessages::WriteHeadersFile((data, result)) => {
-                result.send(escribir_archivo(&data));
+                result.send(escribir_archivo(self.headers_file_name.clone(),&data));
             }
             FileMessages::WriteBlockFile((data, result)) => {
-                result.send(escribir_archivo_bloque(&data));
+                result.send(escribir_archivo_bloque(self.block_file_name.clone(),&data));
             }
             FileMessages::ShutDown() => {
                 return;

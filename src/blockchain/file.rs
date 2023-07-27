@@ -7,6 +7,17 @@ use std::{
 
 use crate::{config, errores::NodoBitcoinError};
 
+
+
+// usos: initial_block_broadcasting, file_manager
+pub fn get_headers_filename() -> Result<String, NodoBitcoinError> {
+    config::get_valor("NOMBRE_ARCHIVO_HEADERS".to_string())
+}
+
+pub fn get_blocks_filename() -> Result<String, NodoBitcoinError> {
+    config::get_valor("NOMBRE_ARCHIVO_BLOQUES".to_string())
+}
+
 // block.rs lo utiliza
 pub fn leer_todos_blocks() -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
     let mut todos = vec![];
@@ -21,8 +32,7 @@ pub fn leer_todos_blocks() -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
 }
 
 // usos: initial_block_broadcasting, file_manager
-pub fn escribir_archivo(datos: &[u8]) -> Result<(), NodoBitcoinError> {
-    let path = get_headers_filename()?;
+pub fn escribir_archivo(path: String,datos: &[u8]) -> Result<(), NodoBitcoinError> {
     let mut archivo = match OpenOptions::new().create(true).append(true).open(path) {
         Ok(archivo) => archivo,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
@@ -36,8 +46,7 @@ pub fn escribir_archivo(datos: &[u8]) -> Result<(), NodoBitcoinError> {
 }
 
 // usos: initial_block_broadcasting, file_manager
-pub fn escribir_archivo_bloque(datos: &[u8]) -> Result<(), NodoBitcoinError> {
-    let path = get_blocks_filename()?;
+pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<(), NodoBitcoinError> {
     let mut archivo = match OpenOptions::new().create(true).append(true).open(path) {
         Ok(archivo) => archivo,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
@@ -97,14 +106,6 @@ fn leer_bytes(path: String, offset: u64, length: u64) -> Result<Vec<u8>, NodoBit
 ///////////////////////////////////////////////////////////////////
 // ************************  internas ************************  //
 /////////////////////////////////////////////////////////////////
-
-fn get_headers_filename() -> Result<String, NodoBitcoinError> {
-    config::get_valor("NOMBRE_ARCHIVO_HEADERS".to_string())
-}
-
-fn get_blocks_filename() -> Result<String, NodoBitcoinError> {
-    config::get_valor("NOMBRE_ARCHIVO_BLOQUES".to_string())
-}
 
 fn leer_bloque(offset: u64) -> Result<(Vec<u8>, u64), NodoBitcoinError> {
     let path = get_blocks_filename()?;
