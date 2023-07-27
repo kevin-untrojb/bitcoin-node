@@ -113,4 +113,15 @@ impl VersionMessage {
 
         Ok(msg)
     }
+
+    // pub fn deserealize(bytes: &[u8]) -> VersionMessage {
+    //     let offset = 0;
+    //     let version = u32::from_le_bytes(
+    //         bytes[offset..offset + 4]
+    //             .try_into()
+    //             .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+    //     );
+    //     offset += 4;
+
+    // }
 }

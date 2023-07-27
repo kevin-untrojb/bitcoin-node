@@ -6,10 +6,12 @@ use std::{
     time::Duration,
 };
 
+use chrono::Utc;
+
 use crate::{
     config,
     errores::NodoBitcoinError,
-    log::{log_error_message, log_info_message, LogMessages},
+    log::{log_error_message, log_info_message, LogMessages}, messages::{messages_header::{check_header, make_header}, version::VersionMessage},
 };
 
 pub fn init_server(logger: Sender<LogMessages>) -> Result<(), NodoBitcoinError> {
@@ -62,8 +64,59 @@ fn server_run(address: &str, logger: Sender<LogMessages>) -> Result<(), NodoBitc
     Ok(())
 }
 
-//
-fn handle_message(stream: &mut TcpStream) -> std::io::Result<()> {
+fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
+    let mut header = [0u8; 24];
+    if stream.read_exact(&mut header).is_err() {
+        return Err(NodoBitcoinError::ErrorEnHandshake);
+    }
+
+    let (command, payload_len) = check_header(&header)?;
+
+    if command != "version" {
+        return Err(NodoBitcoinError::ErrorEnHandshake);
+    }
+
+    let mut payload = vec![0u8; payload_len];
+    if stream.read_exact(&mut payload).is_err() {
+        return Err(NodoBitcoinError::ErrorEnHandshake);
+    }
+
+    // chequear que la version sea como la nuestra para mandar el version nuestro, sino abortar 
+    // despues hago el deserealize del version para esto
+
+    let timestamp = Utc::now().timestamp() as u64;
+    let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() { // sacamos del config la version??
+        Ok(res) => res,
+        Err(_) => return Err(NodoBitcoinError::ErrorEnHandshake),
+    };
+
+    let version_message = VersionMessage::new(version, timestamp, stream.peer_addr().unwrap()); //LIMPIAR EL UNWRAP
+    let mensaje = version_message.serialize()?;
+    if stream.write_all(&mensaje).is_err() {
+        return Err(NodoBitcoinError::ErrorEnHandshake);
+    }
+
+    let mut verack_resp = vec![0u8; 24];
+    if stream.read_exact(&mut verack_resp).is_err() {
+        return Err(NodoBitcoinError::NoSePuedeLeerLosBytesVerackMessage);
+    }
+
+    let (command, _payload_len) = check_header(&verack_resp)?;
+
+    if command != "verack" {
+        return Err(NodoBitcoinError::ErrorEnHandshake);
+    }
+
+    let verack_msg = make_header("verack".to_string(), &Vec::new())?;
+    if stream.write_all(&verack_msg).is_err() {
+        return Err(NodoBitcoinError::ErrorEnHandshake);
+    }
+
+    Ok(())
+}
+
+
+fn handle_message(stream: &mut TcpStream) {
     // handshake al revés
     // read version
     // write version
@@ -88,16 +141,23 @@ fn handle_message(stream: &mut TcpStream) -> std::io::Result<()> {
     // - pong
     // - headers
     // - block
-
-    loop {
-        let mut buffer_read = [0 as u8; 100];
-        let leidos = stream.read(&mut buffer_read).unwrap();
-        if leidos == 0 {
-            break;
-        }
-        println!("Recibido: {:?}", buffer_read);
-    }
-    Ok(())
+    
+    match shakehand(stream) {
+        Ok(()) => {
+            // salio bien el handshake, ponerse a escuchar
+        },
+        Err(_) => return
+    };
+    
+    // prueba inicial
+    // loop {
+    //     let mut buffer_read = [0 as u8; 100];
+    //     let leidos = stream.read(&mut buffer_read).unwrap();
+    //     if leidos == 0 {
+    //         break;
+    //     }
+    //     println!("Recibido: {:?}", buffer_read);
+    // }
 }
 
 /// Client run recibe una dirección y cualquier cosa "legible"
