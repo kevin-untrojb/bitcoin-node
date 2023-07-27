@@ -1,6 +1,6 @@
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::file::{
-    escribir_archivo, escribir_archivo_bloque, leer_todos_blocks, leer_ultimo_header,
+    escribir_archivo, escribir_archivo_bloque, leer_todos_blocks,
 };
 use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::{config, errores::NodoBitcoinError};
@@ -8,7 +8,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
-
+use crate::blockchain::blockheader::BlockHeader;
 #[derive(Clone)]
 pub struct FileManager {
     headers_file_name: String,
@@ -18,9 +18,9 @@ pub struct FileManager {
 
 pub enum FileMessages {
     ReadAllBlocks(Sender<Result<Vec<Vec<u8>>, NodoBitcoinError>>),
+    WriteHeadersAndBlockFile((Vec<u8>,Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
     WriteHeadersFile((Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
     WriteBlockFile((Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
-    ReadLastHeader(Sender<Result<Vec<u8>, NodoBitcoinError>>),
     ShutDown(),
 }
 
@@ -71,6 +71,20 @@ impl FileManager {
 
     fn handle_message(&mut self, message: FileMessages) {
         match message {
+            FileMessages::WriteHeadersAndBlockFile((block, header,result)) =>{
+                log_info_message(self.logger.clone(), "Guardando headers y bloques...".to_string());
+                if let Err(error) = escribir_archivo_bloque(&block){
+                    result.send(Err(error));
+                    return
+                }
+                log_info_message(self.logger.clone(), "Bloque nuevo guardado".to_string());
+                if let Err(error) = escribir_archivo(&header){
+                    result.send(Err(error));
+                    return
+                }
+                log_info_message(self.logger.clone(), "Header nuevo guardado".to_string());
+                result.send(Ok(()));
+            }
             FileMessages::ReadAllBlocks(result) => {
                 result.send(leer_todos_blocks());
             }
@@ -79,9 +93,6 @@ impl FileManager {
             }
             FileMessages::WriteBlockFile((data, result)) => {
                 result.send(escribir_archivo_bloque(&data));
-            }
-            FileMessages::ReadLastHeader(result) => {
-                result.send(leer_ultimo_header());
             }
             FileMessages::ShutDown() => {
                 return;
@@ -113,6 +124,30 @@ pub fn read_blocks_from_file(
         }
     }
 }
+
+pub fn write_headers_and_block_file(
+    file_manager: Sender<FileMessages>,
+    block: SerializedBlock,
+    block_header: BlockHeader,
+) -> Result<(), NodoBitcoinError> {
+    let (result_sender, result_receiver) = channel();
+    let header_bytes = block_header.serialize()?;
+    let block_byes = block.serialize()?;
+
+    _ = file_manager.send(FileMessages::WriteHeadersAndBlockFile((block_byes,header_bytes,result_sender)));
+
+    match result_receiver.recv() {
+        Ok(_) => {
+            Ok(())
+        }
+        Err(_) => {
+            // todo log error
+            // handle error
+            Err(NodoBitcoinError::InvalidAccount)
+        }
+    }
+}
+
 
 pub fn shutdown(file_manager: Sender<FileMessages>) {
     file_manager.send(FileMessages::ShutDown());

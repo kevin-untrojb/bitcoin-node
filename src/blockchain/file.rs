@@ -20,7 +20,7 @@ pub fn leer_todos_blocks() -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
     Ok(todos)
 }
 
-// usos: initial_block_broadcasting, block_broadcasting
+// usos: initial_block_broadcasting, file_manager
 pub fn escribir_archivo(datos: &[u8]) -> Result<(), NodoBitcoinError> {
     let path = get_headers_filename()?;
     let mut archivo = match OpenOptions::new().create(true).append(true).open(path) {
@@ -35,7 +35,7 @@ pub fn escribir_archivo(datos: &[u8]) -> Result<(), NodoBitcoinError> {
     Ok(())
 }
 
-// usos: initial_block_broadcasting, block_broadcasting
+// usos: initial_block_broadcasting, file_manager
 pub fn escribir_archivo_bloque(datos: &[u8]) -> Result<(), NodoBitcoinError> {
     let path = get_blocks_filename()?;
     let mut archivo = match OpenOptions::new().create(true).append(true).open(path) {
@@ -57,13 +57,15 @@ pub fn escribir_archivo_bloque(datos: &[u8]) -> Result<(), NodoBitcoinError> {
     Ok(())
 }
 
-// usos: initial_block_broadcasting,
+
+////// **** no son concurrentes //////
+
+// usos: initial_block_broadcasting
 pub fn leer_ultimo_header() -> Result<Vec<u8>, NodoBitcoinError> {
     let cantidad_headers = _header_count()?;
     leer_header_desde_archivo(cantidad_headers - 1)
 }
 
-////// **** no son concurrentes //////
 
 // usos: initial_block_broadcasting
 pub fn existe_archivo_headers() -> bool {
