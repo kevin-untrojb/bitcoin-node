@@ -1,5 +1,5 @@
 use std::{
-    io::{BufRead, BufReader, Read, Write},
+    io::{BufRead, BufReader, ErrorKind, Read, Write},
     net::{TcpListener, TcpStream},
     sync::mpsc::Sender,
     thread::{self, sleep},
@@ -11,7 +11,11 @@ use chrono::Utc;
 use crate::{
     config,
     errores::NodoBitcoinError,
-    log::{log_error_message, log_info_message, LogMessages}, messages::{messages_header::{check_header, make_header}, version::VersionMessage},
+    log::{log_error_message, log_info_message, LogMessages},
+    messages::{
+        messages_header::{check_header, make_header},
+        version::VersionMessage,
+    },
 };
 
 pub fn init_server(logger: Sender<LogMessages>) -> Result<(), NodoBitcoinError> {
@@ -51,8 +55,9 @@ fn server_run(address: &str, logger: Sender<LogMessages>) -> Result<(), NodoBitc
                     logger.clone(),
                     format!("Conexión establecida: {:?}", socket_addr),
                 );
+                let logger_cloned = logger.clone();
                 thread::spawn(move || {
-                    handle_message(&mut stream);
+                    handle_message(&mut stream, logger_cloned);
                 });
             }
             Err(_) => {
@@ -81,11 +86,12 @@ fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
         return Err(NodoBitcoinError::ErrorEnHandshake);
     }
 
-    // chequear que la version sea como la nuestra para mandar el version nuestro, sino abortar 
+    // chequear que la version sea como la nuestra para mandar el version nuestro, sino abortar
     // despues hago el deserealize del version para esto
 
     let timestamp = Utc::now().timestamp() as u64;
-    let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() { // sacamos del config la version??
+    let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
+        // sacamos del config la version??
         Ok(res) => res,
         Err(_) => return Err(NodoBitcoinError::ErrorEnHandshake),
     };
@@ -115,8 +121,7 @@ fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
     Ok(())
 }
 
-
-fn handle_message(stream: &mut TcpStream) {
+fn handle_message(stream: &mut TcpStream, logger: Sender<LogMessages>) {
     // handshake al revés
     // read version
     // write version
@@ -141,14 +146,15 @@ fn handle_message(stream: &mut TcpStream) {
     // - pong
     // - headers
     // - block
-    
+
     match shakehand(stream) {
         Ok(()) => {
             // salio bien el handshake, ponerse a escuchar
-        },
-        Err(_) => return
+            thread_connection(stream, logger.clone());
+        }
+        Err(_) => return,
     };
-    
+
     // prueba inicial
     // loop {
     //     let mut buffer_read = [0 as u8; 100];
@@ -158,6 +164,56 @@ fn handle_message(stream: &mut TcpStream) {
     //     }
     //     println!("Recibido: {:?}", buffer_read);
     // }
+}
+
+fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
+    loop {
+        let mut buffer = [0 as u8; 100];
+        let len_bytes = match stream.read(&mut buffer) {
+            Ok(res) => res,
+            Err(error) => {
+                if error.kind() == ErrorKind::WouldBlock {
+                    // Error de Timeout, TODO: enviamos un ping
+                    continue;
+                } else {
+                    log_error_message(
+                        logger.clone(),
+                        "Error al leer una solicitud del cliente".to_string(),
+                    );
+                    return;
+                }
+            }
+        };
+        if len_bytes == 0 {
+            log_error_message(
+                logger.clone(),
+                "Se cierra la conexión al cliente porque se leyó 0 bytes".to_string(),
+            );
+            return;
+        }
+        let buffer = &buffer[..len_bytes];
+        // verifico los tipos de mensajes aceptados
+        let (command, _) = match check_header(&buffer) {
+            Ok((command, payload_len)) => (command, payload_len),
+            Err(_) => {
+                log_error_message(
+                    logger.clone(),
+                    "Error al parsear el header del cliente".to_string(),
+                );
+                continue;
+            }
+        };
+        log_info_message(logger.clone(), format!("Command recibido: {:?}", command));
+        if command == "ping" {
+            log_info_message(logger.clone(), "Ping recibido".to_string());
+        }
+        if command == "getheaders" {
+            log_info_message(logger.clone(), "getheaders recibido".to_string());
+        }
+        if command == "getdata" {
+            log_info_message(logger.clone(), "getdata recibido".to_string());
+        }
+    }
 }
 
 /// Client run recibe una dirección y cualquier cosa "legible"
