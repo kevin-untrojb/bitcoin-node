@@ -1,6 +1,8 @@
 use crate::blockchain::block::SerializedBlock;
+use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::file::{
-    escribir_archivo, escribir_archivo_bloque, leer_todos_blocks,get_headers_filename,get_blocks_filename
+    escribir_archivo, escribir_archivo_bloque, get_blocks_filename, get_headers_filename,
+    leer_todos_blocks,
 };
 use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::{config, errores::NodoBitcoinError};
@@ -8,7 +10,6 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
-use crate::blockchain::blockheader::BlockHeader;
 #[derive(Clone)]
 pub struct FileManager {
     headers_file_name: String,
@@ -18,7 +19,7 @@ pub struct FileManager {
 
 pub enum FileMessages {
     ReadAllBlocks(Sender<Result<Vec<Vec<u8>>, NodoBitcoinError>>),
-    WriteHeadersAndBlockFile((Vec<u8>,Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
+    WriteHeadersAndBlockFile((Vec<u8>, Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
     WriteHeadersFile((Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
     WriteBlockFile((Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
     ShutDown(),
@@ -29,7 +30,7 @@ impl FileManager {
         let headers_file_name: String;
         let block_file_name: String;
 
-        match get_headers_filename()  {
+        match get_headers_filename() {
             Ok(real_headers_file_name) => {
                 headers_file_name = real_headers_file_name;
             }
@@ -38,7 +39,7 @@ impl FileManager {
             }
         }
 
-        match get_blocks_filename()  {
+        match get_blocks_filename() {
             Ok(real_block_file_name) => {
                 block_file_name = real_block_file_name;
             }
@@ -71,16 +72,19 @@ impl FileManager {
 
     fn handle_message(&mut self, message: FileMessages) {
         match message {
-            FileMessages::WriteHeadersAndBlockFile((block, header,result)) =>{
-                log_info_message(self.logger.clone(), "Guardando headers y bloques...".to_string());
-                if let Err(error) = escribir_archivo_bloque(self.block_file_name.clone(),&block){
+            FileMessages::WriteHeadersAndBlockFile((block, header, result)) => {
+                log_info_message(
+                    self.logger.clone(),
+                    "Guardando headers y bloques...".to_string(),
+                );
+                if let Err(error) = escribir_archivo_bloque(self.block_file_name.clone(), &block) {
                     result.send(Err(error));
-                    return
+                    return;
                 }
                 log_info_message(self.logger.clone(), "Bloque nuevo guardado".to_string());
-                if let Err(error) = escribir_archivo(self.headers_file_name.clone(),&header){
+                if let Err(error) = escribir_archivo(self.headers_file_name.clone(), &header) {
                     result.send(Err(error));
-                    return
+                    return;
                 }
                 log_info_message(self.logger.clone(), "Header nuevo guardado".to_string());
                 result.send(Ok(()));
@@ -89,10 +93,10 @@ impl FileManager {
                 result.send(leer_todos_blocks());
             }
             FileMessages::WriteHeadersFile((data, result)) => {
-                result.send(escribir_archivo(self.headers_file_name.clone(),&data));
+                result.send(escribir_archivo(self.headers_file_name.clone(), &data));
             }
             FileMessages::WriteBlockFile((data, result)) => {
-                result.send(escribir_archivo_bloque(self.block_file_name.clone(),&data));
+                result.send(escribir_archivo_bloque(self.block_file_name.clone(), &data));
             }
             FileMessages::ShutDown() => {
                 return;
@@ -134,12 +138,14 @@ pub fn write_headers_and_block_file(
     let header_bytes = block_header.serialize()?;
     let block_byes = block.serialize()?;
 
-    _ = file_manager.send(FileMessages::WriteHeadersAndBlockFile((block_byes,header_bytes,result_sender)));
+    _ = file_manager.send(FileMessages::WriteHeadersAndBlockFile((
+        block_byes,
+        header_bytes,
+        result_sender,
+    )));
 
     match result_receiver.recv() {
-        Ok(_) => {
-            Ok(())
-        }
+        Ok(_) => Ok(()),
         Err(_) => {
             // todo log error
             // handle error
@@ -147,7 +153,6 @@ pub fn write_headers_and_block_file(
         }
     }
 }
-
 
 pub fn shutdown(file_manager: Sender<FileMessages>) {
     file_manager.send(FileMessages::ShutDown());

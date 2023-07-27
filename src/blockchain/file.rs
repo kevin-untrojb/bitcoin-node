@@ -7,8 +7,6 @@ use std::{
 
 use crate::{config, errores::NodoBitcoinError};
 
-
-
 // usos: initial_block_broadcasting, file_manager
 pub fn get_headers_filename() -> Result<String, NodoBitcoinError> {
     config::get_valor("NOMBRE_ARCHIVO_HEADERS".to_string())
@@ -32,7 +30,7 @@ pub fn leer_todos_blocks() -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
 }
 
 // usos: initial_block_broadcasting, file_manager
-pub fn escribir_archivo(path: String,datos: &[u8]) -> Result<(), NodoBitcoinError> {
+pub fn escribir_archivo(path: String, datos: &[u8]) -> Result<(), NodoBitcoinError> {
     let mut archivo = match OpenOptions::new().create(true).append(true).open(path) {
         Ok(archivo) => archivo,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
@@ -66,7 +64,6 @@ pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<(), NodoBit
     Ok(())
 }
 
-
 ////// **** no son concurrentes //////
 
 // usos: initial_block_broadcasting
@@ -74,7 +71,6 @@ pub fn leer_ultimo_header() -> Result<Vec<u8>, NodoBitcoinError> {
     let cantidad_headers = _header_count()?;
     leer_header_desde_archivo(cantidad_headers - 1)
 }
-
 
 // usos: initial_block_broadcasting
 pub fn existe_archivo_headers() -> bool {

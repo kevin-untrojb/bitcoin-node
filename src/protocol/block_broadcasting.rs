@@ -1,7 +1,9 @@
+use super::admin_connections::AdminConnections;
+use crate::blockchain::file_manager::write_headers_and_block_file;
 use crate::blockchain::file_manager::{read_blocks_from_file, FileMessages};
 use crate::{
     blockchain::{
-        block::{SerializedBlock, pow_poi_validation},
+        block::{pow_poi_validation, SerializedBlock},
         blockheader::BlockHeader,
         transaction::Transaction,
     },
@@ -18,8 +20,6 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
     thread,
 };
-use crate::blockchain::file_manager::write_headers_and_block_file;
-use super::admin_connections::AdminConnections;
 
 pub enum BlockBroadcastingMessages {
     ShutDown,
@@ -295,7 +295,6 @@ pub fn init_block_broadcasting(
                             _ = thread_sender_tx_manager.send(TransactionMessages::POIInvalido);
                             continue;
                         }
-                        
                         let cloned_result = shared_blocks.lock();
                         if let Ok(cloned) = cloned_result {
                             guardar_header_y_bloque(thread_logger.clone(),thread_file_manager.clone(), block.clone(), cloned, header[0]);
@@ -325,7 +324,6 @@ pub fn init_block_broadcasting(
 
     Ok(())
 }
-
 
 fn guardar_header_y_bloque(
     thread_logger: Sender<LogMessages>,
