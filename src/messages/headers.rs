@@ -3,6 +3,8 @@ use crate::{
     errores::NodoBitcoinError,
 };
 
+use super::getheaders::GetHeadersMessage;
+
 /// Deserealiza el vector de bytes de headers recibidos
 /// Devuelve un vector de BlockHeaders deserealizados
 pub fn deserealize_sin_guardar(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>, NodoBitcoinError> {
@@ -22,4 +24,9 @@ pub fn deserealize_sin_guardar(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>,
     }
 
     Ok(block_headers)
+}
+
+pub fn make_headers_msg(get_headers: GetHeadersMessage) -> Vec<u8> {
+    // aca hay q agarrar el hash header del mensaje get headers y buscarlo en el archivo para devolver 2 mil headers desde ese header
+    Vec::new()
 }

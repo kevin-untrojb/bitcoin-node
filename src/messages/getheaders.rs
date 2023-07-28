@@ -1,4 +1,4 @@
-use crate::errores::NodoBitcoinError;
+use crate::{errores::NodoBitcoinError, common::utils_bytes::parse_varint};
 
 use super::messages_header::make_header;
 
@@ -45,6 +45,34 @@ impl GetHeadersMessage {
 
         msg.extend_from_slice(&header);
         msg.extend_from_slice(&payload);
+
+        Ok(msg)
+    }
+
+    pub fn deserealize(bytes: &[u8]) -> Result<GetHeadersMessage, NodoBitcoinError> {
+        let mut offset = 0;
+        let version = u32::from_le_bytes(
+            bytes[offset..offset + 4]
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+        );
+        offset += 4;
+
+        let (size_bytes, num_hashes) = parse_varint(bytes);
+
+        offset += size_bytes;
+
+        let start_block_hash = &bytes[offset..offset + 32];
+        offset += 32;
+
+        let end_block_hash = &bytes[offset..offset + 32];
+
+        let msg = GetHeadersMessage {
+            version,
+            num_hashes: num_hashes as u8,
+            start_block_hash: start_block_hash.try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+            end_block_hash: end_block_hash.try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?
+        };
 
         Ok(msg)
     }
