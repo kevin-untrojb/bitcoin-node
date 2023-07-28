@@ -40,6 +40,12 @@ pub fn from_amount_bytes_to_prefix(nbytes: usize) -> u8 {
     }
 }
 
+pub fn ping_nonce() -> [u8; 8] {
+    let mut nonce = [0u8; 8];
+    nonce.copy_from_slice(&rand::random::<[u8; 8]>());
+    nonce
+}
+
 pub fn build_varint_bytes(prefix: u8, value: usize) -> Result<Vec<u8>, NodoBitcoinError> {
     match prefix {
         PREFIX_FD => {

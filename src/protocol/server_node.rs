@@ -9,11 +9,13 @@ use std::{
 use chrono::Utc;
 
 use crate::{
+    common::utils_bytes::ping_nonce,
     config,
     errores::NodoBitcoinError,
     log::{log_error_message, log_info_message, LogMessages},
     messages::{
         messages_header::{check_header, make_header},
+        ping_pong::{get_nonce, make_ping, make_pong},
         version::VersionMessage,
     },
 };
@@ -168,44 +170,24 @@ fn handle_message(stream: &mut TcpStream, logger: Sender<LogMessages>) {
 
 fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
     loop {
-        let mut buffer = [0 as u8; 100];
-        let len_bytes = match stream.read(&mut buffer) {
-            Ok(res) => res,
-            Err(error) => {
-                if error.kind() == ErrorKind::WouldBlock {
-                    // Error de Timeout, TODO: enviamos un ping
+        let (command, message) = match read_message(stream, logger.clone()) {
+            Ok(option) => {
+                if option.is_none() {
                     continue;
-                } else {
-                    log_error_message(
-                        logger.clone(),
-                        "Error al leer una solicitud del cliente".to_string(),
-                    );
-                    return;
                 }
+                let (command, message) = option.unwrap();
+                (command, message)
             }
-        };
-        if len_bytes == 0 {
-            log_error_message(
-                logger.clone(),
-                "Se cierra la conexión al cliente porque se leyó 0 bytes".to_string(),
-            );
-            return;
-        }
-        let buffer = &buffer[..len_bytes];
-        // verifico los tipos de mensajes aceptados
-        let (command, _) = match check_header(&buffer) {
-            Ok((command, payload_len)) => (command, payload_len),
-            Err(_) => {
-                log_error_message(
-                    logger.clone(),
-                    "Error al parsear el header del cliente".to_string(),
-                );
-                continue;
-            }
+            Err(_) => return,
         };
         log_info_message(logger.clone(), format!("Command recibido: {:?}", command));
+        log_info_message(logger.clone(), format!("Mensaje recibido: {:?}", message));
         if command == "ping" {
             log_info_message(logger.clone(), "Ping recibido".to_string());
+            match send_pong(message, stream, logger.clone()) {
+                Ok(()) => continue,
+                Err(_) => return,
+            }
         }
         if command == "getheaders" {
             log_info_message(logger.clone(), "getheaders recibido".to_string());
@@ -214,6 +196,137 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
             log_info_message(logger.clone(), "getdata recibido".to_string());
         }
     }
+}
+
+fn send_pong(
+    ping_message: Vec<u8>,
+    stream: &mut TcpStream,
+    logger: Sender<LogMessages>,
+) -> Result<(), NodoBitcoinError> {
+    let nonce = get_nonce(&ping_message)?;
+    let pong_message = make_pong(&nonce)?;
+    if stream.write_all(&pong_message).is_err() {
+        return Err(NodoBitcoinError::ErrorEnPing);
+    }
+    log_info_message(logger.clone(), "Pong enviado".to_string());
+    Ok(())
+}
+
+fn read_message(
+    stream: &mut TcpStream,
+    logger: Sender<LogMessages>,
+) -> Result<Option<(String, Vec<u8>)>, NodoBitcoinError> {
+    let mut buffer = [0 as u8; 24];
+    let len_bytes = match stream.read(&mut buffer) {
+        Ok(res) => res,
+        Err(error) => {
+            if error.kind() == ErrorKind::WouldBlock {
+                // Error de Timeout, enviamos un ping
+                log_error_message(
+                    logger.clone(),
+                    "Error de timeout al leer una solicitud del cliente".to_string(),
+                );
+                match send_ping_pong_messages(stream, logger.clone()) {
+                    Ok(()) => return Ok(None),
+                    Err(_) => return Err(NodoBitcoinError::ErrorEnPing),
+                }
+            } else {
+                log_error_message(
+                    logger.clone(),
+                    "Error al leer una solicitud del cliente".to_string(),
+                );
+                return Err(NodoBitcoinError::ErrorAlLeerSolicitudDelCliente);
+            }
+        }
+    };
+    if len_bytes == 0 {
+        log_error_message(
+            logger.clone(),
+            "Se cierra la conexión al cliente porque se leyó 0 bytes".to_string(),
+        );
+        return Err(NodoBitcoinError::ErrorAlLeerSolicitudDelCliente);
+    }
+
+    // verifico los tipos de mensajes aceptados
+    let (command, message) = match check_header(&buffer) {
+        Ok((command, payload_len)) => {
+            let mut message = vec![0u8; payload_len];
+            if stream.read_exact(&mut message).is_err() {
+                log_error_message(
+                    logger.clone(),
+                    "Error al leer el payload del cliente".to_string(),
+                );
+                return Err(NodoBitcoinError::ErrorAlLeerSolicitudDelCliente);
+            }
+            (command, message)
+        }
+        Err(_) => {
+            log_error_message(
+                logger.clone(),
+                "Error al parsear el header del cliente".to_string(),
+            );
+            return Ok(None);
+        }
+    };
+    log_info_message(logger.clone(), format!("Command recibido: {:?}", command));
+    Ok(Some((command, message)))
+}
+
+fn send_ping_pong_messages(
+    stream: &mut TcpStream,
+    logger: Sender<LogMessages>,
+) -> Result<(), NodoBitcoinError> {
+    let ping_nonce = ping_nonce();
+    let ping_msg = match make_ping(&ping_nonce) {
+        Ok(msg) => msg,
+        Err(_) => return Err(NodoBitcoinError::ErrorEnPing),
+    };
+
+    _ = stream.write(&ping_msg.as_slice());
+
+    let (command, message) = match read_message(stream, logger.clone()) {
+        Ok(option) => {
+            if option.is_none() {
+                return Err(NodoBitcoinError::ErrorEnPing);
+            }
+            let (command, message) = option.unwrap();
+            (command, message)
+        }
+        Err(_) => return Err(NodoBitcoinError::ErrorEnPing),
+    };
+
+    if !validar_pong(command, message, ping_nonce, logger) {
+        return Err(NodoBitcoinError::ErrorEnPing);
+    }
+    Ok(())
+}
+
+// crear una función que valide el pong
+fn validar_pong(
+    command: String,
+    message: Vec<u8>,
+    ping_nonce: [u8; 8],
+    logger: Sender<LogMessages>,
+) -> bool {
+    if command != "pong" {
+        log_error_message(logger.clone(), "No se recibió un pong".to_string());
+        return false;
+    }
+    let pong_nonce = match get_nonce(&message) {
+        Ok(nonce) => nonce,
+        Err(_) => {
+            log_error_message(logger.clone(), "No se pudo parsear el pong".to_string());
+            return false;
+        }
+    };
+    if pong_nonce != ping_nonce {
+        log_error_message(
+            logger.clone(),
+            "El nonce del pong no coincide con el del ping".to_string(),
+        );
+        return false;
+    }
+    true
 }
 
 /// Client run recibe una dirección y cualquier cosa "legible"

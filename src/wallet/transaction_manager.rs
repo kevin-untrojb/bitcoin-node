@@ -178,7 +178,13 @@ impl TransactionManager {
                         sender_tx_manager,
                         sender_file_manager,
                     ) {
-                        Ok(_) => todo!(),
+                        Ok(_) => {
+                            log_info_message(
+                                logger.clone(),
+                                "Block Broadcasting ejecutado exitosamente".to_string(),
+                            );
+                            return;
+                        }
                         Err(_) => {
                             log_error_message(
                                 logger,
