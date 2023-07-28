@@ -41,6 +41,9 @@ pub enum NodoBitcoinError {
     CuentaNoEncontrada,
     NoSePuedeEnviarTransaccion,
     ErrorAlActualizarUTXOS,
+
+    // index
+    IndexNoEncontrado,
 }
 
 impl Error for NodoBitcoinError {}
@@ -147,6 +150,10 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::ErrorAlActualizarUTXOS => {
                 write!(f, "ERROR: No se puede actualizar las UTXOs.")
+            }
+
+            NodoBitcoinError::IndexNoEncontrado => {
+                write!(f, "ERROR: No encontró en el indice.")
             }
         }
     }

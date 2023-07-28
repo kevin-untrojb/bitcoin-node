@@ -31,16 +31,15 @@ pub fn leer_todos_blocks() -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
 
 // usos: initial_block_broadcasting, file_manager
 pub fn escribir_archivo(path: String, datos: &[u8]) -> Result<u64, NodoBitcoinError> {
-    let mut archivo = match OpenOptions::new().create(true).append(true).open(path.clone()) {
+    let mut archivo = match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path.clone())
+    {
         Ok(archivo) => archivo,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
-    let actual_file_size = get_file_size(path)?;
-
-    // Escribe los bytes en el archivo
-    archivo
-        .write_all(datos)
-        .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+    let actual_file_size = get_file_size(path.clone())?;
     Ok(actual_file_size+1)
 }
 
@@ -85,7 +84,7 @@ pub fn existe_archivo_headers() -> bool {
 }
 
 // usos: utils_file
-fn leer_bytes(path: String, offset: u64, length: u64) -> Result<Vec<u8>, NodoBitcoinError> {
+pub fn leer_bytes(path: String, offset: u64, length: u64) -> Result<Vec<u8>, NodoBitcoinError> {
     let mut file = match File::open(path) {
         Ok(file) => file,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
