@@ -49,14 +49,14 @@ mod tests {
     #[test]
     fn test_make_ping() {
         let nonce = ping_nonce();
-        let msg = make_pong(&nonce);
+        let msg = make_ping(&nonce);
         assert!(msg.is_ok());
         let msg = msg.unwrap();
         assert_eq!(msg.len(), 32);
 
-        let binding = "pong".to_string();
-        let pong_bytes = binding.as_bytes();
-        assert_eq!(msg[4..8], *pong_bytes);
+        let binding = "ping".to_string();
+        let ping_bytes = binding.as_bytes();
+        assert_eq!(msg[4..8], *ping_bytes);
         assert_eq!(msg[24..32], nonce);
     }
 
