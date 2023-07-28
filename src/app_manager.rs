@@ -7,8 +7,8 @@ use std::{
 };
 
 use crate::{
-    blockchain::file_manager::{FileManager, FileMessages},
     blockchain::block::{pow_poi_validation, SerializedBlock},
+    blockchain::file_manager::{FileManager, FileMessages},
     config,
     errores::{InterfaceError, InterfaceMessage, NodoBitcoinError},
     interface::{
