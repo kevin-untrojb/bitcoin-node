@@ -1,9 +1,10 @@
+use super::admin_connections::AdminConnections;
+use crate::blockchain::file_manager::write_headers_and_block_file;
 use crate::blockchain::file_manager::{read_blocks_from_file, FileMessages};
 use crate::{
     blockchain::{
-        block::{SerializedBlock, pow_poi_validation},
+        block::{pow_poi_validation, SerializedBlock},
         blockheader::BlockHeader,
-        file::{escribir_archivo, escribir_archivo_bloque},
         transaction::Transaction,
     },
     errores::NodoBitcoinError,
@@ -19,8 +20,6 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
     thread,
 };
-
-use super::admin_connections::AdminConnections;
 
 pub enum BlockBroadcastingMessages {
     ShutDown,
@@ -76,6 +75,7 @@ pub fn init_block_broadcasting(
     for connection in admin_connections.get_connections() {
         let socket = connection.clone();
         let thread_logger = logger.clone();
+        let thread_file_manager = file_manager.clone();
         let thread_sender_tx_manager = sender_tx_manager.clone();
         let shared_blocks = blocks.clone();
         let sender_mutex_connection = sender_mutex.clone();
@@ -295,10 +295,9 @@ pub fn init_block_broadcasting(
                             _ = thread_sender_tx_manager.send(TransactionMessages::POIInvalido);
                             continue;
                         }
-                        
                         let cloned_result = shared_blocks.lock();
                         if let Ok(cloned) = cloned_result {
-                            guardar_header_y_bloque(thread_logger.clone(), block.clone(), cloned, header[0]);
+                            guardar_header_y_bloque(thread_logger.clone(),thread_file_manager.clone(), block.clone(), cloned, header[0]);
                             if thread_sender_tx_manager.send(TransactionMessages::NewBlock(block)).is_err(){
                                 return;
                             };
@@ -326,26 +325,9 @@ pub fn init_block_broadcasting(
     Ok(())
 }
 
-fn escribir_header_y_bloque(
-    logger: Sender<LogMessages>,
-    bloque: SerializedBlock,
-    blockheader: BlockHeader,
-) -> Result<(), NodoBitcoinError> {
-    log_info_message(logger.clone(), "Guardando headers...".to_string());
-    let bytes = blockheader.serialize()?;
-    escribir_archivo(&bytes)?;
-
-    log_info_message(logger.clone(), "Header nuevo guardado".to_string());
-
-    escribir_archivo_bloque(&bloque.serialize()?)?;
-
-    log_info_message(logger, "Bloque nuevo guardado".to_string());
-
-    Ok(())
-}
-
 fn guardar_header_y_bloque(
     thread_logger: Sender<LogMessages>,
+    thread_file_manager: Sender<FileMessages>,
     block: SerializedBlock,
     mut cloned: MutexGuard<Vec<SerializedBlock>>,
     header: BlockHeader,
@@ -353,7 +335,7 @@ fn guardar_header_y_bloque(
     if SerializedBlock::contains_block(cloned.to_vec(), block.clone()) {
         log_error_message(thread_logger, "Bloque repetido".to_string());
     } else {
-        match escribir_header_y_bloque(thread_logger.clone(), block.clone(), header) {
+        match write_headers_and_block_file(thread_file_manager.clone(), block.clone(), header) {
             Ok(_) => {
                 cloned.push(block);
                 log_info_message(
