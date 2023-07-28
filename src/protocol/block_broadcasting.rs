@@ -295,6 +295,7 @@ pub fn init_block_broadcasting(
                             _ = thread_sender_tx_manager.send(TransactionMessages::POIInvalido);
                             continue;
                         }
+
                         let cloned_result = shared_blocks.lock();
                         if let Ok(cloned) = cloned_result {
                             guardar_header_y_bloque(thread_logger.clone(),thread_file_manager.clone(), block.clone(), cloned, header[0]);

@@ -30,25 +30,28 @@ pub fn leer_todos_blocks() -> Result<Vec<Vec<u8>>, NodoBitcoinError> {
 }
 
 // usos: initial_block_broadcasting, file_manager
-pub fn escribir_archivo(path: String, datos: &[u8]) -> Result<(), NodoBitcoinError> {
-    let mut archivo = match OpenOptions::new().create(true).append(true).open(path) {
+pub fn escribir_archivo(path: String, datos: &[u8]) -> Result<u64, NodoBitcoinError> {
+    let mut archivo = match OpenOptions::new().create(true).append(true).open(path.clone()) {
         Ok(archivo) => archivo,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
+    let actual_file_size = get_file_size(path)?;
 
     // Escribe los bytes en el archivo
     archivo
         .write_all(datos)
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-    Ok(())
+    Ok(actual_file_size+1)
 }
 
 // usos: initial_block_broadcasting, file_manager
-pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<(), NodoBitcoinError> {
-    let mut archivo = match OpenOptions::new().create(true).append(true).open(path) {
+pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<u64, NodoBitcoinError> {
+    let mut archivo = match OpenOptions::new().create(true).append(true).open(path.clone()) {
         Ok(archivo) => archivo,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
+
+    let actual_file_size = get_file_size(path)?;
 
     let datos_len = datos.len();
     let datos_len_bytes: [u8; 8] = datos_len.to_ne_bytes();
@@ -61,7 +64,7 @@ pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<(), NodoBit
     archivo
         .write_all(bytes_para_guardar)
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-    Ok(())
+    Ok(actual_file_size+1)
 }
 
 ////// **** no son concurrentes //////
@@ -116,6 +119,7 @@ fn leer_bloque(offset: u64) -> Result<(Vec<u8>, u64), NodoBitcoinError> {
     Ok((block_bytes, offset + sizeof_usize + len_block as u64))
 }
 fn get_file_size(path: String) -> Result<u64, NodoBitcoinError> {
+    // TODO roberto
     let file = File::open(path);
     if file.is_err() {
         return Err(NodoBitcoinError::NoExisteArchivo);

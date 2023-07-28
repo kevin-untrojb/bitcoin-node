@@ -20,8 +20,6 @@ pub struct FileManager {
 pub enum FileMessages {
     ReadAllBlocks(Sender<Result<Vec<Vec<u8>>, NodoBitcoinError>>),
     WriteHeadersAndBlockFile((Vec<u8>, Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
-    WriteHeadersFile((Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
-    WriteBlockFile((Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
     ShutDown(),
 }
 
@@ -91,12 +89,6 @@ impl FileManager {
             }
             FileMessages::ReadAllBlocks(result) => {
                 result.send(leer_todos_blocks());
-            }
-            FileMessages::WriteHeadersFile((data, result)) => {
-                result.send(escribir_archivo(self.headers_file_name.clone(), &data));
-            }
-            FileMessages::WriteBlockFile((data, result)) => {
-                result.send(escribir_archivo_bloque(self.block_file_name.clone(), &data));
             }
             FileMessages::ShutDown() => {
                 return;
