@@ -218,8 +218,7 @@ fn send_pong(
     stream: &mut TcpStream,
     logger: Sender<LogMessages>,
 ) -> Result<(), NodoBitcoinError> {
-    let nonce = get_nonce(&ping_message)?;
-    let pong_message = make_pong(&nonce)?;
+    let pong_message = make_pong(&ping_message)?;
     if stream.write_all(&pong_message).is_err() {
         return Err(NodoBitcoinError::ErrorEnPing);
     }
@@ -310,7 +309,11 @@ fn send_ping_pong_messages(
         Err(_) => return Err(NodoBitcoinError::ErrorEnPing),
     };
 
-    if !validar_pong(command, message, ping_nonce, logger) {
+    if !validar_pong(command, message, ping_nonce, logger.clone()) {
+        log_error_message(
+            logger,
+            "No se recibió el mismo nonce en el pong".to_string(),
+        );
         return Err(NodoBitcoinError::ErrorEnPing);
     }
     Ok(())
@@ -327,13 +330,13 @@ fn validar_pong(
         log_error_message(logger.clone(), "No se recibió un pong".to_string());
         return false;
     }
-    let pong_nonce = match get_nonce(&message) {
-        Ok(nonce) => nonce,
-        Err(_) => {
-            log_error_message(logger.clone(), "No se pudo parsear el pong".to_string());
-            return false;
-        }
-    };
+    if message.len() != 8 {
+        log_error_message(logger.clone(), "El pong no tiene 8 bytes".to_string());
+        return false;
+    }
+
+    let pong_nonce = &message[0..8];
+
     if pong_nonce != ping_nonce {
         log_error_message(
             logger.clone(),
@@ -341,20 +344,20 @@ fn validar_pong(
         );
         return false;
     }
+    // llamar a log_info_message con el nonce correcto
+    log_info_message(logger.clone(), "Nonce del ping pong válido".to_string());
     true
 }
 
 #[cfg(test)]
 mod tests {
-    use std::net::{Ipv4Addr, SocketAddrV4};
-
     use crate::{log::create_logger_actor, protocol::connection::handshake};
 
     use super::*;
 
     fn init_config() {
         let args: Vec<String> = vec!["app_name".to_string(), "src/nodo.conf".to_string()];
-        let init_result = config::inicializar(args);
+        _ = config::inicializar(args);
     }
 
     fn init_client() -> Result<TcpStream, NodoBitcoinError> {
@@ -364,7 +367,7 @@ mod tests {
         };
 
         let address = "127.0.0.1:".to_owned() + &port;
-        let mut socket = match TcpStream::connect(address) {
+        let socket = match TcpStream::connect(address) {
             Ok(res) => res,
             Err(_) => return Err(NodoBitcoinError::NoSePudoConectar),
         };
@@ -375,7 +378,7 @@ mod tests {
     fn test_run_server() {
         init_config();
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-        init_server(logger);
+        _ = init_server(logger);
     }
 
     #[test]
