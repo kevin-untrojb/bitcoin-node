@@ -104,6 +104,11 @@ fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
         return Err(NodoBitcoinError::ErrorEnHandshake);
     }
 
+    let verack_msg = make_header("verack".to_string(), &Vec::new())?;
+    if stream.write_all(&verack_msg).is_err() {
+        return Err(NodoBitcoinError::ErrorEnHandshake);
+    }
+
     let mut verack_resp = vec![0u8; 24];
     if stream.read_exact(&mut verack_resp).is_err() {
         return Err(NodoBitcoinError::NoSePuedeLeerLosBytesVerackMessage);
@@ -112,11 +117,6 @@ fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
     let (command, _payload_len) = check_header(&verack_resp)?;
 
     if command != "verack" {
-        return Err(NodoBitcoinError::ErrorEnHandshake);
-    }
-
-    let verack_msg = make_header("verack".to_string(), &Vec::new())?;
-    if stream.write_all(&verack_msg).is_err() {
         return Err(NodoBitcoinError::ErrorEnHandshake);
     }
 
@@ -152,6 +152,10 @@ fn handle_message(stream: &mut TcpStream, logger: Sender<LogMessages>) {
     match shakehand(stream) {
         Ok(()) => {
             // salio bien el handshake, ponerse a escuchar
+            log_info_message(
+                logger.clone(),
+                "Handshake exitoso con el cliente".to_string(),
+            );
             thread_connection(stream, logger.clone());
         }
         Err(_) => return,
@@ -169,6 +173,15 @@ fn handle_message(stream: &mut TcpStream, logger: Sender<LogMessages>) {
 }
 
 fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
+    let client_address = match stream.peer_addr() {
+        Ok(res) => res,
+        Err(_) => return,
+    };
+    log_info_message(
+        logger.clone(),
+        format!("Comienzo a escuchar mensajes de: {:?}", client_address),
+    );
+
     loop {
         let (command, message) = match read_message(stream, logger.clone()) {
             Ok(option) => {
@@ -354,27 +367,9 @@ mod tests {
         Ok(socket)
     }
 
-    fn client_run(address: &str, stream: &mut dyn Read) -> std::io::Result<()> {
-        let reader = BufReader::new(stream);
-        let mut socket = TcpStream::connect(address)?;
-        for line in reader.lines() {
-            if let Ok(line) = line {
-                println!("Enviando: {:?}", line);
-                // TcpStream implementa Write
-                socket.write(line.as_bytes())?;
-                // El reader le quita el salto de linea, así que se lo mando aparte
-                socket.write("\n".as_bytes())?;
-
-                sleep(Duration::from_millis(5000));
-                socket.write(line.as_bytes())?;
-                // El reader le quita el salto de linea, así que se lo mando aparte
-                socket.write("\n".as_bytes())?;
-            }
-        }
-        Ok(())
-    }
     #[test]
     fn test_run_server() {
+        init_config();
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         init_server(logger);
     }
