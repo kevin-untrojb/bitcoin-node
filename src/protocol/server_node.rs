@@ -181,9 +181,7 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
             Err(_) => return,
         };
         log_info_message(logger.clone(), format!("Command recibido: {:?}", command));
-        log_info_message(logger.clone(), format!("Mensaje recibido: {:?}", message));
         if command == "ping" {
-            log_info_message(logger.clone(), "Ping recibido".to_string());
             match send_pong(message, stream, logger.clone()) {
                 Ok(()) => continue,
                 Err(_) => return,
@@ -329,52 +327,52 @@ fn validar_pong(
     true
 }
 
-/// Client run recibe una dirección y cualquier cosa "legible"
-/// Esto nos da la libertad de pasarle stdin, un archivo, incluso otro socket
-fn client_run(address: &str, stream: &mut dyn Read) -> std::io::Result<()> {
-    // Vamos a usar un BufReader para comodidad de leer lineas
-    // Notar que como el stream es de tipo `Read`, podemos leer de a bytes.
-    // BufReader nos provee una capa de abstracción extra para manejarnos con strings
-    let reader = BufReader::new(stream);
-    // Intentamos conectar el socket a un puerto abierto
-    let mut socket = TcpStream::connect(address)?;
-    // BufReader nos permite leer lineas de texto
-    for line in reader.lines() {
-        // lines nos devuelve un iterador de Result(string), agarramos el string adentro
-        if let Ok(line) = line {
-            println!("Enviando: {:?}", line);
-            // TcpStream implementa Write
-            socket.write(line.as_bytes())?;
-            // El reader le quita el salto de linea, así que se lo mando aparte
-            socket.write("\n".as_bytes())?;
-
-            sleep(Duration::from_millis(5000));
-            socket.write(line.as_bytes())?;
-            // El reader le quita el salto de linea, así que se lo mando aparte
-            socket.write("\n".as_bytes())?;
-        }
-    }
-    Ok(())
-}
-
-pub fn init_client(mensaje: String) -> Result<(), NodoBitcoinError> {
-    let port = match config::get_valor("PORT".to_owned()) {
-        Ok(res) => res,
-        Err(_) => "18333".to_owned(),
-    };
-
-    let address = "127.0.0.1:".to_owned() + &port;
-    let mut mensaje_a_enviar = mensaje.as_bytes();
-    client_run(&address, &mut mensaje_a_enviar).unwrap();
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::log::create_logger_actor;
+    use std::net::{Ipv4Addr, SocketAddrV4};
+
+    use crate::{log::create_logger_actor, protocol::connection::handshake};
 
     use super::*;
 
+    fn init_config() {
+        let args: Vec<String> = vec!["app_name".to_string(), "src/nodo.conf".to_string()];
+        let init_result = config::inicializar(args);
+    }
+
+    fn init_client() -> Result<TcpStream, NodoBitcoinError> {
+        let port = match config::get_valor("PORT".to_owned()) {
+            Ok(res) => res,
+            Err(_) => "18333".to_owned(),
+        };
+
+        let address = "127.0.0.1:".to_owned() + &port;
+        let mut socket = match TcpStream::connect(address) {
+            Ok(res) => res,
+            Err(_) => return Err(NodoBitcoinError::NoSePudoConectar),
+        };
+        Ok(socket)
+    }
+
+    fn client_run(address: &str, stream: &mut dyn Read) -> std::io::Result<()> {
+        let reader = BufReader::new(stream);
+        let mut socket = TcpStream::connect(address)?;
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                println!("Enviando: {:?}", line);
+                // TcpStream implementa Write
+                socket.write(line.as_bytes())?;
+                // El reader le quita el salto de linea, así que se lo mando aparte
+                socket.write("\n".as_bytes())?;
+
+                sleep(Duration::from_millis(5000));
+                socket.write(line.as_bytes())?;
+                // El reader le quita el salto de linea, así que se lo mando aparte
+                socket.write("\n".as_bytes())?;
+            }
+        }
+        Ok(())
+    }
     #[test]
     fn test_run_server() {
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
@@ -383,6 +381,16 @@ mod tests {
 
     #[test]
     fn test_run_client() {
-        init_client("Hola, espero que esto llegue".to_string());
+        init_config();
+        let socket = init_client();
+        assert!(socket.is_ok());
+
+        let socket = socket.unwrap();
+        let address = socket.local_addr();
+        assert!(address.is_ok());
+        let address = address.unwrap();
+
+        let handsahke = handshake(socket, address);
+        assert!(handsahke.is_ok());
     }
 }

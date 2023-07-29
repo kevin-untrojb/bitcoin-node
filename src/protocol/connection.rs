@@ -69,7 +69,10 @@ fn add_connections(
 /// se considera que la conexión ha sido establecida con éxito.
 ///
 /// También se envía un mensaje sendHeaders para establecer de qué forma se quiere recibir los bloques nuevos
-fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, NodoBitcoinError> {
+pub fn handshake(
+    mut socket: TcpStream,
+    address: SocketAddr,
+) -> Result<TcpStream, NodoBitcoinError> {
     let timestamp = Utc::now().timestamp() as u64;
     let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
         Ok(res) => res,
