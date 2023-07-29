@@ -1,8 +1,8 @@
 use std::{
-    io::{BufRead, BufReader, ErrorKind, Read, Write},
+    io::{ErrorKind, Read, Write},
     net::{TcpListener, TcpStream},
     sync::mpsc::Sender,
-    thread::{self, sleep},
+    thread::{self},
     time::Duration,
 };
 
@@ -149,6 +149,11 @@ fn handle_message(stream: &mut TcpStream, logger: Sender<LogMessages>) {
     // - headers
     // - block
 
+    let duration = stream.set_read_timeout(Some(Duration::new(120, 0)));
+    if duration.is_err() {
+        log_error_message(logger.clone(), "Error al setear read timeout.".to_string());
+    }
+
     match shakehand(stream) {
         Ok(()) => {
             // salio bien el handshake, ponerse a escuchar
@@ -193,7 +198,6 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
             }
             Err(_) => return,
         };
-        log_info_message(logger.clone(), format!("Command recibido: {:?}", command));
         if command == "ping" {
             match send_pong(message, stream, logger.clone()) {
                 Ok(()) => continue,
@@ -387,5 +391,11 @@ mod tests {
 
         let handsahke = handshake(socket, address);
         assert!(handsahke.is_ok());
+
+        let mut socket = handsahke.unwrap();
+
+        let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+        let ping_pong = send_ping_pong_messages(&mut socket, logger);
+        assert!(ping_pong.is_ok());
     }
 }
