@@ -149,7 +149,7 @@ fn handle_message(stream: &mut TcpStream, logger: Sender<LogMessages>) {
     // - headers
     // - block
 
-    let duration = stream.set_read_timeout(Some(Duration::new(120, 0)));
+    let duration = stream.set_read_timeout(Some(Duration::new(300, 0)));
     if duration.is_err() {
         log_error_message(logger.clone(), "Error al setear read timeout.".to_string());
     }
@@ -180,7 +180,13 @@ fn handle_message(stream: &mut TcpStream, logger: Sender<LogMessages>) {
 fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
     let client_address = match stream.peer_addr() {
         Ok(res) => res,
-        Err(_) => return,
+        Err(_) => {
+            log_error_message(
+                logger.clone(),
+                "Error al obtener el address del cliente".to_string(),
+            );
+            return;
+        }
     };
     log_info_message(
         logger.clone(),
@@ -196,12 +202,12 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
                 let (command, message) = option.unwrap();
                 (command, message)
             }
-            Err(_) => return,
+            Err(_) => break,
         };
         if command == "ping" {
             match send_pong(message, stream, logger.clone()) {
                 Ok(()) => continue,
-                Err(_) => return,
+                Err(_) => break,
             }
         }
         if command == "getheaders" {
@@ -211,6 +217,7 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
             log_info_message(logger.clone(), "getdata recibido".to_string());
         }
     }
+    log_error_message(logger.clone(), "Conexion finalizada".to_string());
 }
 
 fn send_pong(
@@ -241,8 +248,14 @@ fn read_message(
                     "Error de timeout al leer una solicitud del cliente".to_string(),
                 );
                 match send_ping_pong_messages(stream, logger.clone()) {
-                    Ok(()) => return Ok(None),
-                    Err(_) => return Err(NodoBitcoinError::ErrorEnPing),
+                    Ok(()) => {
+                        log_info_message(logger.clone(), "Ping pong válido".to_string());
+                        return Ok(None);
+                    }
+                    Err(_) => {
+                        log_error_message(logger.clone(), "Ping pong inválido".to_string());
+                        return Err(NodoBitcoinError::ErrorEnPing);
+                    }
                 }
             } else {
                 log_error_message(
