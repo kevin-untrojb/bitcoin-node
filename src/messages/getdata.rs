@@ -88,4 +88,70 @@ impl GetDataMessage {
         msg.extend_from_slice(&payload);
         Ok(msg)
     }
+
+    // deseralizar el getdata, recibiendo como parámetro los bytes del mensaje sin header
+    pub fn deserealize(bytes: &[u8]) -> Result<GetDataMessage, NodoBitcoinError> {
+        let mut offset = 0;
+        let count = bytes[offset];
+        offset += 1;
+        let mut inventory = Vec::new();
+
+        for _ in 0..count {
+            let inv_type = u32::from_le_bytes(
+                bytes[offset..offset + 4]
+                    .try_into()
+                    .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+            );
+            offset += 4;
+            let hash = bytes[offset..offset + 32].to_vec();
+            offset += 32;
+
+            inventory.push(Inventory { inv_type, hash });
+        }
+
+        Ok(GetDataMessage { count, inventory })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::messages::{getdata::GetDataMessage, messages_header::check_header};
+
+    #[test]
+    fn test_getdata_deserialize() {
+        let hash_header: [u8; 32] = [
+            0xc1, 0x17, 0xea, 0x8e, 0xc8, 0x28, 0x34, 0x2f, 0x4d, 0xfb, 0x0a, 0xd6, 0xbd, 0x14,
+            0x0e, 0x03, 0xa5, 0x07, 0x20, 0xec, 0xe4, 0x01, 0x69, 0xee, 0x38, 0xbd, 0xc1, 0x5d,
+            0x9e, 0xb6, 0x4c, 0xf5,
+        ];
+        let get_data_original = GetDataMessage::new(1, hash_header);
+        let get_data_message = get_data_original.serialize();
+        assert!(get_data_message.is_ok());
+
+        let get_data_message = get_data_message.unwrap();
+
+        let check_header = check_header(&get_data_message);
+        assert!(check_header.is_ok());
+
+        let (command, response_get_data) = check_header.unwrap();
+        assert!(command == "getdata");
+        assert_eq!(response_get_data, 37);
+
+        let get_data_message_serialized = &get_data_message[24..];
+
+        let deserealized = GetDataMessage::deserealize(&get_data_message_serialized);
+        assert!(deserealized.is_ok());
+
+        let deserealized = deserealized.unwrap();
+
+        assert_eq!(deserealized.count, get_data_original.count);
+        assert_eq!(
+            deserealized.inventory[0].inv_type,
+            get_data_original.inventory[0].inv_type
+        );
+        assert_eq!(
+            deserealized.inventory[0].hash,
+            get_data_original.inventory[0].hash
+        );
+    }
 }
