@@ -9,11 +9,14 @@ use std::{
 use chrono::Utc;
 
 use crate::{
+    blockchain::block::SerializedBlock,
     common::utils_bytes::ping_nonce,
     config,
     errores::NodoBitcoinError,
     log::{log_error_message, log_info_message, LogMessages},
     messages::{
+        blocks::make_block,
+        getdata::GetDataMessage,
         messages_header::{check_header, make_header},
         ping_pong::{get_nonce, make_ping, make_pong},
         version::VersionMessage,
@@ -220,9 +223,43 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
         }
         if command == "getdata" {
             log_info_message(logger.clone(), "getdata recibido".to_string());
+            _ = send_block(message, stream, logger.clone());
+            continue;
         }
     }
     log_error_message(logger.clone(), "Conexion finalizada".to_string());
+}
+
+fn send_block(
+    data_message: Vec<u8>,
+    stream: &mut TcpStream,
+    logger: Sender<LogMessages>,
+) -> Result<(), NodoBitcoinError> {
+    let get_data_message = GetDataMessage::deserealize(&data_message)?;
+    let hashes = get_data_message.get_hashes();
+
+    // obtener los bloques del archivo que corresponden a los hashes
+    let blocks: Vec<SerializedBlock> = Vec::new();
+
+    // recorro los bloques y armo un array de bytes con la desearlización de cada uno
+    let mut blocks_bytes: Vec<u8> = Vec::new();
+    for block in blocks {
+        let block_bytes = block.serialize()?;
+        blocks_bytes.extend(block_bytes);
+    }
+
+    // armar el mensaje BLOCK
+    let block_message = make_block(&blocks_bytes)?;
+
+    if stream.write_all(&block_message).is_err() {
+        log_error_message(
+            logger.clone(),
+            "No se puede enviar el mensaje BLOCK".to_string(),
+        );
+        return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
+    }
+    log_info_message(logger.clone(), "BLOCK enviado".to_string());
+    Ok(())
 }
 
 fn send_pong(
@@ -232,6 +269,10 @@ fn send_pong(
 ) -> Result<(), NodoBitcoinError> {
     let pong_message = make_pong(&ping_message)?;
     if stream.write_all(&pong_message).is_err() {
+        log_error_message(
+            logger.clone(),
+            "No se puede enviar el mensaje PONG".to_string(),
+        );
         return Err(NodoBitcoinError::ErrorEnPing);
     }
     log_info_message(logger.clone(), "Pong enviado".to_string());

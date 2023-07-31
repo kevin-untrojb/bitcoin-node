@@ -71,6 +71,15 @@ impl GetDataMessage {
         })
     }
 
+    /// Devuelve los hashes de los inventarios
+    pub fn get_hashes(&self) -> Vec<Vec<u8>> {
+        let mut hashes = Vec::new();
+        for inventory in &self.inventory {
+            hashes.push(inventory.hash.clone());
+        }
+        hashes
+    }
+
     /// Serializa el mensaje GetData y devuelve los bytes del mismo
     pub fn serialize(&self) -> Result<Vec<u8>, NodoBitcoinError> {
         let mut payload = Vec::new();
@@ -153,5 +162,18 @@ mod tests {
             deserealized.inventory[0].hash,
             get_data_original.inventory[0].hash
         );
+    }
+
+    #[test]
+    fn test_get_hashes() {
+        let hash_header: [u8; 32] = [
+            0xc1, 0x17, 0xea, 0x8e, 0xc8, 0x28, 0x34, 0x2f, 0x4d, 0xfb, 0x0a, 0xd6, 0xbd, 0x14,
+            0x0e, 0x03, 0xa5, 0x07, 0x20, 0xec, 0xe4, 0x01, 0x69, 0xee, 0x38, 0xbd, 0xc1, 0x5d,
+            0x9e, 0xb6, 0x4c, 0xf5,
+        ];
+        let get_data_original = GetDataMessage::new(1, hash_header);
+        let hashes = get_data_original.get_hashes();
+        assert_eq!(hashes.len(), 1);
+        assert_eq!(hashes[0], hash_header.to_vec());
     }
 }
