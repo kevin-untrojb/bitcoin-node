@@ -80,8 +80,7 @@ pub fn get_start_index(path: String, hash: [u8; 32]) -> Result<usize, NodoBitcoi
     let size_of_u8 = mem::size_of::<u8>() as u64;
     while offset < keys_file.metadata().unwrap().len() && is_missing_index {
         if is_hash_searched(
-            leer_bytes(keys_path.clone(), offset, size_of_u8 * 32)
-                .unwrap(),
+            leer_bytes(keys_path.clone(), offset, size_of_u8 * 32).unwrap(),
             &hash,
         ) {
             is_missing_index = false
@@ -105,8 +104,6 @@ pub fn get_start_index(path: String, hash: [u8; 32]) -> Result<usize, NodoBitcoi
     Ok(index)
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,20 +111,33 @@ mod tests {
     #[test]
     fn test_is_hash_searched() {
         // Caso de prueba: Vec y slice son iguales
-        let vec: Vec<u8> = vec![1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1,2 ];
-        let slice: &[u8; 32] = &[1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1,2 ];
+        let vec: Vec<u8> = vec![
+            1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4,
+            5, 1, 2,
+        ];
+        let slice: &[u8; 32] = &[
+            1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4,
+            5, 1, 2,
+        ];
         assert_eq!(is_hash_searched(vec, slice), true);
 
         // Caso de prueba: Vec y slice son diferentes
-        let vec: Vec<u8> = vec![1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1,2 ];
-        let slice: &[u8; 32] = &[1, 1, 1, 1, 1, 1, 1, 1, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1,2 ];
+        let vec: Vec<u8> = vec![
+            1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4,
+            5, 1, 2,
+        ];
+        let slice: &[u8; 32] = &[
+            1, 1, 1, 1, 1, 1, 1, 1, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4,
+            5, 1, 2,
+        ];
         assert_eq!(is_hash_searched(vec, slice), false);
 
         // Caso de prueba: Vec y slice tienen diferentes longitudes
         let vec: Vec<u8> = vec![1, 2, 3];
-        let slice: &[u8; 32] = &[1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1,2 ];
+        let slice: &[u8; 32] = &[
+            1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4,
+            5, 1, 2,
+        ];
         assert_eq!(is_hash_searched(vec, slice), false);
     }
-
-
 }

@@ -40,12 +40,16 @@ pub fn escribir_archivo(path: String, datos: &[u8]) -> Result<u64, NodoBitcoinEr
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
     let actual_file_size = get_file_size(path.clone())?;
-    Ok(actual_file_size+1)
+    Ok(actual_file_size + 1)
 }
 
 // usos: initial_block_broadcasting, file_manager
 pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<u64, NodoBitcoinError> {
-    let mut archivo = match OpenOptions::new().create(true).append(true).open(path.clone()) {
+    let mut archivo = match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path.clone())
+    {
         Ok(archivo) => archivo,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
@@ -63,7 +67,7 @@ pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<u64, NodoBi
     archivo
         .write_all(bytes_para_guardar)
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-    Ok(actual_file_size+1)
+    Ok(actual_file_size + 1)
 }
 
 ////// **** no son concurrentes //////

@@ -4,13 +4,13 @@ use crate::blockchain::file::{
     escribir_archivo, escribir_archivo_bloque, get_blocks_filename, get_headers_filename,
     leer_todos_blocks,
 };
+use crate::blockchain::index::dump_hash_in_the_index;
 use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::{config, errores::NodoBitcoinError};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
-use crate::blockchain::index::dump_hash_in_the_index;
 
 #[derive(Clone)]
 pub struct FileManager {
@@ -21,7 +21,15 @@ pub struct FileManager {
 
 pub enum FileMessages {
     ReadAllBlocks(Sender<Result<Vec<Vec<u8>>, NodoBitcoinError>>),
-    WriteHeadersAndBlockFile(([u8; 32], Vec<u8>, [u8; 32],Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
+    WriteHeadersAndBlockFile(
+        (
+            [u8; 32],
+            Vec<u8>,
+            [u8; 32],
+            Vec<u8>,
+            Sender<Result<(), NodoBitcoinError>>,
+        ),
+    ),
     ShutDown(),
 }
 
@@ -72,38 +80,51 @@ impl FileManager {
 
     fn handle_message(&mut self, message: FileMessages) {
         match message {
-            FileMessages::WriteHeadersAndBlockFile((block_hash,block_bytes,header_hash, header_bytes ,result)) => {
+            FileMessages::WriteHeadersAndBlockFile((
+                block_hash,
+                block_bytes,
+                header_hash,
+                header_bytes,
+                result,
+            )) => {
                 log_info_message(
                     self.logger.clone(),
                     "Guardando headers y bloques...".to_string(),
                 );
-                let index_block = match escribir_archivo_bloque(self.block_file_name.clone(), &block_bytes) {
-                    Ok(index) => index,
-                    Err(error) => {
-                        result.send(Err(error));
-                        return;
-                    }
-                };
+                let index_block =
+                    match escribir_archivo_bloque(self.block_file_name.clone(), &block_bytes) {
+                        Ok(index) => index,
+                        Err(error) => {
+                            result.send(Err(error));
+                            return;
+                        }
+                    };
                 log_info_message(self.logger.clone(), "Bloque nuevo guardado".to_string());
 
-                match dump_hash_in_the_index(self.block_file_name.clone(),block_hash,index_block){
-                    Ok(_) => { },
+                match dump_hash_in_the_index(self.block_file_name.clone(), block_hash, index_block)
+                {
+                    Ok(_) => {}
                     Err(error) => {
                         result.send(Err(error));
                         return;
                     }
                 };
 
-                let index_header = match escribir_archivo(self.headers_file_name.clone(), &header_bytes) {
-                    Ok(index) => index,
-                    Err(error) => {
-                        result.send(Err(error));
-                        return;
-                    }
-                };
+                let index_header =
+                    match escribir_archivo(self.headers_file_name.clone(), &header_bytes) {
+                        Ok(index) => index,
+                        Err(error) => {
+                            result.send(Err(error));
+                            return;
+                        }
+                    };
                 log_info_message(self.logger.clone(), "Header nuevo guardado".to_string());
-                match dump_hash_in_the_index(self.headers_file_name.clone(),header_hash,index_header){
-                    Ok(_) => { },
+                match dump_hash_in_the_index(
+                    self.headers_file_name.clone(),
+                    header_hash,
+                    index_header,
+                ) {
+                    Ok(_) => {}
                     Err(error) => {
                         result.send(Err(error));
                         return;
@@ -164,9 +185,7 @@ pub fn write_headers_and_block_file(
     )));
 
     match result_receiver.recv() {
-        Ok(_) => {
-            Ok(())
-        },
+        Ok(_) => Ok(()),
         Err(_) => {
             // todo log error
             // handle error
