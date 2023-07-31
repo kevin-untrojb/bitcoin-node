@@ -10,6 +10,8 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
+use crate::blockchain::index::dump_hash_in_the_index;
+
 #[derive(Clone)]
 pub struct FileManager {
     headers_file_name: String,
@@ -19,7 +21,7 @@ pub struct FileManager {
 
 pub enum FileMessages {
     ReadAllBlocks(Sender<Result<Vec<Vec<u8>>, NodoBitcoinError>>),
-    WriteHeadersAndBlockFile((Vec<u8>, Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
+    WriteHeadersAndBlockFile(([u8; 32], Vec<u8>, [u8; 32],Vec<u8>, Sender<Result<(), NodoBitcoinError>>)),
     ShutDown(),
 }
 
@@ -70,21 +72,44 @@ impl FileManager {
 
     fn handle_message(&mut self, message: FileMessages) {
         match message {
-            FileMessages::WriteHeadersAndBlockFile((block, header, result)) => {
+            FileMessages::WriteHeadersAndBlockFile((block_hash,block_bytes,header_hash, header_bytes ,result)) => {
                 log_info_message(
                     self.logger.clone(),
                     "Guardando headers y bloques...".to_string(),
                 );
-                if let Err(error) = escribir_archivo_bloque(self.block_file_name.clone(), &block) {
-                    result.send(Err(error));
-                    return;
-                }
+                let index_block = match escribir_archivo_bloque(self.block_file_name.clone(), &block_bytes) {
+                    Ok(index) => index,
+                    Err(error) => {
+                        result.send(Err(error));
+                        return;
+                    }
+                };
                 log_info_message(self.logger.clone(), "Bloque nuevo guardado".to_string());
-                if let Err(error) = escribir_archivo(self.headers_file_name.clone(), &header) {
-                    result.send(Err(error));
-                    return;
-                }
+
+                match dump_hash_in_the_index(self.block_file_name.clone(),block_hash,index_block){
+                    Ok(_) => { },
+                    Err(error) => {
+                        result.send(Err(error));
+                        return;
+                    }
+                };
+
+                let index_header = match escribir_archivo(self.headers_file_name.clone(), &header_bytes) {
+                    Ok(index) => index,
+                    Err(error) => {
+                        result.send(Err(error));
+                        return;
+                    }
+                };
                 log_info_message(self.logger.clone(), "Header nuevo guardado".to_string());
+                match dump_hash_in_the_index(self.headers_file_name.clone(),header_hash,index_header){
+                    Ok(_) => { },
+                    Err(error) => {
+                        result.send(Err(error));
+                        return;
+                    }
+                };
+
                 result.send(Ok(()));
             }
             FileMessages::ReadAllBlocks(result) => {
@@ -102,7 +127,6 @@ pub fn read_blocks_from_file(
 ) -> Result<Vec<SerializedBlock>, NodoBitcoinError> {
     let (result_sender, result_receiver) = channel();
     _ = file_manager.send(FileMessages::ReadAllBlocks(result_sender));
-
     match result_receiver.recv() {
         Ok(res) => {
             let block_bytes = res?.to_vec();
@@ -129,15 +153,20 @@ pub fn write_headers_and_block_file(
     let (result_sender, result_receiver) = channel();
     let header_bytes = block_header.serialize()?;
     let block_byes = block.serialize()?;
-
+    let block_hash = block.header.hash()?;
+    let header_hash = block_header.hash()?;
     _ = file_manager.send(FileMessages::WriteHeadersAndBlockFile((
+        block_hash,
         block_byes,
+        header_hash,
         header_bytes,
         result_sender,
     )));
 
     match result_receiver.recv() {
-        Ok(_) => Ok(()),
+        Ok(_) => {
+            Ok(())
+        },
         Err(_) => {
             // todo log error
             // handle error

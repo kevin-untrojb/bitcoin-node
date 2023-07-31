@@ -14,7 +14,7 @@ fn create_hash_to_find_index(hash: [u8; 32]) -> usize {
     let mut hasher = DefaultHasher::new();
     hash.hash(&mut hasher);
     let hash_value = hasher.finish();
-    let range = 16;
+    let range = 1000;
     let balanced_index = (hash_value % range as u64) as usize;
 
     balanced_index
@@ -37,7 +37,7 @@ fn is_hash_searched(vec: Vec<u8>, slice: &[u8; 32]) -> bool {
 pub fn dump_hash_in_the_index(
     path: String,
     hash: [u8; 32],
-    real_index: usize,
+    real_index: u64,
 ) -> Result<(), NodoBitcoinError> {
     let index_path = create_path(path, hash.clone());
     let mut keys_file = match OpenOptions::new()
