@@ -17,9 +17,11 @@ use crate::{
     messages::{
         blocks::make_block,
         getdata::GetDataMessage,
+        getheaders::GetHeadersMessage,
+        headers::make_headers_msg,
         messages_header::{check_header, make_header},
         ping_pong::{get_nonce, make_ping, make_pong},
-        version::VersionMessage, getheaders::GetHeadersMessage, headers::make_headers_msg,
+        version::VersionMessage,
     },
 };
 
@@ -226,7 +228,7 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
             if getheaders_deserealized.is_err() {
                 break; //o continue????
             }
-            match make_headers_msg(getheaders_deserealized.unwrap()){
+            match make_headers_msg(getheaders_deserealized.unwrap()) {
                 Ok(headers_msg) => {
                     if stream.write_all(&headers_msg).is_err() {
                         log_error_message(
@@ -236,7 +238,7 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
                         break;
                     }
                     log_info_message(logger.clone(), "HEADERS enviado".to_string());
-                },
+                }
                 Err(_) => {
                     log_error_message(
                         logger.clone(),
@@ -537,9 +539,13 @@ mod tests {
         assert!(ping_pong.is_ok());
 
         // obtengo el ultimo bloque descargado
-        let block = SerializedBlock::read_last_block_from_file();
-        assert!(block.is_ok());
-        let block = block.unwrap();
+        // let block = SerializedBlock::read_last_block_from_file();
+        let vec_block = SerializedBlock::_read_n_blocks_from_file(1);
+        assert!(vec_block.is_ok());
+        let binding = vec_block.unwrap();
+        let block = binding.first();
+        assert!(block.is_some());
+        let block = block.unwrap().clone();
 
         let block_bytes = block.serialize();
         assert!(block_bytes.is_ok());

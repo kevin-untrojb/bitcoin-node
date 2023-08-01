@@ -101,8 +101,8 @@ impl GetDataMessage {
     // deseralizar el getdata, recibiendo como parámetro los bytes del mensaje sin header
     pub fn deserealize(bytes: &[u8]) -> Result<GetDataMessage, NodoBitcoinError> {
         let mut offset = 0;
-        let count = bytes[offset];
-        offset += 1;
+        let (size_bytes, count) = parse_varint(bytes);
+        offset += size_bytes;
         let mut inventory = Vec::new();
 
         for _ in 0..count {
@@ -118,7 +118,10 @@ impl GetDataMessage {
             inventory.push(Inventory { inv_type, hash });
         }
 
-        Ok(GetDataMessage { count, inventory })
+        Ok(GetDataMessage {
+            count: count as u8,
+            inventory,
+        })
     }
 }
 
