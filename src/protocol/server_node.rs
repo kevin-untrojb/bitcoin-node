@@ -19,7 +19,7 @@ use crate::{
         getdata::GetDataMessage,
         messages_header::{check_header, make_header},
         ping_pong::{get_nonce, make_ping, make_pong},
-        version::VersionMessage,
+        version::VersionMessage, getheaders::GetHeadersMessage, headers::make_headers_msg,
     },
 };
 
@@ -93,17 +93,20 @@ fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
         return Err(NodoBitcoinError::ErrorEnHandshake);
     }
 
-    // chequear que la version sea como la nuestra para mandar el version nuestro, sino abortar
-    // despues hago el deserealize del version para esto
-
-    let timestamp = Utc::now().timestamp() as u64;
-    let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
+    let version = VersionMessage::get_version(&payload);
+    let my_version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
         // sacamos del config la version??
         Ok(res) => res,
         Err(_) => return Err(NodoBitcoinError::ErrorEnHandshake),
     };
 
-    let version_message = VersionMessage::new(version, timestamp, stream.peer_addr().unwrap()); //LIMPIAR EL UNWRAP
+    if version > my_version {
+        return Err(NodoBitcoinError::ErrorEnHandshake);
+    }
+
+    let timestamp = Utc::now().timestamp() as u64;
+
+    let version_message = VersionMessage::new(my_version, timestamp, stream.peer_addr().unwrap()); //LIMPIAR EL UNWRAP
     let mensaje = version_message.serialize()?;
     if stream.write_all(&mensaje).is_err() {
         return Err(NodoBitcoinError::ErrorEnHandshake);
@@ -219,7 +222,11 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
             }
         }
         if command == "getheaders" {
-            log_info_message(logger.clone(), "getheaders recibido".to_string());
+            let getheaders_deserealized = GetHeadersMessage::deserealize(&message);
+            if getheaders_deserealized.is_err() {
+                return; //o continue????
+            }
+            let headers_msg = make_headers_msg(getheaders_deserealized.unwrap());
         }
         if command == "getdata" {
             log_info_message(logger.clone(), "getdata recibido".to_string());
