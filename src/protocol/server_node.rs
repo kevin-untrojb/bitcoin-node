@@ -224,9 +224,27 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
         if command == "getheaders" {
             let getheaders_deserealized = GetHeadersMessage::deserealize(&message);
             if getheaders_deserealized.is_err() {
-                return; //o continue????
+                break; //o continue????
             }
-            let headers_msg = make_headers_msg(getheaders_deserealized.unwrap());
+            match make_headers_msg(getheaders_deserealized.unwrap()){
+                Ok(headers_msg) => {
+                    if stream.write_all(&headers_msg).is_err() {
+                        log_error_message(
+                            logger.clone(),
+                            "No se puede enviar el mensaje HEADERS".to_string(),
+                        );
+                        break;
+                    }
+                    log_info_message(logger.clone(), "HEADERS enviado".to_string());
+                },
+                Err(_) => {
+                    log_error_message(
+                        logger.clone(),
+                        "Error creando el mensaje HEADERS".to_string(),
+                    );
+                    break;
+                }
+            }
         }
         if command == "getdata" {
             log_info_message(logger.clone(), "getdata recibido".to_string());

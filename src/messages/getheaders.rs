@@ -12,7 +12,7 @@ use super::messages_header::make_header;
 pub struct GetHeadersMessage {
     version: u32,
     num_hashes: u8,
-    start_block_hash: [u8; 32],
+    pub start_block_hash: [u8; 32],
     end_block_hash: [u8; 32],
 }
 
