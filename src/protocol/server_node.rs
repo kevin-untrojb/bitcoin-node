@@ -255,6 +255,18 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
     log_error_message(logger.clone(), "Conexion finalizada".to_string());
 }
 
+fn get_blocks_from_hashes(hashes: Vec<Vec<u8>>) -> Result<Vec<SerializedBlock>, NodoBitcoinError> {
+    let mut blocks: Vec<SerializedBlock> = Vec::new();
+    for hash in hashes {
+        let block = match SerializedBlock::_TMP_get_block(&hash) {
+            Ok(res) => res,
+            Err(_) => continue,
+        };
+        blocks.push(block);
+    }
+    Ok(blocks)
+}
+
 fn send_block(
     data_message: Vec<u8>,
     stream: &mut TcpStream,
@@ -264,7 +276,7 @@ fn send_block(
     let hashes = get_data_message.get_hashes();
 
     // obtener los bloques del archivo que corresponden a los hashes
-    let blocks: Vec<SerializedBlock> = Vec::new();
+    let blocks = get_blocks_from_hashes(hashes)?;
 
     // recorro los bloques y armo un array de bytes con la desearlización de cada uno
     let mut blocks_bytes: Vec<u8> = Vec::new();
@@ -502,5 +514,65 @@ mod tests {
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         let ping_pong = send_ping_pong_messages(&mut socket, logger);
         assert!(ping_pong.is_ok());
+    }
+
+    #[test]
+    fn test_run_client_get_block() {
+        init_config();
+        let socket = init_client();
+        assert!(socket.is_ok());
+
+        let socket = socket.unwrap();
+        let address = socket.local_addr();
+        assert!(address.is_ok());
+        let address = address.unwrap();
+
+        let handsahke = handshake(socket, address);
+        assert!(handsahke.is_ok());
+
+        let mut socket = handsahke.unwrap();
+
+        let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+        let ping_pong = send_ping_pong_messages(&mut socket, logger.clone());
+        assert!(ping_pong.is_ok());
+
+        // obtengo el ultimo bloque descargado
+        let block = SerializedBlock::read_last_block_from_file();
+        assert!(block.is_ok());
+        let block = block.unwrap();
+
+        let block_bytes = block.serialize();
+        assert!(block_bytes.is_ok());
+        let block_bytes = block_bytes.unwrap();
+
+        let hash = block.header.hash();
+        assert!(hash.is_ok());
+        let hash = hash.unwrap();
+
+        let get_data = GetDataMessage::new(1, hash.clone());
+        let get_data_message = get_data.serialize();
+        assert!(get_data_message.is_ok());
+
+        let get_data_message = get_data_message.unwrap();
+        let _ = socket.write(&get_data_message);
+
+        let read_message = read_message(&mut socket, logger.clone(), false);
+        assert!(read_message.is_ok());
+
+        let read_message = read_message.unwrap();
+        assert!(read_message.is_some());
+
+        let (command, message) = read_message.unwrap();
+        assert_eq!(command, "block");
+        assert!(message.len() > 0);
+        assert_eq!(message, block_bytes);
+
+        let block_received = SerializedBlock::deserialize(&message);
+        assert!(block_received.is_ok());
+        let block_received = block_received.unwrap();
+
+        assert_eq!(block, block_received);
+        assert_eq!(block.header, block_received.header);
+        assert_eq!(block.txns, block_received.txns);
     }
 }

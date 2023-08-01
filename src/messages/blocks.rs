@@ -14,7 +14,7 @@ pub fn make_block(payload: &[u8]) -> Result<Vec<u8>, NodoBitcoinError> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        blockchain::block::{self, SerializedBlock},
+        blockchain::block::SerializedBlock,
         config,
         messages::{blocks::make_block, messages_header::check_header},
     };

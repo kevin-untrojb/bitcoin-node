@@ -149,6 +149,24 @@ impl SerializedBlock {
         exist
     }
 
+    pub fn _TMP_get_block(hash: &[u8]) -> Result<SerializedBlock, NodoBitcoinError> {
+        // verificar si el block se encuentra en blocks
+        if hash.len() != 32 {
+            return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
+        }
+        // lo guardo en un array de 32 posiciones
+        let mut hash_array = [0u8; 32];
+        hash_array.copy_from_slice(hash);
+
+        let blocks = Self::read_blocks_from_file()?;
+        for b in blocks {
+            if b.header.hash() == Ok(hash_array) {
+                return Ok(b);
+            }
+        }
+        Err(NodoBitcoinError::NoSePuedeLeerLosBytes)
+    }
+
     pub fn read_last_block_from_file() -> Result<SerializedBlock, NodoBitcoinError> {
         let blocks = SerializedBlock::read_blocks_from_file()?;
         let last_block = match blocks.last() {
