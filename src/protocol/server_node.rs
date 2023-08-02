@@ -56,7 +56,7 @@ fn server_run(address: &str, logger: Sender<LogMessages>) -> Result<(), NodoBitc
         logger.clone(),
         format!("Escuchando en: {:?}", listener.local_addr().unwrap()),
     );
-
+    _ = listener.set_nonblocking(true);
     loop {
         match listener.accept() {
             Ok((mut stream, socket_addr)) => {
@@ -66,14 +66,17 @@ fn server_run(address: &str, logger: Sender<LogMessages>) -> Result<(), NodoBitc
                 );
                 let logger_cloned = logger.clone();
                 thread::spawn(move || {
-                    handle_message(&mut stream, logger_cloned);
+                    handle_message(&mut stream, logger_cloned.clone());
                 });
             }
-            Err(_) => {
-                log_error_message(logger.clone(), "Error al aceptar la conexión".to_string());
-                continue;
+            Err(ref e) => {
+                if e.kind() != ErrorKind::WouldBlock {
+                    log_error_message(logger.clone(), "Error al aceptar la conexión".to_string());
+                }
             }
         }
+
+        // TODO: Acá tenemos que verificar si llegó el mensaje para salir del hilo
     }
     Ok(())
 }
@@ -342,11 +345,10 @@ fn read_message(
         Ok(res) => res,
         Err(error) => {
             if error.kind() == ErrorKind::WouldBlock {
-                // Error de Timeout, enviamos un ping
-                log_error_message(
-                    logger.clone(),
-                    "Error de timeout al leer una solicitud del cliente".to_string(),
-                );
+                // TODO: Acá tenemos que verificar si llegó el mensaje para salir del hilo
+                // en caso de tener que salir, retornamos un error
+                // el flujo va a salir porque va a cerrar la conexión
+
                 if send_ping_on_timeout {
                     match send_ping_pong_messages(stream, logger.clone()) {
                         Ok(()) => {
