@@ -3,7 +3,7 @@ use std::{
     net::{TcpListener, TcpStream},
     sync::mpsc::Sender,
     thread::{self},
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use chrono::Utc;
@@ -20,7 +20,7 @@ use crate::{
         getheaders::GetHeadersMessage,
         headers::make_headers_msg,
         messages_header::{check_header, make_header},
-        ping_pong::{get_nonce, make_ping, make_pong},
+        ping_pong::{make_ping, make_pong},
         version::VersionMessage,
     },
 };
@@ -35,7 +35,10 @@ pub fn init_server(logger: Sender<LogMessages>) -> Result<(), NodoBitcoinError> 
     Ok(())
 }
 
-fn server_run(address: &str, logger: Sender<LogMessages>) -> Result<(), NodoBitcoinError> {
+fn crear_listener(
+    address: &str,
+    logger: Sender<LogMessages>,
+) -> Result<TcpListener, NodoBitcoinError> {
     let listener = match TcpListener::bind(address) {
         Ok(res) => res,
         Err(_) => {
@@ -52,11 +55,25 @@ fn server_run(address: &str, logger: Sender<LogMessages>) -> Result<(), NodoBitc
         return Err(NodoBitcoinError::NoSePudoConectar);
     }
 
+    match listener.set_nonblocking(true) {
+        Ok(_) => {}
+        Err(_) => {
+            log_error_message(
+                logger.clone(),
+                "Error al setear el socket como non-blocking".to_string(),
+            );
+            return Err(NodoBitcoinError::NoSePudoConectar);
+        }
+    }
+    Ok(listener)
+}
+
+fn server_run(address: &str, logger: Sender<LogMessages>) -> Result<(), NodoBitcoinError> {
+    let listener = crear_listener(address, logger.clone())?;
     log_info_message(
         logger.clone(),
         format!("Escuchando en: {:?}", listener.local_addr().unwrap()),
     );
-    _ = listener.set_nonblocking(true);
     loop {
         match listener.accept() {
             Ok((mut stream, socket_addr)) => {
