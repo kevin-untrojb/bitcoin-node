@@ -7,6 +7,7 @@ use crate::blockchain::file::get_headers_filename;
 use crate::blockchain::file::{
     escribir_archivo, escribir_archivo_bloque, existe_archivo_headers, leer_ultimo_header,
 };
+use crate::common::utils_data::total_reintentos;
 use crate::common::utils_timestamp::{obtener_timestamp_dia, timestamp_to_datetime};
 use crate::config;
 use crate::errores::NodoBitcoinError;
@@ -66,18 +67,6 @@ fn write_header_message_new_connection(
 fn write_header_message_old_connection(connection: &Connection) -> Result<(), NodoBitcoinError> {
     let get_headers_message = get_headers_message()?;
     connection.write_message(&get_headers_message)
-}
-
-const DEFAULT_TOTAL_REINTEGROS: usize = 5;
-
-fn total_reintentos() -> usize {
-    let total_reintentos_config = config::get_valor("REINTENTOS_DESCARGA_BLOQUES".to_string());
-    if let Ok(valor_string) = total_reintentos_config {
-        if let Ok(value) = valor_string.parse::<usize>() {
-            return value;
-        };
-    };
-    DEFAULT_TOTAL_REINTEGROS
 }
 
 fn buscar_conexion_libre_o_nuevas_conexiones(
