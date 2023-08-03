@@ -1,7 +1,10 @@
 use std::{
     io::{ErrorKind, Read, Write},
     net::{TcpListener, TcpStream},
-    sync::mpsc::Sender,
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        Arc, Mutex,
+    },
     thread::{self},
     time::Duration,
 };
@@ -23,15 +26,23 @@ use crate::{
         ping_pong::{make_ping, make_pong},
         version::VersionMessage,
     },
+    wallet::transaction_manager::TransactionMessages,
 };
 
 const READ_TIMEOUT_SECONDS: u64 = 10;
 
-pub fn init_server(logger: Sender<LogMessages>) -> Result<(), NodoBitcoinError> {
+pub enum ServerNodeMessages {
+    ShutDown,
+}
+
+pub fn init_server(
+    logger: Sender<LogMessages>,
+    sender_tx_manager: Sender<TransactionMessages>,
+) -> Result<(), NodoBitcoinError> {
     let port = config::get_valor("PORT".to_owned())?;
 
     let address = "127.0.0.1:".to_owned() + &port;
-    server_run(&address, logger).unwrap();
+    _ = server_run(&address, logger, sender_tx_manager);
     Ok(())
 }
 
@@ -68,8 +79,30 @@ fn crear_listener(
     Ok(listener)
 }
 
-fn server_run(address: &str, logger: Sender<LogMessages>) -> Result<(), NodoBitcoinError> {
+fn server_run(
+    address: &str,
+    logger: Sender<LogMessages>,
+    sender_tx_manager: Sender<TransactionMessages>,
+) -> Result<(), NodoBitcoinError> {
     let listener = crear_listener(address, logger.clone())?;
+
+    let mut threads = vec![];
+
+    // creo el channel para poder cerrar los hilos y mandarle el sender al manager
+    let (sender, receiver) = channel();
+
+    // mandarle el sender al manager que llamó al server y controla que se cierre
+    if sender_tx_manager
+        .send(TransactionMessages::SenderServerNode(sender))
+        .is_err()
+    {
+        return Err(NodoBitcoinError::NoSePudoConectar);
+    };
+
+    let senders_threads: Vec<Sender<ServerNodeMessages>> = Vec::new();
+    let senders_threads_mutex = Arc::new(Mutex::new(senders_threads));
+    let thread_logger_shutdown = logger.clone();
+
     log_info_message(
         logger.clone(),
         format!("Escuchando en: {:?}", listener.local_addr().unwrap()),
@@ -82,9 +115,19 @@ fn server_run(address: &str, logger: Sender<LogMessages>) -> Result<(), NodoBitc
                     format!("Conexión establecida: {:?}", socket_addr),
                 );
                 let logger_cloned = logger.clone();
-                thread::spawn(move || {
-                    handle_message(&mut stream, logger_cloned.clone());
-                });
+                let sender_mutex_connection = senders_threads_mutex.clone();
+
+                threads.push(thread::spawn(move || {
+                    let (sender_thread, receiver_thread) = channel();
+                    let mut senders_locked = match sender_mutex_connection.lock() {
+                        Ok(senders_locked) => senders_locked,
+                        Err(_) => return,
+                    };
+                    senders_locked.push(sender_thread);
+                    drop(senders_locked);
+
+                    handle_message(&mut stream, receiver_thread, logger_cloned.clone());
+                }));
             }
             Err(ref e) => {
                 if e.kind() != ErrorKind::WouldBlock {
@@ -93,8 +136,46 @@ fn server_run(address: &str, logger: Sender<LogMessages>) -> Result<(), NodoBitc
             }
         }
 
-        // TODO: Acá tenemos que verificar si llegó el mensaje para salir del hilo
+        // Acá tenemos que verificar si llegó el mensaje para salir del hilo
+        if let Ok(message) = receiver.try_recv() {
+            match message {
+                ServerNodeMessages::ShutDown => {
+                    let senders_locked = match senders_threads_mutex.lock() {
+                        Ok(senders_locked) => senders_locked,
+                        Err(_) => break,
+                    };
+                    log_info_message(
+                        thread_logger_shutdown.clone(),
+                        "Inicio cierre hilos del nodo server.".to_string(),
+                    );
+                    for sender_client in senders_locked.iter() {
+                        if sender_client.send(ServerNodeMessages::ShutDown).is_err() {
+                            continue;
+                        };
+                    }
+
+                    drop(senders_locked);
+                    break;
+                }
+            }
+        }
     }
+
+    // Acá tenemos que esperar a que todos los hilos terminen
+    for thread in threads {
+        let _ = thread.join();
+    }
+
+    log_info_message(
+        logger.clone(),
+        "Todas las conexiones del Nodo server se cerraron satisfactoriamente.".to_string(),
+    );
+
+    // enviar mensaje de que terminó el hilo de server
+    _ = sender_tx_manager.send(TransactionMessages::ShutdownedServerNode(
+        sender_tx_manager.clone(),
+    ));
+
     Ok(())
 }
 
@@ -153,7 +234,11 @@ fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
     Ok(())
 }
 
-fn handle_message(stream: &mut TcpStream, logger: Sender<LogMessages>) {
+fn handle_message(
+    stream: &mut TcpStream,
+    receiver_thread: Receiver<ServerNodeMessages>,
+    logger: Sender<LogMessages>,
+) {
     // handshake al revés
     // read version
     // write version
@@ -193,13 +278,17 @@ fn handle_message(stream: &mut TcpStream, logger: Sender<LogMessages>) {
                 logger.clone(),
                 "Handshake exitoso con el cliente".to_string(),
             );
-            thread_connection(stream, logger.clone());
+            thread_connection(stream, receiver_thread, logger.clone());
         }
         Err(_) => return,
     };
 }
 
-fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
+fn thread_connection(
+    stream: &mut TcpStream,
+    receiver_thread: Receiver<ServerNodeMessages>,
+    logger: Sender<LogMessages>,
+) {
     let client_address = match stream.peer_addr() {
         Ok(res) => res,
         Err(_) => {
@@ -218,6 +307,18 @@ fn thread_connection(stream: &mut TcpStream, logger: Sender<LogMessages>) {
     let mut time_out_counter = 0;
 
     loop {
+        if let Ok(message) = receiver_thread.try_recv() {
+            match message {
+                ServerNodeMessages::ShutDown => {
+                    log_info_message(
+                        logger.clone(),
+                        format! {"Hilo de server {} cerrado correctamente.", client_address},
+                    );
+                    break;
+                }
+            }
+        }
+
         // configuro si tengo que enviar un ping
         let send_ping_on_timeout = time_out_counter >= max_time_outs();
         time_out_counter += 1;
@@ -513,7 +614,8 @@ mod tests {
     fn test_run_server() {
         init_config();
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-        _ = init_server(logger);
+        let (sender, _) = channel();
+        _ = init_server(logger, sender.clone());
     }
 
     #[test]

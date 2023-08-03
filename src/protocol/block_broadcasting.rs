@@ -318,9 +318,15 @@ pub fn init_block_broadcasting(
         let _ = thread.join();
     }
 
-    // si llegué porque quise o porque se cerraron todas
+    log_info_message(
+        logger.clone(),
+        "Todas las conexiones del Block Broadcasting se cerraron satisfactoriamente.".to_string(),
+    );
 
-    _ = sender_tx_manager.send(TransactionMessages::Shutdowned);
+    // si llegué porque quise o porque se cerraron todas
+    _ = sender_tx_manager.send(TransactionMessages::ShutdownedBlockBroadcasting(
+        sender_tx_manager.clone(),
+    ));
 
     Ok(())
 }

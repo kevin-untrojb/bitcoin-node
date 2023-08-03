@@ -48,6 +48,7 @@ pub enum ApplicationManagerMessages {
     _NewBlock,
     _NewTx,
     BlockBroadcastingError,
+    NodoServerError,
     InitialDownloadError,
     ApplicationError(String),
     POIInvalido,
@@ -171,6 +172,11 @@ impl ApplicationManager {
                 let _ = self
                     .sender_frontend
                     .send(ViewObject::Error(InterfaceError::BlockBroadcastingError));
+            }
+            ApplicationManagerMessages::NodoServerError => {
+                let _ = self
+                    .sender_frontend
+                    .send(ViewObject::Error(InterfaceError::NodoServerError));
             }
             ApplicationManagerMessages::ApplicationError(message) => {
                 show_message(self.sender_frontend.clone(), message);
@@ -321,6 +327,10 @@ impl ApplicationManager {
                 logger,
                 sender_tx_manager.clone(),
             )));
+
+            let _ = sender_tx_manager.send(TransactionMessages::InitServerNode(
+                sender_tx_manager.clone(),
+            ));
         });
     }
 

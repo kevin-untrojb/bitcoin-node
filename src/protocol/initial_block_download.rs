@@ -390,14 +390,14 @@ fn thread_data(
                     logger.clone(),
                     format!("Error al leer el mensaje {:?}", thread_id_connection),
                 );
-                (cloned_connection, thread_id_connection) = unwrap_or_return!(write_bytes_data(
-                    logger.clone(),
-                    &get_data_message,
-                    cloned_connection,
-                    thread_id_connection,
-                    &admin_connections_mutex_thread,
-                    0
-                ));
+                (cloned_connection, thread_id_connection) =
+                    unwrap_or_return!(write_data_message_new_connection(
+                        logger.clone(),
+                        &get_data_message,
+                        thread_id_connection,
+                        &admin_connections_mutex_thread,
+                        0
+                    ));
                 log_info_message(
                     logger.clone(),
                     format!(
