@@ -312,7 +312,7 @@ fn thread_connection(
                 ServerNodeMessages::ShutDown => {
                     log_info_message(
                         logger.clone(),
-                        format! {"Hilo de server {} cerrado correctamente.", client_address},
+                        format! {"Cerrando la conexión {} ...", client_address.clone()},
                     );
                     break;
                 }
@@ -375,7 +375,10 @@ fn thread_connection(
             continue;
         }
     }
-    log_error_message(logger.clone(), "Conexion finalizada".to_string());
+    log_info_message(
+        logger.clone(),
+        format!("Conexión {} cerrada correctamente.", client_address.clone()),
+    );
 }
 
 fn get_blocks_from_hashes(hashes: Vec<Vec<u8>>) -> Result<Vec<SerializedBlock>, NodoBitcoinError> {
