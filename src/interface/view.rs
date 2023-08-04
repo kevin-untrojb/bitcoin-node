@@ -29,6 +29,7 @@ pub enum ViewObject {
     _NewTx(String),
     CloseApplication,
     UpdateButtonPoiStatus(String),
+    UploadProgressBar((i128, i128, i128))
 }
 
 pub struct ViewObjectData {
@@ -143,6 +144,9 @@ pub fn create_view() -> Sender<ViewObject> {
                     }
                 }
             }
+            ViewObject::UploadProgressBar((n_headers, n_blocks, n_pending_blocks)) => {
+                
+            },
         }
         glib::Continue(true)
     });
