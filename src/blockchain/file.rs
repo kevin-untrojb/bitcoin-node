@@ -40,6 +40,9 @@ pub fn escribir_archivo(path: String, datos: &[u8]) -> Result<u64, NodoBitcoinEr
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
     let actual_file_size = get_file_size(path.clone())?;
+    archivo
+        .write_all(datos)
+        .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
     Ok(actual_file_size + 1)
 }
 
@@ -53,7 +56,6 @@ pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<u64, NodoBi
         Ok(archivo) => archivo,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
-
     let actual_file_size = get_file_size(path)?;
 
     let datos_len = datos.len();
@@ -67,7 +69,8 @@ pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<u64, NodoBi
     archivo
         .write_all(bytes_para_guardar)
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-    Ok(actual_file_size + 1)
+
+    Ok(actual_file_size+1)
 }
 
 ////// **** no son concurrentes //////
@@ -109,7 +112,7 @@ pub fn leer_bytes(path: String, offset: u64, length: u64) -> Result<Vec<u8>, Nod
 // ************************  internas ************************  //
 /////////////////////////////////////////////////////////////////
 
-fn leer_bloque(offset: u64) -> Result<(Vec<u8>, u64), NodoBitcoinError> {
+pub fn leer_bloque(offset: u64) -> Result<(Vec<u8>, u64), NodoBitcoinError> {
     let path = get_blocks_filename()?;
     let sizeof_usize = mem::size_of::<usize>() as u64;
     let from_file = leer_bytes(path.clone(), offset, sizeof_usize)?;

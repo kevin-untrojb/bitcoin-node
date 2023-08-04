@@ -4,6 +4,8 @@ use crate::blockchain::file::{
     escribir_archivo, escribir_archivo_bloque, get_blocks_filename, get_headers_filename,
     leer_todos_blocks,
 };
+use crate::blockchain::file::leer_bloque;
+use crate::blockchain::index::get_start_index;
 use crate::blockchain::index::dump_hash_in_the_index;
 use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::{config, errores::NodoBitcoinError};
@@ -30,6 +32,7 @@ pub enum FileMessages {
             Sender<Result<(), NodoBitcoinError>>,
         ),
     ),
+    GetBlock(([u8; 32],Sender<Result<(Vec<u8>, u64), NodoBitcoinError>>)),
     ShutDown(),
 }
 
@@ -109,6 +112,7 @@ impl FileManager {
                         return;
                     }
                 };
+                log_info_message(self.logger.clone(), format!("Indice de bloque guardado {}",index_block));
 
                 let index_header =
                     match escribir_archivo(self.headers_file_name.clone(), &header_bytes) {
@@ -130,11 +134,22 @@ impl FileManager {
                         return;
                     }
                 };
+                log_info_message(self.logger.clone(), format!("Indice de header guardado {}",index_header));
 
                 result.send(Ok(()));
             }
             FileMessages::ReadAllBlocks(result) => {
                 result.send(leer_todos_blocks());
+            }
+            FileMessages::GetBlock((hash_id, result)) => {
+                let block_index = match get_start_index(self.block_file_name.clone(),hash_id){
+                    Ok(index) =>  index,
+                    Err(error) => {
+                        result.send(Err(error));
+                        return
+                    }
+                };
+                result.send(leer_bloque(block_index));
             }
             FileMessages::ShutDown() => {
                 return;

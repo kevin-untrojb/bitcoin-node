@@ -23,12 +23,6 @@ fn create_hash_to_find_index(hash: [u8; 32]) -> usize {
 fn create_path(path: String, hash: [u8; 32]) -> String {
     format!("indexes/{}/ix-{}", path, create_hash_to_find_index(hash))
 }
-fn get_key_path(path: String) -> String {
-    format!("{}-v", path)
-}
-fn get_val_path(path: String) -> String {
-    format!("{}-k", path)
-}
 
 fn is_hash_searched(vec: Vec<u8>, slice: &[u8; 32]) -> bool {
     vec.iter().eq(slice.iter())
@@ -39,70 +33,56 @@ pub fn dump_hash_in_the_index(
     hash: [u8; 32],
     real_index: u64,
 ) -> Result<(), NodoBitcoinError> {
+
+    // cambiar a un solo archivo
     let index_path = create_path(path, hash.clone());
-    let mut keys_file = match OpenOptions::new()
+    let mut file = match OpenOptions::new()
         .create(true)
         .append(true)
-        .open(get_key_path(index_path.clone()))
+        .open(index_path.clone())
     {
         Ok(file) => file,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
-    let mut vals_file = match OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(get_val_path(index_path))
-    {
-        Ok(file) => file,
-        Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
-    };
-    keys_file
+    file
         .write_all(&hash)
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-    vals_file
+    file
         .write_all(&real_index.to_le_bytes())
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
     Ok(())
 }
 
-pub fn get_start_index(path: String, hash: [u8; 32]) -> Result<usize, NodoBitcoinError> {
-    let keys_path = get_key_path(create_path(path.clone(), hash.clone()));
-    let vals_path = get_val_path(create_path(path.clone(), hash.clone()));
-    let mut keys_file = match File::open(get_key_path(keys_path.clone())) {
+pub fn get_start_index(path: String, hash: [u8; 32]) -> Result<u64, NodoBitcoinError> {
+    let index_path = create_path(path.clone(), hash.clone());
+    let mut file = match File::open(index_path.clone()) {
         Ok(file) => file,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
-
     let mut offset = 0;
     let mut i = 0;
-    let mut is_missing_index = true;
     let size_of_u8 = mem::size_of::<u8>() as u64;
-    while offset < keys_file.metadata().unwrap().len() && is_missing_index {
+    while offset < file.metadata().unwrap().len() {
         if is_hash_searched(
-            leer_bytes(keys_path.clone(), offset, size_of_u8 * 32).unwrap(),
+            leer_bytes(index_path.clone(), offset, size_of_u8 * 32).unwrap(),
             &hash,
         ) {
-            is_missing_index = false
+            offset = offset+size_of_u8 * 32;
+            let index_found = leer_bytes(index_path.clone(), offset, size_of_u8 * 8 )?;
+            let mut array_bytes: [u8; 8] = [0; 8];
+            array_bytes.copy_from_slice(&index_found);
+            // indice encontrado
+            let u64_index =  u64::from_le_bytes(array_bytes) ;
+            return Ok(u64_index);
         } else {
             i = i + 1;
             offset = offset + 32;
         }
     }
-    if is_missing_index {
-        return Err(NodoBitcoinError::IndexNoEncontrado);
-    }
-
-    let sizeof_usize = mem::size_of::<usize>() as u64;
-    let index_from_file = leer_bytes(vals_path, sizeof_usize * i, sizeof_usize)?;
-
-    let mut array_index: [u8; 8] = [0; 8];
-    array_index.copy_from_slice(&index_from_file);
-
-    let index = usize::from_le_bytes(array_index);
-
-    Ok(index)
+    Err(NodoBitcoinError::IndexNoEncontrado)
 }
+
 
 #[cfg(test)]
 mod tests {
