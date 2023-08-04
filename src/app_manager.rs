@@ -51,6 +51,7 @@ pub enum ApplicationManagerMessages {
     BlockBroadcastingError,
     InitialDownloadError(usize),
     ApplicationError(String),
+    UpdateProgressBar(usize, usize, usize),
     POIInvalido,
 }
 
@@ -183,14 +184,30 @@ impl ApplicationManager {
             ApplicationManagerMessages::ApplicationError(message) => {
                 show_message(self.sender_frontend.clone(), message);
             }
+            ApplicationManagerMessages::UpdateProgressBar(
+                n_headers,
+                n_blocks,
+                n_downloaded_blocks,
+            ) => {
+                log_info_message(
+                    self.logger.clone(),
+                    format!("Actualizando la barra de progreso: headers: {:?}, bloques a descargar: {:?}, bloques descargados: {:?}", n_headers, n_blocks, n_downloaded_blocks),
+                );
+                let _ = self.sender_frontend.send(ViewObject::UploadProgressBar((
+                    n_headers,
+                    n_blocks,
+                    n_downloaded_blocks,
+                )));
+            }
             ApplicationManagerMessages::POIInvalido => {
                 log_info_message(
                     self.logger.clone(),
                     "Descargando nuevo bloque luego del POI inválido...".to_string(),
                 );
-
+                let sender_app_manager = self.sender_app_manager.clone();
                 let last_block = match ApplicationManager::download_blockchain(
                     self.sender_frontend.clone(),
+                    sender_app_manager.clone(),
                     self.logger.clone(),
                 ) {
                     Ok(_) => match SerializedBlock::read_last_block_from_file() {
@@ -315,6 +332,7 @@ impl ApplicationManager {
         thread::spawn(move || {
             let admin_connections = match ApplicationManager::download_blockchain(
                 sender_frontend.clone(),
+                sender_app_manager.clone(),
                 logger.clone(),
             ) {
                 Ok(admin_connections) => admin_connections,
@@ -335,6 +353,7 @@ impl ApplicationManager {
 
     fn download_blockchain(
         sender_frontend: glib::Sender<ViewObject>,
+        sender_app_manager: Sender<ApplicationManagerMessages>,
         logger: mpsc::Sender<LogMessages>,
     ) -> Result<AdminConnections, NodoBitcoinError> {
         start_loading(
@@ -347,7 +366,7 @@ impl ApplicationManager {
             sender_frontend.clone(),
             "Obteniendo blockchain... ".to_string(),
         );
-        get_full_blockchain(logger, admin_connections.clone())?;
+        get_full_blockchain(logger, admin_connections.clone(), sender_app_manager)?;
         end_loading(sender_frontend);
         Ok(admin_connections)
     }
