@@ -594,7 +594,15 @@ fn validar_pong(
 
 #[cfg(test)]
 mod tests {
-    use crate::{log::create_logger_actor, protocol::connection::handshake, blockchain::{file::{_leer_primer_header, leer_primeros_2mil_headers}, blockheader::BlockHeader}, messages::headers::deserealize_sin_guardar};
+    use crate::{
+        blockchain::{
+            blockheader::BlockHeader,
+            file::{_leer_primer_header, buscar_header, leer_primeros_2mil_headers},
+        },
+        log::create_logger_actor,
+        messages::headers::deserealize_sin_guardar,
+        protocol::connection::handshake,
+    };
 
     use super::*;
 
@@ -733,14 +741,25 @@ mod tests {
         // obtengo el ultimo bloque descargado
         // let block = SerializedBlock::read_last_block_from_file();
         let mut header_deserelized: Vec<BlockHeader> = Vec::new();
-        let vec_header = leer_primeros_2mil_headers();
-        assert!(vec_header.is_ok());
-        let binding = vec_header.unwrap();
-        for i in 0..2000 {
-            header_deserelized.push(BlockHeader::deserialize(&binding[i*80..(i*80)+80]).unwrap());
+        let primer_header = _leer_primer_header().unwrap();
+        let header = BlockHeader::deserialize(&primer_header).unwrap();
+
+        let hash_buscado = header.hash().unwrap();
+        let headers_bytes = buscar_header(hash_buscado).unwrap();
+
+        //let vec_header = leer_primeros_2mil_headers();
+        //assert!(vec_header.is_ok());
+        // let binding = vec_header.unwrap();
+        let cantidad_headers = headers_bytes.len() / 80;
+        //headers.extend(leer_primeros_2mil_headers().unwrap());
+        for i in 0..cantidad_headers {
+            header_deserelized
+                .push(BlockHeader::deserialize(&headers_bytes[i * 80..(i * 80) + 80]).unwrap());
         }
 
-        let get_headers = GetHeadersMessage::new(70015, 1, header_deserelized[0].hash().unwrap(), [0;32]);
+        // let get_headers =
+        //     GetHeadersMessage::new(70015, 1, header_deserelized[0].hash().unwrap(), [0; 32]);
+        let get_headers = GetHeadersMessage::new(70015, 1, hash_buscado, [0; 32]);
 
         // let get_data_message = get_data_message.unwrap();
         // let _ = socket.write(&get_data_message);
