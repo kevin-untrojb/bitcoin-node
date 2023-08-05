@@ -33,7 +33,8 @@ pub struct TransactionManager {
     sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
     sender_server_node: Option<Sender<ServerNodeMessages>>,
     admin_connections: Option<AdminConnections>,
-    blocks: Option<Vec<SerializedBlock>>,
+    blocks: Vec<SerializedBlock>,
+    blocks_map: HashMap<[u8; 32], SerializedBlock>,
 }
 
 pub enum TransactionMessages {
@@ -57,6 +58,7 @@ pub enum TransactionMessages {
     InitServerNode(Sender<TransactionMessages>),
     SendTx(Account, String, u64, u64, Sender<LogMessages>),
     POIInvalido,
+    GetBlockRequest(Vec<u8>, Sender<ServerNodeMessages>),
     SaveBlockHeader(SerializedBlock, BlockHeader, Sender<TransactionMessages>),
     NewBlock(SerializedBlock),
     NewTx(Transaction),
@@ -182,16 +184,25 @@ impl TransactionManager {
                 let sender_app_manager_clone = self.sender_app_manager.clone();
                 let sender_file_manager = self.file_manager.clone();
                 let blocks = match read_blocks_from_file(sender_file_manager.clone()) {
-                    Ok(blocks) => Some(blocks),
+                    Ok(blocks) => blocks,
                     Err(_) => {
                         log_error_message(
                             logger.clone(),
                             "Error al leer los bloques del archivo".to_string(),
                         );
-                        None
+                        vec![]
                     }
                 };
                 self.blocks = blocks;
+
+                let mut hash_map = HashMap::new();
+                for block in &self.blocks {
+                    let hash = block.header.hash().unwrap();
+                    // agregar al hash map
+                    hash_map.insert(hash, block.clone());
+                }
+                self.blocks_map = hash_map;
+
                 thread::spawn(move || {
                     match init_block_broadcasting(
                         logger.clone(),
@@ -243,6 +254,16 @@ impl TransactionManager {
                         }
                     };
                 });
+            }
+            TransactionMessages::GetBlockRequest(hash, sender) => {
+                // Busco el bloque en la lista de bloques
+                let key: [u8; 32] = hash.as_slice().try_into().unwrap_or([0u8; 32]);
+                let mut response: Option<SerializedBlock> = None;
+                if let Some(valor) = self.blocks_map.get(&key) {
+                    let bloque_encontrado = valor.clone();
+                    response = Some(bloque_encontrado);
+                }
+                _ = sender.send(ServerNodeMessages::GetBlockResponse(response));
             }
             TransactionMessages::SaveBlockHeader(block, header, sender) => {
                 self.guardar_header_y_bloque(block.clone(), header);
@@ -474,19 +495,17 @@ impl TransactionManager {
         Ok(utxo_set)
     }
 
-    fn guardar_header_y_bloque(&self, block: SerializedBlock, header: BlockHeader) {
+    fn guardar_header_y_bloque(&mut self, block: SerializedBlock, header: BlockHeader) {
         let logger = self.logger.clone();
-        let mut blocks = match self.blocks.clone() {
-            Some(blocks) => blocks,
-            None => vec![],
-        };
 
-        if SerializedBlock::contains_block(blocks.clone(), block.clone()) {
+        if SerializedBlock::contains_block(&self.blocks, block.clone()) {
             log_error_message(logger.clone(), "Bloque repetido".to_string());
         } else {
             match write_headers_and_block_file(self.file_manager.clone(), block.clone(), header) {
                 Ok(_) => {
-                    blocks.push(block);
+                    self.blocks.push(block.clone());
+                    let hash = block.header.hash().unwrap();
+                    self.blocks_map.insert(hash, block);
                     log_info_message(
                         logger.clone(),
                         "Bloque nuevo guardado correctamente".to_string(),
@@ -555,7 +574,8 @@ pub fn create_transaction_manager(
         sender_server_node: None,
         sender_app_manager: app_sender,
         admin_connections: None,
-        blocks: None,
+        blocks: vec![],
+        blocks_map: HashMap::new(),
     }));
 
     thread::spawn(move || {

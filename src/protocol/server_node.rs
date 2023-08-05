@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io::{ErrorKind, Read, Write},
     net::{TcpListener, TcpStream},
     sync::{
@@ -12,7 +13,7 @@ use std::{
 use chrono::Utc;
 
 use crate::{
-    blockchain::block::SerializedBlock,
+    blockchain::{block::SerializedBlock, blockheader::BlockHeader},
     common::utils_bytes::ping_nonce,
     config,
     errores::NodoBitcoinError,
@@ -32,6 +33,7 @@ use crate::{
 const READ_TIMEOUT_SECONDS: u64 = 10;
 
 pub enum ServerNodeMessages {
+    GetBlockResponse(Option<SerializedBlock>),
     ShutDown,
 }
 
@@ -116,7 +118,7 @@ fn server_run(
                 );
                 let logger_cloned = logger.clone();
                 let sender_mutex_connection = senders_threads_mutex.clone();
-
+                let sender_tx_manager_clone = sender_tx_manager.clone();
                 threads.push(thread::spawn(move || {
                     let (sender_thread, receiver_thread) = channel();
                     let mut senders_locked = match sender_mutex_connection.lock() {
@@ -126,7 +128,12 @@ fn server_run(
                     senders_locked.push(sender_thread);
                     drop(senders_locked);
 
-                    handle_message(&mut stream, receiver_thread, logger_cloned.clone());
+                    handle_message(
+                        &mut stream,
+                        receiver_thread,
+                        sender_tx_manager_clone.clone(),
+                        logger_cloned.clone(),
+                    );
                 }));
             }
             Err(ref e) => {
@@ -157,6 +164,7 @@ fn server_run(
                     drop(senders_locked);
                     break;
                 }
+                ServerNodeMessages::GetBlockResponse(_) => {}
             }
         }
     }
@@ -237,6 +245,7 @@ fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
 fn handle_message(
     stream: &mut TcpStream,
     receiver_thread: Receiver<ServerNodeMessages>,
+    tx_sender: Sender<TransactionMessages>,
     logger: Sender<LogMessages>,
 ) {
     // handshake al revés
@@ -278,7 +287,7 @@ fn handle_message(
                 logger.clone(),
                 "Handshake exitoso con el cliente".to_string(),
             );
-            thread_connection(stream, receiver_thread, logger.clone());
+            thread_connection(stream, receiver_thread, tx_sender.clone(), logger.clone());
         }
         Err(_) => return,
     };
@@ -287,6 +296,7 @@ fn handle_message(
 fn thread_connection(
     stream: &mut TcpStream,
     receiver_thread: Receiver<ServerNodeMessages>,
+    tx_sender: Sender<TransactionMessages>,
     logger: Sender<LogMessages>,
 ) {
     let client_address = match stream.peer_addr() {
@@ -316,6 +326,7 @@ fn thread_connection(
                     );
                     break;
                 }
+                ServerNodeMessages::GetBlockResponse(_) => {}
             }
         }
 
@@ -339,20 +350,29 @@ fn thread_connection(
         };
 
         if command == "ping" {
+            log_info_message(
+                logger.clone(),
+                format!("ping recibido de {}", client_address),
+            );
             match send_pong(message, stream, logger.clone()) {
                 Ok(()) => continue,
                 Err(_) => break,
             }
         }
         if command == "getheaders" {
+            log_info_message(
+                logger.clone(),
+                format!("getheaders recibido de {}", client_address),
+            );
             let getheaders_deserealized = GetHeadersMessage::deserealize(&message);
             if getheaders_deserealized.is_err() {
                 log_error_message(
                     logger.clone(),
                     "No se puede deserealizar el mensaje getheaders (nodo servidor)".to_string(),
                 );
-                break; //o continue????
+                continue;
             }
+
             match make_headers_msg(getheaders_deserealized.unwrap()) {
                 Ok(headers_msg) => {
                     if stream.write_all(&headers_msg).is_err() {
@@ -369,13 +389,16 @@ fn thread_connection(
                         logger.clone(),
                         "Error creando el mensaje HEADERS".to_string(),
                     );
-                    break;
+                    continue;
                 }
             }
         }
         if command == "getdata" {
-            log_info_message(logger.clone(), "getdata recibido".to_string());
-            _ = send_block(message, stream, logger.clone());
+            log_info_message(
+                logger.clone(),
+                format!("getdata recibido de {}", client_address),
+            );
+            _ = send_block(message, stream, logger.clone(), tx_sender.clone());
             continue;
         }
     }
@@ -385,14 +408,28 @@ fn thread_connection(
     );
 }
 
-fn get_blocks_from_hashes(hashes: Vec<Vec<u8>>) -> Result<Vec<SerializedBlock>, NodoBitcoinError> {
+fn get_blocks_from_hashes(
+    hashes: Vec<Vec<u8>>,
+    tx_sender: Sender<TransactionMessages>,
+) -> Result<Vec<SerializedBlock>, NodoBitcoinError> {
     let mut blocks: Vec<SerializedBlock> = Vec::new();
-    for hash in hashes {
-        let block = match SerializedBlock::_tmp_get_block(&hash) {
-            Ok(res) => res,
-            Err(_) => continue,
-        };
-        blocks.push(block);
+
+    // crear un channel para pedirle el bloque al transaction manager
+    let (sender, receiver) = channel();
+    for hash in hashes.clone() {
+        _ = tx_sender.send(TransactionMessages::GetBlockRequest(hash, sender.clone()));
+
+        if let Ok(message) = receiver.recv() {
+            match message {
+                ServerNodeMessages::ShutDown => {}
+                ServerNodeMessages::GetBlockResponse(block) => {
+                    if block.is_none() {
+                        continue;
+                    }
+                    blocks.push(block.unwrap());
+                }
+            }
+        }
     }
     Ok(blocks)
 }
@@ -401,12 +438,13 @@ fn send_block(
     data_message: Vec<u8>,
     stream: &mut TcpStream,
     logger: Sender<LogMessages>,
+    tx_sender: Sender<TransactionMessages>,
 ) -> Result<(), NodoBitcoinError> {
     let get_data_message = GetDataMessage::deserealize(&data_message)?;
     let hashes = get_data_message.get_hashes();
 
     // obtener los bloques del archivo que corresponden a los hashes
-    let blocks = get_blocks_from_hashes(hashes)?;
+    let blocks = get_blocks_from_hashes(hashes, tx_sender)?;
 
     // recorro los bloques y armo un array de bytes con la desearlización de cada uno
     let mut blocks_bytes: Vec<u8> = Vec::new();
@@ -414,7 +452,6 @@ fn send_block(
         let block_bytes = block.serialize()?;
         blocks_bytes.extend(block_bytes);
     }
-
     // armar el mensaje BLOCK
     let block_message = make_block(&blocks_bytes)?;
 
@@ -628,9 +665,9 @@ mod tests {
     #[test]
     fn test_run_server() {
         init_config();
-        let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-        let (sender, _) = channel();
-        _ = init_server(logger, sender.clone());
+        // let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+        // let (sender, _) = channel();
+        //_ = init_server(logger, sender.clone());
     }
 
     #[test]

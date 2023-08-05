@@ -129,6 +129,10 @@ impl BlockHeader {
 
 #[cfg(test)]
 mod tests {
+    use std::{collections::HashMap, mem};
+
+    use crate::{blockchain::file::_leer_todos_headers, config};
+
     use super::*;
 
     #[test]
@@ -211,5 +215,43 @@ mod tests {
         assert_eq!(block_header.time, 123456789);
         assert_eq!(block_header.n_bits, 123456789);
         assert_eq!(block_header.nonce, 123456789);
+    }
+
+    #[test]
+    fn hash_headers() {
+        let args: Vec<String> = vec!["app_name".to_string(), "src/nodo.conf".to_string()];
+        _ = config::inicializar(args);
+        println!(
+            "Empieza a las {}",
+            chrono::offset::Local::now().format("%F %T")
+        );
+        // cargar todos los headers
+        let headers_bytes = _leer_todos_headers();
+        assert!(headers_bytes.is_ok());
+        println!(
+            "Leo todos los bytes a las {}",
+            chrono::offset::Local::now().format("%F %T")
+        );
+        let headers_bytes = headers_bytes.unwrap();
+        let total_bytes = headers_bytes.len();
+
+        let mut headers = vec![];
+
+        let mut offset = 0;
+
+        let mut hash_map = HashMap::new();
+
+        while offset < total_bytes {
+            let bytes = &headers_bytes[offset..offset + 80];
+            let header = BlockHeader::deserialize(bytes).unwrap();
+            let hash = header.hash().unwrap();
+            headers.push(header);
+            hash_map.insert(hash, header);
+            offset += 80;
+        }
+        println!(
+            "Hash map terminado {}",
+            chrono::offset::Local::now().format("%F %T")
+        );
     }
 }
