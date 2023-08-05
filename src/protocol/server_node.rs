@@ -388,7 +388,7 @@ fn thread_connection(
 fn get_blocks_from_hashes(hashes: Vec<Vec<u8>>) -> Result<Vec<SerializedBlock>, NodoBitcoinError> {
     let mut blocks: Vec<SerializedBlock> = Vec::new();
     for hash in hashes {
-        let block = match SerializedBlock::_TMP_get_block(&hash) {
+        let block = match SerializedBlock::_tmp_get_block(&hash) {
             Ok(res) => res,
             Err(_) => continue,
         };
@@ -597,7 +597,7 @@ mod tests {
     use crate::{
         blockchain::{
             blockheader::BlockHeader,
-            file::{_leer_primer_header, buscar_header, leer_primeros_2mil_headers},
+            file::{_leer_primer_header, buscar_header},
         },
         log::create_logger_actor,
         messages::headers::deserealize_sin_guardar,

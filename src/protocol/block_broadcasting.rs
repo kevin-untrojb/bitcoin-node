@@ -1,10 +1,7 @@
 use super::admin_connections::AdminConnections;
-use crate::blockchain::file_manager::write_headers_and_block_file;
-use crate::blockchain::file_manager::{read_blocks_from_file, FileMessages};
 use crate::{
     blockchain::{
         block::{pow_poi_validation, SerializedBlock},
-        blockheader::BlockHeader,
         transaction::Transaction,
     },
     errores::NodoBitcoinError,
@@ -17,7 +14,7 @@ use crate::{
 };
 use std::sync::mpsc::{channel, Sender};
 use std::{
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, Mutex},
     thread,
 };
 
@@ -31,10 +28,8 @@ pub enum BlockBroadcastingMessages {
 pub fn init_block_broadcasting(
     logger: Sender<LogMessages>,
     mut admin_connections: AdminConnections,
-    sender_tx_manager: Sender<TransactionMessages>,
-    file_manager: Sender<FileMessages>,
+    sender_tx_manager: Sender<TransactionMessages>
 ) -> Result<(), NodoBitcoinError> {
-    //let blocks = Arc::new(Mutex::new(read_blocks_from_file(file_manager.clone())?));
     let mut threads = vec![];
     let (sender, receiver) = channel();
     if sender_tx_manager
@@ -75,9 +70,7 @@ pub fn init_block_broadcasting(
     for connection in admin_connections.get_connections() {
         let socket = connection.clone();
         let thread_logger = logger.clone();
-        let thread_file_manager = file_manager.clone();
         let thread_sender_tx_manager = sender_tx_manager.clone();
-        //let shared_blocks = blocks.clone();
         let sender_mutex_connection = sender_mutex.clone();
         threads.push(thread::spawn(move || {
             let (sender_thread, receiver_thread) = channel();

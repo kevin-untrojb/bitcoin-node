@@ -149,7 +149,7 @@ impl SerializedBlock {
         exist
     }
 
-    pub fn _TMP_get_block(hash: &[u8]) -> Result<SerializedBlock, NodoBitcoinError> {
+    pub fn _tmp_get_block(hash: &[u8]) -> Result<SerializedBlock, NodoBitcoinError> {
         // verificar si el block se encuentra en blocks
         if hash.len() != 32 {
             return Err(NodoBitcoinError::NoSePuedeLeerLosBytes);
@@ -225,11 +225,6 @@ pub fn pow_poi_validation(thread_logger: Sender<LogMessages>, block: SerializedB
 
 #[cfg(test)]
 mod tests {
-
-    use std::fmt::format;
-
-    use crate::config;
-
     use super::*;
 
     #[test]

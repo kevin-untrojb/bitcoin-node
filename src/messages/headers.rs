@@ -38,17 +38,21 @@ pub fn make_headers_msg(get_headers: GetHeadersMessage) -> Result<Vec<u8>, NodoB
     let mut msg = Vec::new();
     let mut header_deserelized: Vec<BlockHeader> = Vec::new();
 
-    let mut headers = vec![];
+    let mut headers: Vec<u8> = vec![]; 
     if header_buscado == GENESIS_BLOCK {
-        headers = leer_primeros_2mil_headers()?;
+        headers.extend(leer_primeros_2mil_headers()?);
     } else {
-        headers = buscar_header(header_buscado)?;
+        headers.extend(buscar_header(header_buscado)?);
     }
 
     let cantidad_headers = headers.len() / 80;
     //headers.extend(leer_primeros_2mil_headers().unwrap());
     for i in 0..cantidad_headers {
-        header_deserelized.push(BlockHeader::deserialize(&headers[i * 80..(i * 80) + 80]).unwrap());
+        let serialized_block = match BlockHeader::deserialize(&headers[i * 80..(i * 80) + 80]) {
+            Ok(block) => block,
+            Err(err) => return Err(err),
+        };
+        header_deserelized.push(serialized_block);
     }
 
     let prefix = utils_bytes::from_amount_bytes_to_prefix(3);

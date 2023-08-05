@@ -196,8 +196,7 @@ impl TransactionManager {
                     match init_block_broadcasting(
                         logger.clone(),
                         admin_connections,
-                        sender_tx_manager,
-                        sender_file_manager,
+                        sender_tx_manager
                     ) {
                         Ok(_) => {
                             log_info_message(

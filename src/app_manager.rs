@@ -52,7 +52,7 @@ pub enum ApplicationManagerMessages {
     _NewBlock,
     _NewTx,
     BlockBroadcastingError,
-    NodoServerError,
+    _NodoServerError,
     InitialDownloadError(usize),
     ApplicationError(String),
     UpdateProgressBar(usize, usize),
@@ -188,7 +188,7 @@ impl ApplicationManager {
                     .sender_frontend
                     .send(ViewObject::Error(InterfaceError::BlockBroadcastingError));
             }
-            ApplicationManagerMessages::NodoServerError => {
+            ApplicationManagerMessages::_NodoServerError => {
                 let _ = self
                     .sender_frontend
                     .send(ViewObject::Error(InterfaceError::NodoServerError));

@@ -216,7 +216,7 @@ pub fn buscar_header(hash_buscado: [u8; 32]) -> Result<Vec<u8>, NodoBitcoinError
 
 pub fn leer_primeros_2mil_headers() -> Result<Vec<u8>, NodoBitcoinError> {
     let path = get_headers_filename()?;
-    let file_size = get_file_header_size()?;
+    //let file_size = get_file_header_size()?;
     leer_bytes(path, 0, 2000 * 80)
 }
 

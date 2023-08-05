@@ -19,7 +19,7 @@ pub fn make_ping(nonce: &[u8; 8]) -> Result<Vec<u8>, NodoBitcoinError> {
     Ok(msg)
 }
 
-pub fn get_nonce(msg: &[u8]) -> Result<[u8; 8], NodoBitcoinError> {
+pub fn _get_nonce(msg: &[u8]) -> Result<[u8; 8], NodoBitcoinError> {
     let mut nonce = [0u8; 8];
     nonce.copy_from_slice(&msg[24..32]);
     Ok(nonce)
@@ -29,7 +29,7 @@ pub fn get_nonce(msg: &[u8]) -> Result<[u8; 8], NodoBitcoinError> {
 mod tests {
     use crate::{
         common::utils_bytes::ping_nonce,
-        messages::ping_pong::{get_nonce, make_ping, make_pong},
+        messages::ping_pong::{_get_nonce, make_ping, make_pong},
     };
 
     #[test]
@@ -65,7 +65,7 @@ mod tests {
         // crear un vector de 8 bytes con 8 valores aleatorios
         let bytes = ping_nonce();
         let msg = make_ping(&bytes).unwrap();
-        let nonce = get_nonce(&msg).unwrap();
+        let nonce = _get_nonce(&msg).unwrap();
         assert_eq!(nonce, bytes);
     }
 }
