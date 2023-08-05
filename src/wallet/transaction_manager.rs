@@ -8,7 +8,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use super::user::Account;
 use crate::app_manager::ApplicationManagerMessages;
 use crate::blockchain::block::SerializedBlock;
-use crate::blockchain::file_manager::{read_blocks_from_file, FileMessages};
+use crate::blockchain::blockheader::BlockHeader;
+use crate::blockchain::file_manager::{
+    read_blocks_from_file, write_headers_and_block_file, FileMessages,
+};
 use crate::blockchain::transaction::{create_tx_to_send, Transaction};
 use crate::common::uint256::Uint256;
 use crate::errores::NodoBitcoinError;
@@ -30,7 +33,7 @@ pub struct TransactionManager {
     sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
     sender_server_node: Option<Sender<ServerNodeMessages>>,
     admin_connections: Option<AdminConnections>,
-    // TODO guardar hilos abiertos para despues cerrarlos (block broadcasting)
+    blocks: Option<Vec<SerializedBlock>>,
 }
 
 pub enum TransactionMessages {
@@ -54,6 +57,7 @@ pub enum TransactionMessages {
     InitServerNode(Sender<TransactionMessages>),
     SendTx(Account, String, u64, u64, Sender<LogMessages>),
     POIInvalido,
+    SaveBlockHeader(SerializedBlock, BlockHeader, Sender<TransactionMessages>),
     NewBlock(SerializedBlock),
     NewTx(Transaction),
     SenderBlockBroadcasting(Sender<BlockBroadcastingMessages>),
@@ -177,6 +181,17 @@ impl TransactionManager {
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 let sender_app_manager_clone = self.sender_app_manager.clone();
                 let sender_file_manager = self.file_manager.clone();
+                let blocks = match read_blocks_from_file(sender_file_manager.clone()) {
+                    Ok(blocks) => Some(blocks),
+                    Err(_) => {
+                        log_error_message(
+                            logger.clone(),
+                            "Error al leer los bloques del archivo".to_string(),
+                        );
+                        None
+                    }
+                };
+                self.blocks = blocks;
                 thread::spawn(move || {
                     match init_block_broadcasting(
                         logger.clone(),
@@ -229,6 +244,10 @@ impl TransactionManager {
                         }
                     };
                 });
+            }
+            TransactionMessages::SaveBlockHeader(block, header, sender) => {
+                self.guardar_header_y_bloque(block.clone(), header);
+                _ = sender.send(TransactionMessages::NewBlock(block));
             }
             TransactionMessages::NewBlock(block) => {
                 let txns = block.txns.clone();
@@ -455,6 +474,34 @@ impl TransactionManager {
         utxo_set.update_from_blocks(blocks_with_tx, accounts)?;
         Ok(utxo_set)
     }
+
+    fn guardar_header_y_bloque(&self, block: SerializedBlock, header: BlockHeader) {
+        let logger = self.logger.clone();
+        let mut blocks = match self.blocks.clone() {
+            Some(blocks) => blocks,
+            None => vec![],
+        };
+
+        if SerializedBlock::contains_block(blocks.clone(), block.clone()) {
+            log_error_message(logger.clone(), "Bloque repetido".to_string());
+        } else {
+            match write_headers_and_block_file(self.file_manager.clone(), block.clone(), header) {
+                Ok(_) => {
+                    blocks.push(block);
+                    log_info_message(
+                        logger.clone(),
+                        "Bloque nuevo guardado correctamente".to_string(),
+                    );
+                }
+                Err(_) => {
+                    log_error_message(
+                        logger.clone(),
+                        "Error al guardar el nuevo bloque".to_string(),
+                    );
+                }
+            }
+        }
+    }
 }
 
 fn send_new_tx(
@@ -509,6 +556,7 @@ pub fn create_transaction_manager(
         sender_server_node: None,
         sender_app_manager: app_sender,
         admin_connections: None,
+        blocks: None,
     }));
 
     thread::spawn(move || {
