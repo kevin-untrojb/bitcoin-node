@@ -662,8 +662,4 @@ fn progress_bar(total: usize, actual: usize) {
     let completado = ((actual as f32 / total as f32) * 50.0) as usize;
     let barra_completado = "#".repeat(completado);
     let barra_no_completado = ".".repeat(50 - completado);
-    eprint!(
-        "\rDescargando bloques[{}{}] {:?}/{:?}. ",
-        barra_completado, barra_no_completado, actual, total
-    );
 }

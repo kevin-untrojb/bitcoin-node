@@ -2,7 +2,7 @@ use glib::Sender;
 use gtk::{
     prelude::*,
     traits::{ButtonExt, WidgetExt},
-    Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, TreeView, Window, Grid
+    Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, TreeView, Window, Box, ProgressBar
 };
 use gtk::{CellRendererText, ComboBox, ListStore};
 use std::sync::{Arc, Mutex};
@@ -62,6 +62,7 @@ pub fn create_view() -> Sender<ViewObject> {
     if let Some(res) = builder.object("window") {
         window = res;
         window.set_title(&title);
+        _ = sender.send(ViewObject::UploadProgressBar((0,0,0)));
         window.show_all();
 
         let sender_clone = sender.clone();
@@ -144,8 +145,26 @@ pub fn create_view() -> Sender<ViewObject> {
                     }
                 }
             }
-            ViewObject::UploadProgressBar((n_headers, n_blocks, n_pending_blocks)) => {
-                if let Some(progress_section) = builder_receiver_clone.object::<Grid>("progress_section") {
+            ViewObject::UploadProgressBar((n_headers, n_blocks, n_saved_blocks)) => {
+                if let Some(progress_section) = builder_receiver_clone.object::<Box>("progress_section") {
+                    if let Some(label) = builder_receiver_clone.object::<Label>("total_headers") {
+                        label.set_text(&n_headers.to_string());
+                    }
+                    if n_blocks == 0 && n_saved_blocks == 0{
+                        progress_section.hide();
+                    } else {
+                        if let Some(label) = builder_receiver_clone.object::<Label>("total_blocks") {
+                            label.set_text(&n_blocks.to_string());
+                        }
+                        if let Some(label) = builder_receiver_clone.object::<Label>("saved_blocks") {
+                            label.set_text(&n_saved_blocks.to_string());
+                        }
+                        if let Some(progress_bar) = builder_receiver_clone.object::<ProgressBar>("progress_bar") {
+                            let porcentaje = (n_saved_blocks as f64/ n_blocks as f64) * 100.0;
+                            progress_bar.set_fraction(porcentaje / 100.0);
+                        }
+                        progress_section.show();
+                    }
                     
                 }
             },
