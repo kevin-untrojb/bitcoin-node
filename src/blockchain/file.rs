@@ -186,6 +186,12 @@ pub fn _leer_todos_headers() -> Result<Vec<u8>, NodoBitcoinError> {
     leer_bytes(path, 0, file_size)
 }
 
+pub fn leer_primeros_2mil_headers() -> Result<Vec<u8>, NodoBitcoinError> {
+    let path = get_headers_filename()?;
+    let file_size = get_file_header_size()?;
+    leer_bytes(path, 0, 2000*80)
+}
+
 pub fn _leer_primer_header() -> Result<Vec<u8>, NodoBitcoinError> {
     leer_header_desde_archivo(0)
 }

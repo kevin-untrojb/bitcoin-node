@@ -347,6 +347,10 @@ fn thread_connection(
         if command == "getheaders" {
             let getheaders_deserealized = GetHeadersMessage::deserealize(&message);
             if getheaders_deserealized.is_err() {
+                log_error_message(
+                    logger.clone(),
+                    "No se puede deserealizar el mensaje getheaders (nodo servidor)".to_string(),
+                );
                 break; //o continue????
             }
             match make_headers_msg(getheaders_deserealized.unwrap()) {
@@ -590,7 +594,7 @@ fn validar_pong(
 
 #[cfg(test)]
 mod tests {
-    use crate::{log::create_logger_actor, protocol::connection::handshake};
+    use crate::{log::create_logger_actor, protocol::connection::handshake, blockchain::{file::{_leer_primer_header, leer_primeros_2mil_headers}, blockheader::BlockHeader}, messages::headers::deserealize_sin_guardar};
 
     use super::*;
 
@@ -704,5 +708,60 @@ mod tests {
         assert_eq!(block, block_received);
         assert_eq!(block.header, block_received.header);
         assert_eq!(block.txns, block_received.txns);
+    }
+
+    #[test]
+    fn test_run_client_get_headers() {
+        init_config();
+        let socket = init_client();
+        assert!(socket.is_ok());
+
+        let socket = socket.unwrap();
+        let address = socket.local_addr();
+        assert!(address.is_ok());
+        let address = address.unwrap();
+
+        let handsahke = handshake(socket, address);
+        assert!(handsahke.is_ok());
+
+        let mut socket = handsahke.unwrap();
+
+        let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+        let ping_pong = send_ping_pong_messages(&mut socket, logger.clone());
+        assert!(ping_pong.is_ok());
+
+        // obtengo el ultimo bloque descargado
+        // let block = SerializedBlock::read_last_block_from_file();
+        let mut header_deserelized: Vec<BlockHeader> = Vec::new();
+        let vec_header = leer_primeros_2mil_headers();
+        assert!(vec_header.is_ok());
+        let binding = vec_header.unwrap();
+        for i in 0..2000 {
+            header_deserelized.push(BlockHeader::deserialize(&binding[i*80..(i*80)+80]).unwrap());
+        }
+
+        let get_headers = GetHeadersMessage::new(70015, 1, header_deserelized[0].hash().unwrap(), [0;32]);
+
+        // let get_data_message = get_data_message.unwrap();
+        // let _ = socket.write(&get_data_message);
+
+        let get_headers_msg = get_headers.serialize().unwrap();
+        let _ = socket.write(&get_headers_msg);
+
+        let read_message = read_message(&mut socket, logger.clone(), false);
+        assert!(read_message.is_ok());
+
+        let read_message = read_message.unwrap();
+        assert!(read_message.is_some());
+
+        let (command, message) = read_message.unwrap();
+        assert_eq!(command, "headers");
+        assert!(message.len() > 0);
+
+        let header_recibidos = deserealize_sin_guardar(message);
+        assert!(header_recibidos.is_ok());
+        let header_recibidos = header_recibidos.unwrap();
+
+        assert_eq!(header_deserelized, header_recibidos);
     }
 }
