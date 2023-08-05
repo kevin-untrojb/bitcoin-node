@@ -114,12 +114,7 @@ impl VersionMessage {
         Ok(msg)
     }
 
-    pub fn get_version(version_msg: &[u8]) -> u32{
-        let version = u32::from_le_bytes(
-            version_msg[0..4]
-                .try_into().unwrap_or([0u8;4])
-        );
-
-        version
+    pub fn get_version(version_msg: &[u8]) -> u32 {
+        u32::from_le_bytes(version_msg[0..4].try_into().unwrap_or([0u8; 4]))
     }
 }

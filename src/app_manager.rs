@@ -215,7 +215,7 @@ impl ApplicationManager {
                 let sender_app_manager = self.sender_app_manager.clone();
                 let last_block = match ApplicationManager::download_blockchain(
                     self.sender_frontend.clone(),
-                    sender_app_manager.clone(),
+                    sender_app_manager,
                     self.logger.clone(),
                 ) {
                     Ok(_) => match SerializedBlock::read_last_block_from_file() {

@@ -183,7 +183,7 @@ impl TransactionManager {
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 let sender_app_manager_clone = self.sender_app_manager.clone();
                 let sender_file_manager = self.file_manager.clone();
-                let blocks = match read_blocks_from_file(sender_file_manager.clone()) {
+                let blocks = match read_blocks_from_file(sender_file_manager) {
                     Ok(blocks) => blocks,
                     Err(_) => {
                         log_error_message(
@@ -207,14 +207,13 @@ impl TransactionManager {
                     match init_block_broadcasting(
                         logger.clone(),
                         admin_connections,
-                        sender_tx_manager
+                        sender_tx_manager,
                     ) {
                         Ok(_) => {
                             log_info_message(
-                                logger.clone(),
+                                logger,
                                 "Block Broadcasting cerrado exitosamente".to_string(),
                             );
-                            return;
                         }
                         Err(_) => {
                             log_error_message(
@@ -239,10 +238,9 @@ impl TransactionManager {
                     match init_server(logger.clone(), sender_tx_manager) {
                         Ok(_) => {
                             log_info_message(
-                                logger.clone(),
+                                logger,
                                 "Nodo Server cerrado exitosamente".to_string(),
                             );
-                            return;
                         }
                         Err(_) => {
                             log_error_message(
@@ -499,23 +497,17 @@ impl TransactionManager {
         let logger = self.logger.clone();
 
         if SerializedBlock::contains_block(&self.blocks, block.clone()) {
-            log_error_message(logger.clone(), "Bloque repetido".to_string());
+            log_error_message(logger, "Bloque repetido".to_string());
         } else {
             match write_headers_and_block_file(self.file_manager.clone(), block.clone(), header) {
                 Ok(_) => {
                     self.blocks.push(block.clone());
                     let hash = block.header.hash().unwrap();
                     self.blocks_map.insert(hash, block);
-                    log_info_message(
-                        logger.clone(),
-                        "Bloque nuevo guardado correctamente".to_string(),
-                    );
+                    log_info_message(logger, "Bloque nuevo guardado correctamente".to_string());
                 }
                 Err(_) => {
-                    log_error_message(
-                        logger.clone(),
-                        "Error al guardar el nuevo bloque".to_string(),
-                    );
+                    log_error_message(logger, "Error al guardar el nuevo bloque".to_string());
                 }
             }
         }

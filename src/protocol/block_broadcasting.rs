@@ -28,7 +28,7 @@ pub enum BlockBroadcastingMessages {
 pub fn init_block_broadcasting(
     logger: Sender<LogMessages>,
     mut admin_connections: AdminConnections,
-    sender_tx_manager: Sender<TransactionMessages>
+    sender_tx_manager: Sender<TransactionMessages>,
 ) -> Result<(), NodoBitcoinError> {
     let mut threads = vec![];
     let (sender, receiver) = channel();
@@ -312,7 +312,7 @@ pub fn init_block_broadcasting(
     }
 
     log_info_message(
-        logger.clone(),
+        logger,
         "Todas las conexiones del Block Broadcasting se cerraron satisfactoriamente.".to_string(),
     );
 
