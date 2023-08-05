@@ -2,7 +2,7 @@ use glib::Sender;
 use gtk::{
     prelude::*,
     traits::{ButtonExt, WidgetExt},
-    Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, TreeView, Window,
+    Builder, Button, Dialog, Entry, Label, MenuItem, ResponseType, Spinner, TreeView, Window, Grid
 };
 use gtk::{CellRendererText, ComboBox, ListStore};
 use std::sync::{Arc, Mutex};
@@ -29,7 +29,7 @@ pub enum ViewObject {
     _NewTx(String),
     CloseApplication,
     UpdateButtonPoiStatus(String),
-    UploadProgressBar((i128, i128, i128))
+    UploadProgressBar((usize, usize, usize))
 }
 
 pub struct ViewObjectData {
@@ -145,7 +145,9 @@ pub fn create_view() -> Sender<ViewObject> {
                 }
             }
             ViewObject::UploadProgressBar((n_headers, n_blocks, n_pending_blocks)) => {
-                
+                if let Some(progress_section) = builder_receiver_clone.object::<Grid>("progress_section") {
+                    
+                }
             },
         }
         glib::Continue(true)
