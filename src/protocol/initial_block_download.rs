@@ -19,6 +19,7 @@ use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::{cmp, thread, vec};
+use crate::blockchain::index::dump_hash_in_the_index;
 
 pub const GENESIS_BLOCK: [u8; 32] = [
     0x00, 0x00, 0x00, 0x00, 0x09, 0x33, 0xea, 0x01, 0xad, 0x0e, 0xe9, 0x84, 0x20, 0x97, 0x79, 0xba,
@@ -640,7 +641,10 @@ fn guardar_headers_y_bloques(
     log_info_message(logger.clone(), "Guardando headers...".to_string());
     for bh in blockheaders {
         let bytes = bh.serialize()?;
-        escribir_archivo(headers_path.clone(), &bytes)?;
+        let indice = escribir_archivo(headers_path.clone(), &bytes)?;
+        if let Err(error) =  dump_hash_in_the_index(headers_path.clone(), bh.hash()?,indice){
+            println!("ERROR write_headers_and_block_file {}.", error);
+        }
     }
     log_info_message(logger.clone(), "Headers guardados".to_string());
 
@@ -650,7 +654,10 @@ fn guardar_headers_y_bloques(
         bloques_a_guardar.sort();
         for bloque in bloques_a_guardar {
             // guardar bloque
-            escribir_archivo_bloque(block_path.clone(), &bloque.serialize()?)?;
+            let indice = escribir_archivo_bloque(block_path.clone(), &bloque.serialize()?)?;
+            if let Err(error) = dump_hash_in_the_index(block_path.clone(),bloque.header.hash()?,indice){
+                println!("ERROR write_headers_and_block_file {}.", error);
+            }
         }
         log_info_message(logger, "Bloques guardados".to_string());
     }

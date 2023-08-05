@@ -9,6 +9,7 @@ use std::{
     mem,
     path::Path,
 };
+use crate::blockchain::file::escribir_archivo;
 
 fn create_hash_to_find_index(hash: [u8; 32]) -> usize {
     let mut hasher = DefaultHasher::new();
@@ -21,7 +22,7 @@ fn create_hash_to_find_index(hash: [u8; 32]) -> usize {
 }
 
 fn create_path(path: String, hash: [u8; 32]) -> String {
-    format!("indexes/{}/ix-{}", path, create_hash_to_find_index(hash))
+    format!("src/indexes/{}/ix-{}.bin", path, create_hash_to_find_index(hash))
 }
 
 fn is_hash_searched(vec: Vec<u8>, slice: &[u8; 32]) -> bool {
@@ -33,23 +34,14 @@ pub fn dump_hash_in_the_index(
     hash: [u8; 32],
     real_index: u64,
 ) -> Result<(), NodoBitcoinError> {
-
-    // cambiar a un solo archivo
     let index_path = create_path(path, hash.clone());
-    let mut file = match OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(index_path.clone())
-    {
-        Ok(file) => file,
-        Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
-    };
-    file
-        .write_all(&hash)
-        .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-    file
-        .write_all(&real_index.to_le_bytes())
-        .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
+
+    if let Err(error) = escribir_archivo(index_path.clone(), &hash){
+        println!("error path de dumpear archivo linea 40 {} {}", index_path.clone(), error);
+    }
+    if let Err(error) = escribir_archivo(index_path.clone(),&real_index.to_le_bytes()){
+        println!("error path de dumpear archivo linea 43 {} {}", index_path.clone(), error);
+    }
 
     Ok(())
 }

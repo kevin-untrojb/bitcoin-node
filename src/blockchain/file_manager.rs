@@ -201,9 +201,8 @@ pub fn write_headers_and_block_file(
 
     match result_receiver.recv() {
         Ok(_) => Ok(()),
-        Err(_) => {
-            // todo log error
-            // handle error
+        Err(err) => {
+           // todo handle
             Err(NodoBitcoinError::InvalidAccount)
         }
     }

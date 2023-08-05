@@ -37,7 +37,9 @@ pub fn escribir_archivo(path: String, datos: &[u8]) -> Result<u64, NodoBitcoinEr
         .open(path.clone())
     {
         Ok(archivo) => archivo,
-        Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
+        Err(error) => {
+            println!("Error en avbrir archivo  linea 41 {}",error);
+            return Err(NodoBitcoinError::NoExisteArchivo)},
     };
     let actual_file_size = get_file_size(path.clone())?;
     archivo
