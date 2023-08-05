@@ -68,7 +68,7 @@ pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<(), NodoBit
 
 // usos: initial_block_broadcasting
 pub fn leer_ultimo_header() -> Result<Vec<u8>, NodoBitcoinError> {
-    let cantidad_headers = _header_count()?;
+    let cantidad_headers = header_count()?;
     leer_header_desde_archivo(cantidad_headers - 1)
 }
 
@@ -175,7 +175,7 @@ pub fn _reset_files() -> Result<(), NodoBitcoinError> {
     Ok(())
 }
 
-pub fn _header_count() -> Result<u64, NodoBitcoinError> {
+pub fn header_count() -> Result<u64, NodoBitcoinError> {
     let file_size = get_file_header_size()?;
     Ok(file_size / 80)
 }

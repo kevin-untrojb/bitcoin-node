@@ -1,5 +1,6 @@
 use super::admin_connections::{AdminConnections, Connection};
 use super::connection::connect;
+use crate::app_manager::ApplicationManagerMessages;
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::file::get_blocks_filename;
@@ -356,6 +357,7 @@ fn thread_data(
     admin_connections_mutex_thread: Arc<Mutex<AdminConnections>>,
     block_headers_thread: Vec<BlockHeader>,
     headers_filtrados_len: usize,
+    sender_app_manager: Sender<ApplicationManagerMessages>,
 ) {
     let (mut cloned_connection, mut thread_id_connection) = unwrap_or_return!(
         get_mutex_connection_id(logger.clone(), &admin_connections_mutex_thread)
@@ -459,6 +461,10 @@ fn thread_data(
                 };
                 cloned.push(block);
                 progress_bar(headers_filtrados_len, cloned.len());
+                let _ = sender_app_manager.send(ApplicationManagerMessages::UpdateProgressBar(
+                    headers_filtrados_len,
+                    cloned.len(),
+                ));
                 drop(cloned);
                 break;
             }
@@ -470,6 +476,7 @@ fn thread_data(
 pub fn get_full_blockchain(
     logger: mpsc::Sender<LogMessages>,
     admin_connections: AdminConnections,
+    sender_app_manager: Sender<ApplicationManagerMessages>,
 ) -> Result<(), NodoBitcoinError> {
     log_info_message(logger.clone(), "Obteniendo blockchain completa".to_string());
     log_info_message(
@@ -520,6 +527,7 @@ pub fn get_full_blockchain(
                 let shared_blocks = blocks.clone();
                 let admin_connections_mutex_thread = admin_connections_mutex.clone();
                 let thread_logger = logger.clone();
+                let sender_app_manager_clone = sender_app_manager.clone();
                 threads.push(thread::spawn(move || {
                     thread_data(
                         thread_logger.clone(),
@@ -527,6 +535,7 @@ pub fn get_full_blockchain(
                         admin_connections_mutex_thread,
                         block_headers_thread,
                         headers_filtrados_len,
+                        sender_app_manager_clone,
                     );
                 }));
             }
@@ -543,6 +552,9 @@ pub fn get_full_blockchain(
                 blockheaders,
                 reintentos,
             )?;
+
+            let _ = sender_app_manager.send(ApplicationManagerMessages::UpdateProgressBar(0, 0));
+
             reintentos += 1;
             write_header_message_old_connection(&connection)?;
         }
@@ -650,8 +662,4 @@ fn progress_bar(total: usize, actual: usize) {
     let completado = ((actual as f32 / total as f32) * 50.0) as usize;
     let barra_completado = "#".repeat(completado);
     let barra_no_completado = ".".repeat(50 - completado);
-    eprint!(
-        "\rDescargando bloques[{}{}] {:?}/{:?}. ",
-        barra_completado, barra_no_completado, actual, total
-    );
 }
