@@ -8,7 +8,10 @@ use std::{
 
 use crate::{
     blockchain::block::{pow_poi_validation, SerializedBlock},
-    blockchain::file_manager::{FileManager, FileMessages},
+    blockchain::{
+        file::header_count,
+        file_manager::{FileManager, FileMessages},
+    },
     common::utils_data::total_reintentos,
     config,
     errores::{InterfaceError, InterfaceMessage, NodoBitcoinError},
@@ -51,7 +54,7 @@ pub enum ApplicationManagerMessages {
     BlockBroadcastingError,
     InitialDownloadError(usize),
     ApplicationError(String),
-    UpdateProgressBar(usize, usize, usize),
+    UpdateProgressBar(usize, usize),
     POIInvalido,
 }
 
@@ -105,6 +108,9 @@ impl ApplicationManager {
         match message {
             ApplicationManagerMessages::TransactionManagerUpdate => {
                 _ = self.send_messages_to_get_values();
+                _ = self
+                    .sender_app_manager
+                    .send(ApplicationManagerMessages::UpdateProgressBar(0, 0));
             }
             ApplicationManagerMessages::GetAmountsByAccount(available_amount, pending_amount) => {
                 //println!("pending_amount: {:?}", pending_amount);
@@ -184,15 +190,11 @@ impl ApplicationManager {
             ApplicationManagerMessages::ApplicationError(message) => {
                 show_message(self.sender_frontend.clone(), message);
             }
-            ApplicationManagerMessages::UpdateProgressBar(
-                n_headers,
-                n_blocks,
-                n_downloaded_blocks,
-            ) => {
-                log_info_message(
-                    self.logger.clone(),
-                    format!("Actualizando la barra de progreso: headers: {:?}, bloques a descargar: {:?}, bloques descargados: {:?}", n_headers, n_blocks, n_downloaded_blocks),
-                );
+            ApplicationManagerMessages::UpdateProgressBar(n_blocks, n_downloaded_blocks) => {
+                let n_headers = match header_count() {
+                    Ok(n_headers) => n_headers as usize,
+                    Err(_) => 0,
+                };
                 let _ = self.sender_frontend.send(ViewObject::UploadProgressBar((
                     n_headers,
                     n_blocks,
@@ -366,8 +368,13 @@ impl ApplicationManager {
             sender_frontend.clone(),
             "Obteniendo blockchain... ".to_string(),
         );
-        get_full_blockchain(logger, admin_connections.clone(), sender_app_manager)?;
+        get_full_blockchain(
+            logger,
+            admin_connections.clone(),
+            sender_app_manager.clone(),
+        )?;
         end_loading(sender_frontend);
+        let _ = sender_app_manager.send(ApplicationManagerMessages::UpdateProgressBar(0, 0));
         Ok(admin_connections)
     }
 

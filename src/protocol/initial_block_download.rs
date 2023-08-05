@@ -462,7 +462,6 @@ fn thread_data(
                 cloned.push(block);
                 progress_bar(headers_filtrados_len, cloned.len());
                 let _ = sender_app_manager.send(ApplicationManagerMessages::UpdateProgressBar(
-                    2 as usize,
                     headers_filtrados_len,
                     cloned.len(),
                 ));
@@ -553,6 +552,9 @@ pub fn get_full_blockchain(
                 blockheaders,
                 reintentos,
             )?;
+
+            let _ = sender_app_manager.send(ApplicationManagerMessages::UpdateProgressBar(0, 0));
+
             reintentos += 1;
             write_header_message_old_connection(&connection)?;
         }
