@@ -208,10 +208,6 @@ pub fn pow_poi_validation(thread_logger: Sender<LogMessages>, block: SerializedB
 #[cfg(test)]
 mod tests {
 
-    use std::fmt::format;
-
-    use crate::config;
-
     use super::*;
 
     #[test]

@@ -460,7 +460,6 @@ fn thread_data(
                     }
                 };
                 cloned.push(block);
-                progress_bar(headers_filtrados_len, cloned.len());
                 let _ = sender_app_manager.send(ApplicationManagerMessages::UpdateProgressBar(
                     headers_filtrados_len,
                     cloned.len(),
@@ -656,10 +655,4 @@ fn guardar_headers_y_bloques(
         log_info_message(logger, "Bloques guardados".to_string());
     }
     Ok(())
-}
-
-fn progress_bar(total: usize, actual: usize) {
-    let completado = ((actual as f32 / total as f32) * 50.0) as usize;
-    let barra_completado = "#".repeat(completado);
-    let barra_no_completado = ".".repeat(50 - completado);
 }
