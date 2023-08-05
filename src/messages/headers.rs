@@ -5,6 +5,7 @@ use crate::{
     },
     common::utils_bytes::{self, parse_varint},
     errores::NodoBitcoinError,
+    protocol::initial_block_download::GENESIS_BLOCK,
 };
 
 use super::{getheaders::GetHeadersMessage, messages_header::make_header};
@@ -37,7 +38,13 @@ pub fn make_headers_msg(get_headers: GetHeadersMessage) -> Result<Vec<u8>, NodoB
     let mut msg = Vec::new();
     let mut header_deserelized: Vec<BlockHeader> = Vec::new();
 
-    let headers = buscar_header(header_buscado)?;
+    let mut headers = vec![];
+    if header_buscado == GENESIS_BLOCK {
+        headers = leer_primeros_2mil_headers()?;
+    } else {
+        headers = buscar_header(header_buscado)?;
+    }
+
     let cantidad_headers = headers.len() / 80;
     //headers.extend(leer_primeros_2mil_headers().unwrap());
     for i in 0..cantidad_headers {
