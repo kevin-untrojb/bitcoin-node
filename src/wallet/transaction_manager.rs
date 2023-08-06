@@ -234,8 +234,9 @@ impl TransactionManager {
                 let sender_app_manager_clone = self.sender_app_manager.clone();
 
                 log_info_message(logger.clone(), "Inicio del nodo server.".to_string());
+                let file_manger_clone = self.file_manager.clone();
                 thread::spawn(move || {
-                    match init_server(logger.clone(), sender_tx_manager) {
+                    match init_server(logger.clone(),file_manger_clone, sender_tx_manager) {
                         Ok(_) => {
                             log_info_message(
                                 logger,

@@ -41,10 +41,12 @@ pub enum NodoBitcoinError {
     CuentaNoEncontrada,
     NoSePuedeEnviarTransaccion,
     ErrorAlActualizarUTXOS,
-
+    // index
+    IndexNoEncontrado,
     // server
     ErrorEnPing,
     ErrorAlLeerSolicitudDelCliente,
+
 }
 
 impl Error for NodoBitcoinError {}
@@ -152,11 +154,17 @@ impl fmt::Display for NodoBitcoinError {
             NodoBitcoinError::ErrorAlActualizarUTXOS => {
                 write!(f, "ERROR: No se puede actualizar las UTXOs.")
             }
+
+            NodoBitcoinError::IndexNoEncontrado => {
+                write!(f, "ERROR: No encontró en el indice.")
+            }
+
             NodoBitcoinError::ErrorEnPing => {
                 write!(f, "ERROR: No se puede armar el mensaje PING")
             }
             NodoBitcoinError::ErrorAlLeerSolicitudDelCliente => {
                 write!(f, "ERROR: No se puede leer el mensaje del cliente")
+
             }
         }
     }

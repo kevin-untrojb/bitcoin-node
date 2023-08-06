@@ -290,10 +290,10 @@ pub fn init_block_broadcasting(
                         }
                         //let cloned_result = shared_blocks.lock();
                         // if let Ok(cloned) = cloned_result {
-                            //guardar_header_y_bloque(thread_logger.clone(),thread_file_manager.clone(), block.clone(), cloned, header[0]);
-                            if thread_sender_tx_manager.send(TransactionMessages::SaveBlockHeader(block, header[0], thread_sender_tx_manager.clone())).is_err(){
-                                return;
-                            };
+                        //guardar_header_y_bloque(thread_logger.clone(),thread_file_manager.clone(), block.clone(), cloned, header[0]);
+                        if thread_sender_tx_manager.send(TransactionMessages::SaveBlockHeader(block, header[0], thread_sender_tx_manager.clone())).is_err(){
+                            return;
+                        };
                         // } else {
                         //     log_error_message(
                         //         thread_logger,
