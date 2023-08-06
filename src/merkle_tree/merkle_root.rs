@@ -8,6 +8,12 @@ use crate::{
 
 use super::merkle_node::MerkleNode;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ProofOrder {
+    Left,
+    Right,
+}
+
 pub struct MerkleRoot {
     pub root: Option<Box<MerkleNode>>,
     _hashmap: HashMap<[u8; 32], bool>,
@@ -78,7 +84,7 @@ impl MerkleRoot {
                 } else {
                     nodes[i].clone()
                 };
-                let new_node = MerkleNode::_from_nodes(Some(left_node), Some(right_node))?;
+                let new_node = MerkleNode::from_nodes(Some(left_node), Some(right_node))?;
                 new_level.push(new_node);
             }
             nodes = new_level;
@@ -98,10 +104,76 @@ impl MerkleRoot {
     }
 }
 
+pub fn merkle_proof(
+    merkle_tree: MerkleRoot,
+    txid: Uint256,
+) -> Result<Vec<(Uint256, ProofOrder)>, NodoBitcoinError> {
+    if merkle_tree.root.is_none() {
+        return Err(NodoBitcoinError::NoChildren);
+    }
+    let current_node = merkle_tree.root.unwrap();
+    merkle_proof_node(*current_node, txid.get_bytes())
+}
+
+fn merkle_proof_node(
+    current_node: MerkleNode,
+    current_tx: [u8; 32],
+) -> Result<Vec<(Uint256, ProofOrder)>, NodoBitcoinError> {
+    if !current_node.has_children() {
+        return Ok(Vec::new());
+    }
+    let right = match current_node.right.clone() {
+        Some(right) => right,
+        None => return Err(NodoBitcoinError::NoChildren),
+    };
+    let left = match current_node.left.clone() {
+        Some(left) => left,
+        None => return Err(NodoBitcoinError::NoChildren),
+    };
+
+    let mut proof = Vec::new();
+    if left.hash_bytes() == current_tx {
+        proof.push((Uint256::from_be_bytes(current_tx), ProofOrder::Left));
+        proof.push((
+            Uint256::from_be_bytes(right.hash_bytes()),
+            ProofOrder::Right,
+        ));
+    } else if right.hash_bytes() == current_tx {
+        proof.push((Uint256::from_be_bytes(current_tx), ProofOrder::Right));
+        proof.push((Uint256::from_be_bytes(left.hash_bytes()), ProofOrder::Left));
+    } else {
+        let left_proof = merkle_proof_node(*left.clone(), current_tx)?;
+        let right_proof = merkle_proof_node(*right.clone(), current_tx)?;
+        if left_proof.is_empty() && right_proof.is_empty() {
+            return Ok(Vec::new());
+        }
+        let left_empty = left_proof.is_empty();
+        let right_empty = right_proof.is_empty();
+        proof.extend(left_proof);
+        proof.extend(right_proof);
+
+        if left_empty {
+            proof.push((Uint256::from_be_bytes(left.hash_bytes()), ProofOrder::Left));
+        }
+        if right_empty {
+            proof.push((
+                Uint256::from_be_bytes(right.hash_bytes()),
+                ProofOrder::Right,
+            ));
+        }
+    }
+    Ok(proof)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
-        common::uint256::Uint256, errores::NodoBitcoinError, merkle_tree::merkle_root::MerkleRoot,
+        common::uint256::Uint256,
+        errores::NodoBitcoinError,
+        merkle_tree::{
+            merkle_node::{self, MerkleNode},
+            merkle_root::{merkle_proof, MerkleRoot, ProofOrder},
+        },
     };
     use bitcoin_hashes::{sha256d, Hash};
 
@@ -349,5 +421,100 @@ mod tests {
         let hash = merkle_node_root.hash;
 
         assert_eq!(hash, merkle_root_bytes);
+    }
+
+    #[test]
+    fn test_merkle_path() {
+        let txids = vec![
+            Uint256::_from_u32(1),
+            Uint256::_from_u32(2),
+            Uint256::_from_u32(3),
+            Uint256::_from_u32(4),
+            Uint256::_from_u32(5),
+            Uint256::_from_u32(6),
+            Uint256::_from_u32(7),
+            Uint256::_from_u32(8),
+        ];
+        let merkle_root_result = MerkleRoot::from_ids(&txids);
+        assert!(merkle_root_result.is_ok());
+
+        let merkle_root = merkle_root_result.unwrap();
+        assert!(merkle_root.root.is_some());
+
+        // buscamos el path para encontrar el 4to elemento
+        let txid_buscado = txids[3];
+        let path = merkle_proof(merkle_root, txid_buscado);
+        assert!(path.is_ok());
+
+        let path = path.unwrap();
+        assert_eq!(path.len(), 4);
+
+        // calcular los hashes intermedios
+        let tx_id_vecino = txids[2];
+
+        let mut uno_mas_dos_bytes = [0u8; 32];
+        uno_mas_dos_bytes.copy_from_slice(
+            MerkleNode::calculate_hash(
+                txids[0].get_bytes().to_vec(),
+                txids[1].get_bytes().to_vec(),
+            )
+            .as_slice(),
+        );
+
+        let cinco_mas_seis_hash = MerkleNode::calculate_hash(
+            txids[4].get_bytes().to_vec(),
+            txids[5].get_bytes().to_vec(),
+        );
+
+        let siete_mas_ocho_hash = MerkleNode::calculate_hash(
+            txids[6].get_bytes().to_vec(),
+            txids[7].get_bytes().to_vec(),
+        );
+
+        let toda_la_derecha_hash =
+            MerkleNode::calculate_hash(cinco_mas_seis_hash.clone(), siete_mas_ocho_hash.clone());
+
+        let mut toda_la_derecha_bytes = [0u8; 32];
+        toda_la_derecha_bytes.copy_from_slice(toda_la_derecha_hash.as_slice());
+
+        assert_eq!(path[0].0, txid_buscado);
+        assert_eq!(path[0].1, ProofOrder::Right);
+
+        assert_eq!(path[1].0, tx_id_vecino);
+        assert_eq!(path[1].1, ProofOrder::Left);
+
+        assert_eq!(path[2].0, Uint256::from_be_bytes(uno_mas_dos_bytes));
+        assert_eq!(path[2].1, ProofOrder::Left);
+
+        assert_eq!(path[3].0, Uint256::from_be_bytes(toda_la_derecha_bytes));
+        assert_eq!(path[3].1, ProofOrder::Right);
+    }
+
+    #[test]
+    fn test_merkle_path_empty() {
+        let txids = vec![
+            Uint256::_from_u32(1),
+            Uint256::_from_u32(2),
+            Uint256::_from_u32(3),
+            Uint256::_from_u32(4),
+            Uint256::_from_u32(5),
+            Uint256::_from_u32(6),
+            Uint256::_from_u32(7),
+            Uint256::_from_u32(8),
+        ];
+        let not_included = Uint256::_from_u32(9);
+
+        let merkle_root_result = MerkleRoot::from_ids(&txids);
+        assert!(merkle_root_result.is_ok());
+
+        let merkle_root = merkle_root_result.unwrap();
+        assert!(merkle_root.root.is_some());
+
+        // buscamos el path para encontrar el elemento no incluido
+        let path = merkle_proof(merkle_root, not_included);
+        assert!(path.is_ok());
+
+        let path = path.unwrap();
+        assert!(path.is_empty());
     }
 }
