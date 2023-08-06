@@ -208,7 +208,7 @@ pub fn pow_poi_validation(thread_logger: Sender<LogMessages>, block: SerializedB
 #[cfg(test)]
 mod tests {
 
-    use std::{collections::HashMap, fmt::format};
+    use std::collections::HashMap;
 
     use crate::config;
 

@@ -129,7 +129,7 @@ impl BlockHeader {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, mem};
+    use std::collections::HashMap;
 
     use crate::{blockchain::file::_leer_todos_headers, config};
 
