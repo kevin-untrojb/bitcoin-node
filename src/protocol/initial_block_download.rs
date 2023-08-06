@@ -654,10 +654,7 @@ fn guardar_headers_y_bloques(
         bloques_a_guardar.sort();
         for bloque in bloques_a_guardar {
             // guardar bloque
-            let indice = escribir_archivo_bloque(block_path.clone(), &bloque.serialize()?)?;
-            if let Err(error) = dump_hash_in_the_index(block_path.clone(),bloque.header.hash()?,indice){
-                println!("ERROR write_headers_and_block_file {}.", error);
-            }
+            escribir_archivo_bloque(block_path.clone(), &bloque.serialize()?)?;
         }
         log_info_message(logger, "Bloques guardados".to_string());
     }

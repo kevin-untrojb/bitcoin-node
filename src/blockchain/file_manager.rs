@@ -218,7 +218,7 @@ pub fn read_blocks_from_file(
     }
 }
 
-pub fn get_headers(file_manager: Sender<FileMessages>, hash_buscado: [u8; 32]) -> Result<Vec<u8>, NodoBitcoinError> {
+pub fn get_headers_from_file(file_manager: Sender<FileMessages>, hash_buscado: [u8; 32]) -> Result<Vec<u8>, NodoBitcoinError> {
     let (result_sender, result_receiver) = channel();
     _ = file_manager.send(FileMessages::GetHeader((hash_buscado,result_sender)));
     match result_receiver.recv() {

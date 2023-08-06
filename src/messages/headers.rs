@@ -7,6 +7,9 @@ use crate::{
     errores::NodoBitcoinError,
     protocol::initial_block_download::GENESIS_BLOCK,
 };
+use crate::blockchain::file_manager::FileMessages;
+use crate::blockchain::file_manager::get_headers_from_file;
+use std::sync::mpsc::Sender;
 
 use super::{getheaders::GetHeadersMessage, messages_header::make_header};
 
@@ -31,7 +34,7 @@ pub fn deserealize_sin_guardar(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>,
     Ok(block_headers)
 }
 
-pub fn make_headers_msg(get_headers: GetHeadersMessage) -> Result<Vec<u8>, NodoBitcoinError> {
+pub fn make_headers_msg(file_manager_sender: Sender<FileMessages>, get_headers: GetHeadersMessage) -> Result<Vec<u8>, NodoBitcoinError> {
     // aca hay q agarrar el hash header del mensaje get headers y buscarlo en el archivo para devolver 2 mil headers desde ese header
     let header_buscado = get_headers.start_block_hash;
     let mut payload: Vec<u8> = Vec::new();
@@ -39,11 +42,8 @@ pub fn make_headers_msg(get_headers: GetHeadersMessage) -> Result<Vec<u8>, NodoB
     let mut header_deserelized: Vec<BlockHeader> = Vec::new();
 
     let mut headers: Vec<u8> = vec![]; 
-    if header_buscado == GENESIS_BLOCK {
-        headers.extend(leer_primeros_2mil_headers()?);
-    } else {
-        headers.extend(buscar_header(header_buscado)?);
-    }
+    headers.extend(get_headers_from_file(file_manager_sender,header_buscado)?);
+
 
     let cantidad_headers = headers.len() / 80;
     //headers.extend(leer_primeros_2mil_headers().unwrap());
