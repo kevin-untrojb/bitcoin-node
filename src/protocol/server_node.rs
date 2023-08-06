@@ -8,6 +8,7 @@ use std::{
     thread::{self},
     time::Duration,
 };
+use crate::blockchain::file_manager::FileMessages;
 
 use chrono::Utc;
 
@@ -38,12 +39,13 @@ pub enum ServerNodeMessages {
 
 pub fn init_server(
     logger: Sender<LogMessages>,
+    file_manager: Sender<FileMessages>,
     sender_tx_manager: Sender<TransactionMessages>,
 ) -> Result<(), NodoBitcoinError> {
     let port = config::get_valor("PORT".to_owned())?;
 
     let address = "127.0.0.1:".to_owned() + &port;
-    _ = server_run(&address, logger, sender_tx_manager);
+    _ = server_run(&address, file_manager,logger, sender_tx_manager);
     Ok(())
 }
 
@@ -79,6 +81,7 @@ fn crear_listener(
 
 fn server_run(
     address: &str,
+    file_manager: Sender<FileMessages>,
     logger: Sender<LogMessages>,
     sender_tx_manager: Sender<TransactionMessages>,
 ) -> Result<(), NodoBitcoinError> {
@@ -115,6 +118,7 @@ fn server_run(
                 let logger_cloned = logger.clone();
                 let sender_mutex_connection = senders_threads_mutex.clone();
                 let sender_tx_manager_clone = sender_tx_manager.clone();
+                let sender_file_manager_clone = file_manager.clone();
                 threads.push(thread::spawn(move || {
                     let (sender_thread, receiver_thread) = channel();
                     let mut senders_locked = match sender_mutex_connection.lock() {
@@ -126,6 +130,7 @@ fn server_run(
 
                     handle_message(
                         &mut stream,
+                        sender_file_manager_clone.clone(),
                         receiver_thread,
                         sender_tx_manager_clone.clone(),
                         logger_cloned.clone(),
@@ -240,6 +245,7 @@ fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
 
 fn handle_message(
     stream: &mut TcpStream,
+    file_manager: Sender<FileMessages>,
     receiver_thread: Receiver<ServerNodeMessages>,
     tx_sender: Sender<TransactionMessages>,
     logger: Sender<LogMessages>,
@@ -282,12 +288,13 @@ fn handle_message(
             logger.clone(),
             "Handshake exitoso con el cliente".to_string(),
         );
-        thread_connection(stream, receiver_thread, tx_sender, logger);
+        thread_connection(stream, file_manager,receiver_thread, tx_sender, logger);
     };
 }
 
 fn thread_connection(
     stream: &mut TcpStream,
+    file_manager: Sender<FileMessages>,
     receiver_thread: Receiver<ServerNodeMessages>,
     tx_sender: Sender<TransactionMessages>,
     logger: Sender<LogMessages>,
@@ -366,7 +373,7 @@ fn thread_connection(
                 continue;
             }
 
-            match make_headers_msg(getheaders_deserealized.unwrap()) {
+            match make_headers_msg(file_manager.clone(),getheaders_deserealized.unwrap()) {
                 Ok(headers_msg) => {
                     if stream.write_all(&headers_msg).is_err() {
                         log_error_message(
