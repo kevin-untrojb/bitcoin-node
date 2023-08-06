@@ -1,7 +1,14 @@
 use crate::{
-    blockchain::blockheader::BlockHeader, common::utils_bytes::parse_varint,
+    blockchain::{
+        blockheader::BlockHeader,
+        file::{buscar_header, leer_primeros_2mil_headers},
+    },
+    common::utils_bytes::{self, parse_varint},
     errores::NodoBitcoinError,
+    protocol::initial_block_download::GENESIS_BLOCK,
 };
+
+use super::{getheaders::GetHeadersMessage, messages_header::make_header};
 
 /// Deserealiza el vector de bytes de headers recibidos
 /// Devuelve un vector de BlockHeaders deserealizados
@@ -22,4 +29,47 @@ pub fn deserealize_sin_guardar(mut headers: Vec<u8>) -> Result<Vec<BlockHeader>,
     }
 
     Ok(block_headers)
+}
+
+pub fn make_headers_msg(get_headers: GetHeadersMessage) -> Result<Vec<u8>, NodoBitcoinError> {
+    // aca hay q agarrar el hash header del mensaje get headers y buscarlo en el archivo para devolver 2 mil headers desde ese header
+    let header_buscado = get_headers.start_block_hash;
+    let mut payload: Vec<u8> = Vec::new();
+    let mut msg = Vec::new();
+    let mut header_deserelized: Vec<BlockHeader> = Vec::new();
+
+    let mut headers: Vec<u8> = vec![]; 
+    if header_buscado == GENESIS_BLOCK {
+        headers.extend(leer_primeros_2mil_headers()?);
+    } else {
+        headers.extend(buscar_header(header_buscado)?);
+    }
+
+    let cantidad_headers = headers.len() / 80;
+    //headers.extend(leer_primeros_2mil_headers().unwrap());
+    for i in 0..cantidad_headers {
+        let serialized_block = match BlockHeader::deserialize(&headers[i * 80..(i * 80) + 80]) {
+            Ok(block) => block,
+            Err(err) => return Err(err),
+        };
+        header_deserelized.push(serialized_block);
+    }
+
+    let prefix = utils_bytes::from_amount_bytes_to_prefix(3);
+    let count = utils_bytes::build_varint_bytes(prefix, 2000)?;
+
+    payload.extend(count);
+
+    for header in header_deserelized {
+        let header_bytes = header.serialize()?;
+        payload.extend(header_bytes);
+        payload.push(0);
+    }
+
+    let header_msg = make_header("headers".to_string(), &payload)?;
+
+    msg.extend_from_slice(&header_msg);
+    msg.extend_from_slice(&payload);
+
+    Ok(msg)
 }

@@ -69,7 +69,10 @@ fn add_connections(
 /// se considera que la conexión ha sido establecida con éxito.
 ///
 /// También se envía un mensaje sendHeaders para establecer de qué forma se quiere recibir los bloques nuevos
-fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, NodoBitcoinError> {
+pub fn handshake(
+    mut socket: TcpStream,
+    address: SocketAddr,
+) -> Result<TcpStream, NodoBitcoinError> {
     let timestamp = Utc::now().timestamp() as u64;
     let version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
         Ok(res) => res,
@@ -122,17 +125,47 @@ fn handshake(mut socket: TcpStream, address: SocketAddr) -> Result<TcpStream, No
     Ok(socket)
 }
 
-/// Obtiene las distintas direcciones de una semilla DNS
+const SEPARATOR_SEEDS: char = ';';
+
+fn parsear_seeds(config_address: String) -> Vec<String> {
+    let mut address_array = Vec::new();
+    let mut value = String::new();
+    for c in config_address.chars() {
+        if c == SEPARATOR_SEEDS {
+            address_array.push(value);
+            value = String::new();
+        } else {
+            value.push(c);
+        }
+    }
+    address_array.push(value);
+    address_array
+}
+
+/// Obtiene las distintas direcciones segun la configuracion
 pub fn get_address() -> Vec<SocketAddr> {
-    let mut seeds = Vec::new();
+    let mut addresses = Vec::new();
     let url = match config::get_valor("ADDRESS".to_owned()) {
         Ok(res) => res,
-        Err(_) => return seeds,
+        Err(_) => return addresses,
     };
     let port = match config::get_valor("PORT".to_owned()) {
         Ok(res) => res,
-        Err(_) => "18333".to_owned(),
+        Err(_) => return addresses,
     };
+
+    let list_values_config = parsear_seeds(url);
+
+    for value in list_values_config.iter() {
+        let sockets = get_sockets(value.to_string(), port.to_string());
+        addresses.extend(sockets);
+    }
+    addresses
+}
+
+/// Obtiene las distintas direcciones de una semilla DNS
+fn get_sockets(url: String, port: String) -> Vec<SocketAddr> {
+    let mut seeds = Vec::new();
 
     let seedhost = format!("{}:{}", url, port);
 

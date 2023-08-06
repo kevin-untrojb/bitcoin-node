@@ -1,10 +1,7 @@
 use super::admin_connections::AdminConnections;
-use crate::blockchain::file_manager::write_headers_and_block_file;
-use crate::blockchain::file_manager::{read_blocks_from_file, FileMessages};
 use crate::{
     blockchain::{
         block::{pow_poi_validation, SerializedBlock},
-        blockheader::BlockHeader,
         transaction::Transaction,
     },
     errores::NodoBitcoinError,
@@ -17,7 +14,7 @@ use crate::{
 };
 use std::sync::mpsc::{channel, Sender};
 use std::{
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, Mutex},
     thread,
 };
 
@@ -32,9 +29,7 @@ pub fn init_block_broadcasting(
     logger: Sender<LogMessages>,
     mut admin_connections: AdminConnections,
     sender_tx_manager: Sender<TransactionMessages>,
-    file_manager: Sender<FileMessages>,
 ) -> Result<(), NodoBitcoinError> {
-    let blocks = Arc::new(Mutex::new(read_blocks_from_file(file_manager.clone())?));
     let mut threads = vec![];
     let (sender, receiver) = channel();
     if sender_tx_manager
@@ -75,9 +70,7 @@ pub fn init_block_broadcasting(
     for connection in admin_connections.get_connections() {
         let socket = connection.clone();
         let thread_logger = logger.clone();
-        let thread_file_manager = file_manager.clone();
         let thread_sender_tx_manager = sender_tx_manager.clone();
-        let shared_blocks = blocks.clone();
         let sender_mutex_connection = sender_mutex.clone();
         threads.push(thread::spawn(move || {
             let (sender_thread, receiver_thread) = channel();
@@ -295,20 +288,19 @@ pub fn init_block_broadcasting(
                             _ = thread_sender_tx_manager.send(TransactionMessages::POIInvalido);
                             continue;
                         }
-
-                        let cloned_result = shared_blocks.lock();
-                        if let Ok(cloned) = cloned_result {
-                            guardar_header_y_bloque(thread_logger.clone(),thread_file_manager.clone(), block.clone(), cloned, header[0]);
-                            if thread_sender_tx_manager.send(TransactionMessages::NewBlock(block)).is_err(){
-                                return;
-                            };
-                        } else {
-                            log_error_message(
-                                thread_logger,
-                                "Error al lockear el vector de bloques".to_string(),
-                            );
+                        //let cloned_result = shared_blocks.lock();
+                        // if let Ok(cloned) = cloned_result {
+                        //guardar_header_y_bloque(thread_logger.clone(),thread_file_manager.clone(), block.clone(), cloned, header[0]);
+                        if thread_sender_tx_manager.send(TransactionMessages::SaveBlockHeader(block, header[0], thread_sender_tx_manager.clone())).is_err(){
                             return;
-                        }
+                        };
+                        // } else {
+                        //     log_error_message(
+                        //         thread_logger,
+                        //         "Error al lockear el vector de bloques".to_string(),
+                        //     );
+                        //     return;
+                        // }
                 }
                 }
             }
@@ -319,38 +311,44 @@ pub fn init_block_broadcasting(
         let _ = thread.join();
     }
 
-    // si llegué porque quise o porque se cerraron todas
+    log_info_message(
+        logger,
+        "Todas las conexiones del Block Broadcasting se cerraron satisfactoriamente.".to_string(),
+    );
 
-    _ = sender_tx_manager.send(TransactionMessages::Shutdowned);
+    // si llegué porque quise o porque se cerraron todas
+    _ = sender_tx_manager.send(TransactionMessages::ShutdownedBlockBroadcasting(
+        sender_tx_manager.clone(),
+    ));
 
     Ok(())
 }
 
-fn guardar_header_y_bloque(
-    thread_logger: Sender<LogMessages>,
-    thread_file_manager: Sender<FileMessages>,
-    block: SerializedBlock,
-    mut cloned: MutexGuard<Vec<SerializedBlock>>,
-    header: BlockHeader,
-) {
-    if SerializedBlock::contains_block(cloned.to_vec(), block.clone()) {
-        log_error_message(thread_logger, "Bloque repetido".to_string());
-    } else {
-        match write_headers_and_block_file(thread_file_manager.clone(), block.clone(), header) {
-            Ok(_) => {
-                cloned.push(block);
-                log_info_message(
-                    thread_logger,
-                    "Bloque nuevo guardado correctamente".to_string(),
-                );
-                drop(cloned);
-            }
-            Err(_) => {
-                log_error_message(
-                    thread_logger,
-                    "Error al guardar el nuevo bloque".to_string(),
-                );
-            }
-        }
-    }
-}
+// fn guardar_header_y_bloque(
+//     thread_logger: Sender<LogMessages>,
+//     thread_file_manager: Sender<FileMessages>,
+//     block: SerializedBlock,
+//     mut cloned: MutexGuard<Vec<SerializedBlock>>,
+//     header: BlockHeader,
+// ) {
+//     if SerializedBlock::contains_block(cloned.to_vec(), block.clone()) {
+//         log_error_message(thread_logger, "Bloque repetido".to_string());
+//     } else {
+//         match write_headers_and_block_file(thread_file_manager.clone(), block.clone(), header) {
+//             Ok(_) => {
+//                 cloned.push(block);
+//                 log_info_message(
+//                     thread_logger,
+//                     "Bloque nuevo guardado correctamente".to_string(),
+//                 );
+//                 drop(cloned);
+//             }
+//             Err(_) => {
+//                 log_error_message(
+//                     thread_logger,
+//                     "Error al guardar el nuevo bloque".to_string(),
+//                 );
+//             }
+//         }
+//     }
+// }

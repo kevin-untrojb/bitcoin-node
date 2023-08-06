@@ -8,7 +8,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use super::user::Account;
 use crate::app_manager::ApplicationManagerMessages;
 use crate::blockchain::block::SerializedBlock;
-use crate::blockchain::file_manager::{read_blocks_from_file, FileMessages};
+use crate::blockchain::blockheader::BlockHeader;
+use crate::blockchain::file_manager::{
+    read_blocks_from_file, write_headers_and_block_file, FileMessages,
+};
 use crate::blockchain::transaction::{create_tx_to_send, Transaction};
 use crate::common::uint256::Uint256;
 use crate::errores::NodoBitcoinError;
@@ -16,6 +19,7 @@ use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::protocol::admin_connections::AdminConnections;
 use crate::protocol::block_broadcasting::{init_block_broadcasting, BlockBroadcastingMessages};
 use crate::protocol::send_tx::send_tx;
+use crate::protocol::server_node::{init_server, ServerNodeMessages};
 use crate::wallet::uxto_set::{TxReport, UTXOSet};
 
 #[derive(Clone)]
@@ -27,8 +31,10 @@ pub struct TransactionManager {
     file_manager: Sender<FileMessages>,
     sender_app_manager: Sender<ApplicationManagerMessages>,
     sender_block_broadcasting: Option<Sender<BlockBroadcastingMessages>>,
+    sender_server_node: Option<Sender<ServerNodeMessages>>,
     admin_connections: Option<AdminConnections>,
-    // TODO guardar hilos abiertos para despues cerrarlos (block broadcasting)
+    blocks: Vec<SerializedBlock>,
+    blocks_map: HashMap<[u8; 32], SerializedBlock>,
 }
 
 pub enum TransactionMessages {
@@ -49,13 +55,19 @@ pub enum TransactionMessages {
             Sender<TransactionMessages>,
         ),
     ),
+    InitServerNode(Sender<TransactionMessages>),
     SendTx(Account, String, u64, u64, Sender<LogMessages>),
     POIInvalido,
+    GetBlockRequest(Vec<u8>, Sender<ServerNodeMessages>),
+    SaveBlockHeader(SerializedBlock, BlockHeader, Sender<TransactionMessages>),
     NewBlock(SerializedBlock),
     NewTx(Transaction),
     SenderBlockBroadcasting(Sender<BlockBroadcastingMessages>),
+    SenderServerNode(Sender<ServerNodeMessages>),
     LoadSavedUTXOS,
     ShutDown,
+    ShutdownedBlockBroadcasting(Sender<TransactionMessages>),
+    ShutdownedServerNode(Sender<TransactionMessages>),
     Shutdowned,
 }
 
@@ -171,14 +183,38 @@ impl TransactionManager {
                 log_info_message(logger.clone(), "Inicio del block broadcasting.".to_string());
                 let sender_app_manager_clone = self.sender_app_manager.clone();
                 let sender_file_manager = self.file_manager.clone();
+                let blocks = match read_blocks_from_file(sender_file_manager) {
+                    Ok(blocks) => blocks,
+                    Err(_) => {
+                        log_error_message(
+                            logger.clone(),
+                            "Error al leer los bloques del archivo".to_string(),
+                        );
+                        vec![]
+                    }
+                };
+                self.blocks = blocks;
+
+                let mut hash_map = HashMap::new();
+                for block in &self.blocks {
+                    let hash = block.header.hash().unwrap();
+                    // agregar al hash map
+                    hash_map.insert(hash, block.clone());
+                }
+                self.blocks_map = hash_map;
+
                 thread::spawn(move || {
                     match init_block_broadcasting(
                         logger.clone(),
                         admin_connections,
                         sender_tx_manager,
-                        sender_file_manager,
                     ) {
-                        Ok(_) => todo!(),
+                        Ok(_) => {
+                            log_info_message(
+                                logger,
+                                "Block Broadcasting cerrado exitosamente".to_string(),
+                            );
+                        }
                         Err(_) => {
                             log_error_message(
                                 logger,
@@ -192,6 +228,44 @@ impl TransactionManager {
                 _ = self
                     .sender_app_manager
                     .send(ApplicationManagerMessages::TransactionManagerUpdate);
+            }
+            TransactionMessages::InitServerNode(sender_tx_manager) => {
+                let logger = self.logger.clone();
+                let sender_app_manager_clone = self.sender_app_manager.clone();
+
+                log_info_message(logger.clone(), "Inicio del nodo server.".to_string());
+                thread::spawn(move || {
+                    match init_server(logger.clone(), sender_tx_manager) {
+                        Ok(_) => {
+                            log_info_message(
+                                logger,
+                                "Nodo Server cerrado exitosamente".to_string(),
+                            );
+                        }
+                        Err(_) => {
+                            log_error_message(
+                                logger,
+                                "Error al iniciar el nodo server.".to_string(),
+                            );
+                            _ = sender_app_manager_clone
+                                .send(ApplicationManagerMessages::BlockBroadcastingError);
+                        }
+                    };
+                });
+            }
+            TransactionMessages::GetBlockRequest(hash, sender) => {
+                // Busco el bloque en la lista de bloques
+                let key: [u8; 32] = hash.as_slice().try_into().unwrap_or([0u8; 32]);
+                let mut response: Option<SerializedBlock> = None;
+                if let Some(valor) = self.blocks_map.get(&key) {
+                    let bloque_encontrado = valor.clone();
+                    response = Some(bloque_encontrado);
+                }
+                _ = sender.send(ServerNodeMessages::GetBlockResponse(response));
+            }
+            TransactionMessages::SaveBlockHeader(block, header, sender) => {
+                self.guardar_header_y_bloque(block.clone(), header);
+                _ = sender.send(TransactionMessages::NewBlock(block));
             }
             TransactionMessages::NewBlock(block) => {
                 let txns = block.txns.clone();
@@ -257,6 +331,9 @@ impl TransactionManager {
             TransactionMessages::SenderBlockBroadcasting(sender_block_broadcasting) => {
                 self.sender_block_broadcasting = Some(sender_block_broadcasting);
             }
+            TransactionMessages::SenderServerNode(sender_server_node) => {
+                self.sender_server_node = Some(sender_server_node);
+            }
             TransactionMessages::SendTx(account, target_address, target_amount, fee, logger) => {
                 let utxos = self.utxos.clone();
                 let admin_connections = self.admin_connections.clone();
@@ -277,18 +354,40 @@ impl TransactionManager {
             TransactionMessages::ShutDown => {
                 // guardar utxos en archivo
                 let _ = self.utxos.save();
-                match &self.sender_block_broadcasting {
+                let block_broadcasting_is_closed = match &self.sender_block_broadcasting {
                     Some(sender) => {
                         _ = sender.send(BlockBroadcastingMessages::ShutDown);
+                        false
                     }
-                    None => {
-                        _ = self
-                            .sender_app_manager
-                            .send(ApplicationManagerMessages::ShutDowned);
+                    None => true,
+                };
+                let server_node_is_closed = match &self.sender_server_node {
+                    Some(sender) => {
+                        _ = sender.send(ServerNodeMessages::ShutDown);
+                        false
                     }
+                    None => true,
+                };
+                if block_broadcasting_is_closed && server_node_is_closed {
+                    _ = self
+                        .sender_app_manager
+                        .send(ApplicationManagerMessages::ShutDowned);
                 };
             }
+            TransactionMessages::ShutdownedBlockBroadcasting(tx_manager_sender) => {
+                self.sender_block_broadcasting = None;
+
+                _ = tx_manager_sender.send(TransactionMessages::Shutdowned);
+            }
+            TransactionMessages::ShutdownedServerNode(tx_manager_sender) => {
+                self.sender_server_node = None;
+
+                _ = tx_manager_sender.send(TransactionMessages::Shutdowned);
+            }
             TransactionMessages::Shutdowned => {
+                if self.sender_server_node.is_some() || self.sender_block_broadcasting.is_some() {
+                    return;
+                }
                 _ = self
                     .sender_app_manager
                     .send(ApplicationManagerMessages::ShutDowned);
@@ -393,6 +492,26 @@ impl TransactionManager {
         utxo_set.update_from_blocks(blocks_with_tx, accounts)?;
         Ok(utxo_set)
     }
+
+    fn guardar_header_y_bloque(&mut self, block: SerializedBlock, header: BlockHeader) {
+        let logger = self.logger.clone();
+
+        if SerializedBlock::contains_block(&self.blocks, block.clone()) {
+            log_error_message(logger, "Bloque repetido".to_string());
+        } else {
+            match write_headers_and_block_file(self.file_manager.clone(), block.clone(), header) {
+                Ok(_) => {
+                    self.blocks.push(block.clone());
+                    let hash = block.header.hash().unwrap();
+                    self.blocks_map.insert(hash, block);
+                    log_info_message(logger, "Bloque nuevo guardado correctamente".to_string());
+                }
+                Err(_) => {
+                    log_error_message(logger, "Error al guardar el nuevo bloque".to_string());
+                }
+            }
+        }
+    }
 }
 
 fn send_new_tx(
@@ -444,8 +563,11 @@ pub fn create_transaction_manager(
         logger,
         file_manager,
         sender_block_broadcasting: None,
+        sender_server_node: None,
         sender_app_manager: app_sender,
         admin_connections: None,
+        blocks: vec![],
+        blocks_map: HashMap::new(),
     }));
 
     thread::spawn(move || {

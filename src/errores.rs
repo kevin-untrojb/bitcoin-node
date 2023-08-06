@@ -41,9 +41,12 @@ pub enum NodoBitcoinError {
     CuentaNoEncontrada,
     NoSePuedeEnviarTransaccion,
     ErrorAlActualizarUTXOS,
-
     // index
     IndexNoEncontrado,
+    // server
+    ErrorEnPing,
+    ErrorAlLeerSolicitudDelCliente,
+
 }
 
 impl Error for NodoBitcoinError {}
@@ -155,6 +158,14 @@ impl fmt::Display for NodoBitcoinError {
             NodoBitcoinError::IndexNoEncontrado => {
                 write!(f, "ERROR: No encontró en el indice.")
             }
+
+            NodoBitcoinError::ErrorEnPing => {
+                write!(f, "ERROR: No se puede armar el mensaje PING")
+            }
+            NodoBitcoinError::ErrorAlLeerSolicitudDelCliente => {
+                write!(f, "ERROR: No se puede leer el mensaje del cliente")
+
+            }
         }
     }
 }
@@ -167,6 +178,7 @@ pub enum InterfaceError {
     FeeNotValid,
     TransactionNotSent,
     BlockBroadcastingError,
+    NodoServerError,
 }
 
 impl Error for InterfaceError {}
@@ -197,6 +209,9 @@ impl fmt::Display for InterfaceError {
                     f,
                     "Ha ocurrido un error de conexión. Reinicie la aplicación."
                 )
+            }
+            InterfaceError::NodoServerError => {
+                write!(f, "Ha ocurrido un error en el nodo server.")
             }
         }
     }

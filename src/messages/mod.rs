@@ -1,3 +1,4 @@
+pub mod blocks;
 pub mod getdata;
 pub mod getheaders;
 pub mod headers;

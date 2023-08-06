@@ -137,7 +137,7 @@ impl SerializedBlock {
         Ok(serialized_blocks)
     }
 
-    pub fn contains_block(blocks: Vec<SerializedBlock>, block: SerializedBlock) -> bool {
+    pub fn contains_block(blocks: &Vec<SerializedBlock>, block: SerializedBlock) -> bool {
         // verificar si el block se encuentra en blocks
         let mut exist = false;
         for b in blocks {
@@ -208,7 +208,7 @@ pub fn pow_poi_validation(thread_logger: Sender<LogMessages>, block: SerializedB
 #[cfg(test)]
 mod tests {
 
-    use std::fmt::format;
+    use std::collections::HashMap;
 
     use crate::config;
 
@@ -371,6 +371,36 @@ mod tests {
         let serialized = serialize_result.unwrap();
 
         assert_eq!(serialized, bloque_bytes);
+    }
+
+    #[test]
+    fn crear_hash_full() {
+        let args: Vec<String> = vec!["app_name".to_string(), "src/nodo.conf".to_string()];
+        _ = config::inicializar(args);
+        println!(
+            "Empieza a las {}",
+            chrono::offset::Local::now().format("%F %T")
+        );
+
+        let blocks = SerializedBlock::read_blocks_from_file();
+        assert!(blocks.is_ok());
+
+        let blocks = blocks.unwrap();
+        println!(
+            "Bloques leidos {:?} a las {}",
+            blocks.len(),
+            chrono::offset::Local::now().format("%F %T")
+        );
+        let mut hash_map = HashMap::new();
+        for block in blocks {
+            let hash = block.header.hash().unwrap();
+            // agregar al hash map
+            hash_map.insert(hash, block);
+        }
+        println!(
+            "Hash map terminado{}",
+            chrono::offset::Local::now().format("%F %T")
+        );
     }
 
     // #[test]

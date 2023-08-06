@@ -8,7 +8,11 @@ use std::{
 
 use crate::{
     blockchain::block::{pow_poi_validation, SerializedBlock},
-    blockchain::file_manager::{FileManager, FileMessages},
+    blockchain::{
+        file::header_count,
+        file_manager::{FileManager, FileMessages},
+    },
+    common::utils_data::total_reintentos,
     config,
     errores::{InterfaceError, InterfaceMessage, NodoBitcoinError},
     interface::{
@@ -48,8 +52,10 @@ pub enum ApplicationManagerMessages {
     _NewBlock,
     _NewTx,
     BlockBroadcastingError,
-    InitialDownloadError,
+    _NodoServerError,
+    InitialDownloadError(usize),
     ApplicationError(String),
+    UpdateProgressBar(usize, usize),
     POIInvalido,
 }
 
@@ -80,7 +86,7 @@ impl ApplicationManager {
             file_manager,
             shutdown_sent: false,
         };
-        app_manager.thread_download_blockchain();
+        app_manager.thread_download_blockchain(0);
         let ret_value = app_manager.clone();
 
         let app_manager_mutex = Arc::new(Mutex::new(app_manager));
@@ -103,6 +109,9 @@ impl ApplicationManager {
         match message {
             ApplicationManagerMessages::TransactionManagerUpdate => {
                 _ = self.send_messages_to_get_values();
+                _ = self
+                    .sender_app_manager
+                    .send(ApplicationManagerMessages::UpdateProgressBar(0, 0));
             }
             ApplicationManagerMessages::GetAmountsByAccount(available_amount, pending_amount) => {
                 //println!("pending_amount: {:?}", pending_amount);
@@ -155,34 +164,58 @@ impl ApplicationManager {
             ApplicationManagerMessages::_NewTx => {
                 //let _ = self.sender_frontend.send(ViewObject::NewTx("Nuevo transaccion recibido".to_string()));
             }
-            ApplicationManagerMessages::InitialDownloadError => {
-                // reinicia la descarga inicial
-                log_error_message(
-                    self.logger.clone(),
-                    "Error al descargar la blockchain. Reintentando...".to_string(),
-                );
-                show_message(
-                    self.sender_frontend.clone(),
-                    "Error al descargar la blockchain. Reintentando...".to_string(),
-                );
-                self.thread_download_blockchain();
+            ApplicationManagerMessages::InitialDownloadError(intento) => {
+                let maximo_reintentos = total_reintentos() < intento;
+                if maximo_reintentos {
+                    log_error_message(
+                        self.logger.clone(),
+                        "Error al descargar la blockchain".to_string(),
+                    );
+                    show_message(
+                        self.sender_frontend.clone(),
+                        "Error al descargar la blockchain. Reintente más tarde. ".to_string(),
+                    );
+                } else {
+                    show_message(
+                        self.sender_frontend.clone(),
+                        "Error al descargar la blockchain. Reintentando...".to_string(),
+                    );
+                    self.thread_download_blockchain(intento + 1);
+                }
             }
             ApplicationManagerMessages::BlockBroadcastingError => {
                 let _ = self
                     .sender_frontend
                     .send(ViewObject::Error(InterfaceError::BlockBroadcastingError));
             }
+            ApplicationManagerMessages::_NodoServerError => {
+                let _ = self
+                    .sender_frontend
+                    .send(ViewObject::Error(InterfaceError::NodoServerError));
+            }
             ApplicationManagerMessages::ApplicationError(message) => {
                 show_message(self.sender_frontend.clone(), message);
+            }
+            ApplicationManagerMessages::UpdateProgressBar(n_blocks, n_downloaded_blocks) => {
+                let n_headers = match header_count() {
+                    Ok(n_headers) => n_headers as usize,
+                    Err(_) => 0,
+                };
+                let _ = self.sender_frontend.send(ViewObject::UploadProgressBar((
+                    n_headers,
+                    n_blocks,
+                    n_downloaded_blocks,
+                )));
             }
             ApplicationManagerMessages::POIInvalido => {
                 log_info_message(
                     self.logger.clone(),
                     "Descargando nuevo bloque luego del POI inválido...".to_string(),
                 );
-
+                let sender_app_manager = self.sender_app_manager.clone();
                 let last_block = match ApplicationManager::download_blockchain(
                     self.sender_frontend.clone(),
+                    sender_app_manager,
                     self.logger.clone(),
                 ) {
                     Ok(_) => match SerializedBlock::read_last_block_from_file() {
@@ -299,7 +332,7 @@ impl ApplicationManager {
         Ok(current_account)
     }
 
-    fn thread_download_blockchain(&mut self) {
+    fn thread_download_blockchain(&mut self, intento: usize) {
         let logger = self.logger.clone();
         let sender_frontend = self.sender_frontend.clone();
         let sender_tx_manager = self.tx_manager.clone();
@@ -307,11 +340,13 @@ impl ApplicationManager {
         thread::spawn(move || {
             let admin_connections = match ApplicationManager::download_blockchain(
                 sender_frontend.clone(),
+                sender_app_manager.clone(),
                 logger.clone(),
             ) {
                 Ok(admin_connections) => admin_connections,
                 Err(_) => {
-                    _ = sender_app_manager.send(ApplicationManagerMessages::InitialDownloadError);
+                    _ = sender_app_manager
+                        .send(ApplicationManagerMessages::InitialDownloadError(intento));
                     return;
                 }
             };
@@ -321,11 +356,16 @@ impl ApplicationManager {
                 logger,
                 sender_tx_manager.clone(),
             )));
+
+            let _ = sender_tx_manager.send(TransactionMessages::InitServerNode(
+                sender_tx_manager.clone(),
+            ));
         });
     }
 
     fn download_blockchain(
         sender_frontend: glib::Sender<ViewObject>,
+        sender_app_manager: Sender<ApplicationManagerMessages>,
         logger: mpsc::Sender<LogMessages>,
     ) -> Result<AdminConnections, NodoBitcoinError> {
         start_loading(
@@ -338,8 +378,13 @@ impl ApplicationManager {
             sender_frontend.clone(),
             "Obteniendo blockchain... ".to_string(),
         );
-        get_full_blockchain(logger, admin_connections.clone())?;
+        get_full_blockchain(
+            logger,
+            admin_connections.clone(),
+            sender_app_manager.clone(),
+        )?;
         end_loading(sender_frontend);
+        let _ = sender_app_manager.send(ApplicationManagerMessages::UpdateProgressBar(0, 0));
         Ok(admin_connections)
     }
 
