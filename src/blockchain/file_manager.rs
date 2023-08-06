@@ -1,21 +1,21 @@
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::blockheader::BlockHeader;
+use crate::blockchain::file::get_file_header_size;
+use crate::blockchain::file::leer_bloque;
+use crate::blockchain::file::leer_bytes;
 use crate::blockchain::file::{
     escribir_archivo, escribir_archivo_bloque, get_blocks_filename, get_headers_filename,
-    leer_todos_blocks,leer_header_desde_archivo,
+    leer_header_desde_archivo, leer_todos_blocks,
 };
-use crate::blockchain::file::leer_bloque;
-use crate::blockchain::index::get_start_index;
 use crate::blockchain::index::dump_hash_in_the_index;
+use crate::blockchain::index::get_start_index;
 use crate::log::{log_error_message, log_info_message, LogMessages};
+use crate::protocol::initial_block_download::GENESIS_BLOCK;
 use crate::{config, errores::NodoBitcoinError};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
-use crate::blockchain::file::get_file_header_size;
-use crate::blockchain::file::leer_bytes;
-use crate::protocol::initial_block_download::GENESIS_BLOCK;
 
 #[derive(Clone)]
 pub struct FileManager {
@@ -35,7 +35,7 @@ pub enum FileMessages {
             Sender<Result<(), NodoBitcoinError>>,
         ),
     ),
-    GetHeader(([u8; 32],Sender<Result<Vec<u8>, NodoBitcoinError>>)),
+    GetHeader(([u8; 32], Sender<Result<Vec<u8>, NodoBitcoinError>>)),
     ShutDown(),
 }
 
@@ -115,7 +115,10 @@ impl FileManager {
                         return;
                     }
                 };
-                log_info_message(self.logger.clone(), format!("Indice de bloque guardado {}",index_block));
+                log_info_message(
+                    self.logger.clone(),
+                    format!("Indice de bloque guardado {}", index_block),
+                );
 
                 let index_header =
                     match escribir_archivo(self.headers_file_name.clone(), &header_bytes) {
@@ -137,7 +140,10 @@ impl FileManager {
                         return;
                     }
                 };
-                log_info_message(self.logger.clone(), format!("Indice de header guardado {}",index_header));
+                log_info_message(
+                    self.logger.clone(),
+                    format!("Indice de header guardado {}", index_header),
+                );
 
                 result.send(Ok(()));
             }
@@ -151,23 +157,23 @@ impl FileManager {
             FileMessages::GetHeader((hash_id, result)) => {
                 let mut header_index;
 
-                if hash_id == GENESIS_BLOCK{
+                if hash_id == GENESIS_BLOCK {
                     header_index = 0;
-                }else {
-                    header_index = match get_start_index(self.headers_file_name.clone(),hash_id){
-                        Ok(index) =>  index,
+                } else {
+                    header_index = match get_start_index(self.headers_file_name.clone(), hash_id) {
+                        Ok(index) => index,
                         Err(error) => {
                             result.send(Err(error));
-                            return
+                            return;
                         }
                     };
                 }
 
-                let file_size = match get_file_header_size()  {
+                let file_size = match get_file_header_size() {
                     Ok(size) => size,
                     Err(error) => {
                         result.send(Err(error));
-                        return
+                        return;
                     }
                 };
 
@@ -182,11 +188,11 @@ impl FileManager {
                     file_size - header_index
                 };
 
-                let bytes = match leer_bytes(self.headers_file_name.clone(), header_index, length){
+                let bytes = match leer_bytes(self.headers_file_name.clone(), header_index, length) {
                     Ok(data) => data,
                     Err(error) => {
                         result.send(Err(error));
-                        return
+                        return;
                     }
                 };
                 result.send(Ok(bytes));
@@ -218,9 +224,12 @@ pub fn read_blocks_from_file(
     }
 }
 
-pub fn get_headers_from_file(file_manager: Sender<FileMessages>, hash_buscado: [u8; 32]) -> Result<Vec<u8>, NodoBitcoinError> {
+pub fn get_headers_from_file(
+    file_manager: Sender<FileMessages>,
+    hash_buscado: [u8; 32],
+) -> Result<Vec<u8>, NodoBitcoinError> {
     let (result_sender, result_receiver) = channel();
-    _ = file_manager.send(FileMessages::GetHeader((hash_buscado,result_sender)));
+    _ = file_manager.send(FileMessages::GetHeader((hash_buscado, result_sender)));
     match result_receiver.recv() {
         Ok(result) => result,
         Err(err) => {
@@ -251,7 +260,7 @@ pub fn write_headers_and_block_file(
     match result_receiver.recv() {
         Ok(_) => Ok(()),
         Err(err) => {
-           // todo handle
+            // todo handle
             Err(NodoBitcoinError::InvalidAccount)
         }
     }
@@ -259,4 +268,32 @@ pub fn write_headers_and_block_file(
 
 pub fn shutdown(file_manager: Sender<FileMessages>) {
     file_manager.send(FileMessages::ShutDown());
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        blockchain::file_manager::{get_headers_from_file, FileManager},
+        config,
+        log::create_logger_actor,
+    };
+
+    fn init_config() {
+        let args: Vec<String> = vec!["app_name".to_string(), "src/nodo.conf".to_string()];
+        _ = config::inicializar(args);
+    }
+
+    #[test]
+    fn test_get_header() {
+        init_config();
+        let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+        let file_manager = FileManager::new(logger.clone());
+        let hash: [u8; 32] = [
+            229, 94, 124, 89, 15, 75, 44, 222, 240, 35, 41, 188, 16, 213, 143, 250, 149, 109, 29,
+            10, 111, 146, 99, 54, 138, 72, 107, 37, 0, 0, 0, 0,
+        ];
+
+        let result = get_headers_from_file(file_manager, hash);
+        assert!(result.is_ok());
+    }
 }

@@ -1,10 +1,10 @@
+use crate::blockchain::index::dump_hash_in_the_index;
 use std::{
     fs::{File, OpenOptions},
     io::{Read, Seek, SeekFrom, Write},
     mem,
     path::Path,
 };
-use crate::blockchain::index::dump_hash_in_the_index;
 
 use crate::{config, errores::NodoBitcoinError};
 
@@ -41,8 +41,9 @@ pub fn escribir_archivo(path: String, datos: &[u8]) -> Result<u64, NodoBitcoinEr
     {
         Ok(archivo) => archivo,
         Err(error) => {
-            println!("Error en avbrir archivo  linea 41 {}",error);
-            return Err(NodoBitcoinError::NoExisteArchivo)},
+            println!("Error en avbrir archivo  linea 41 {}", error);
+            return Err(NodoBitcoinError::NoExisteArchivo);
+        }
     };
     let actual_file_size = get_file_size(path.clone())?;
     archivo
@@ -75,7 +76,7 @@ pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<u64, NodoBi
         .write_all(bytes_para_guardar)
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
 
-    Ok(actual_file_size+1)
+    Ok(actual_file_size + 1)
 }
 
 ////// **** no son concurrentes //////
@@ -245,8 +246,7 @@ pub fn _leer_headers(ix: u64) -> Result<Vec<u8>, NodoBitcoinError> {
     leer_bytes(path, offset, length)
 }
 
-
-pub fn create_all_indexes() -> Result<(), NodoBitcoinError>{
+pub fn create_all_indexes() -> Result<(), NodoBitcoinError> {
     let path = get_headers_filename()?;
     let file_size = get_file_header_size()?;
     let mut offset = 0;
@@ -259,4 +259,22 @@ pub fn create_all_indexes() -> Result<(), NodoBitcoinError>{
         offset += 80;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config;
+
+    use super::create_all_indexes;
+
+    fn init_config() {
+        let args: Vec<String> = vec!["app_name".to_string(), "src/nodo.conf".to_string()];
+        _ = config::inicializar(args);
+    }
+
+    #[test]
+    fn test_create_all_indexes() {
+        init_config();
+        let _ = create_all_indexes();
+    }
 }
