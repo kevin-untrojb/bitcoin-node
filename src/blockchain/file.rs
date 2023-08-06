@@ -4,6 +4,7 @@ use std::{
     mem,
     path::Path,
 };
+use crate::blockchain::index::dump_hash_in_the_index;
 
 use crate::{config, errores::NodoBitcoinError};
 
@@ -242,4 +243,20 @@ pub fn _leer_headers(ix: u64) -> Result<Vec<u8>, NodoBitcoinError> {
     let length: u64 = 2000 * 80;
     let path = get_headers_filename()?;
     leer_bytes(path, offset, length)
+}
+
+
+pub fn create_all_indexes() -> Result<(), NodoBitcoinError>{
+    let path = get_headers_filename()?;
+    let file_size = get_file_header_size()?;
+    let mut offset = 0;
+    while offset < file_size {
+        let bytes = leer_bytes(path.clone(), offset, 80)?;
+        let header = BlockHeader::deserialize(bytes.as_slice())?;
+        let hash = header.hash()?;
+
+        dump_hash_in_the_index(path.clone(), hash, offset);
+        offset += 80;
+    }
+    Ok(())
 }
