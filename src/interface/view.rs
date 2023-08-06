@@ -231,7 +231,7 @@ fn handle_row_transaction_selected(sender: Sender<ViewObject>, builder: Builder)
 }
 
 fn handle_poi(
-    _manager_poi: Arc<Mutex<ApplicationManager>>,
+    manager_poi: Arc<Mutex<ApplicationManager>>,
     builder: Builder,
     shared_tx: Arc<Mutex<ViewObjectData>>,
 ) {
@@ -243,9 +243,52 @@ fn handle_poi(
                 drop(shared_tx_guard);
 
                 println!("Selected tx: {} send to app_manager", tx_id);
+                open_poi_dialog(&builder, manager_poi.clone());
             }
         });
     }
+}
+
+fn open_poi_dialog(
+    builder: &Builder,
+    app_manager: Arc<Mutex<ApplicationManager>>,
+) {
+    let dialog: Dialog;
+    if let Some(res) = builder.object::<Dialog>("poi_dialog") {
+        dialog = res;
+    } else {
+        return;
+    }
+
+    let hash_entry: Entry;
+    if let Some(res) = builder.object::<Entry>("block_hash") {
+        hash_entry = res;
+    } else {
+        return;
+    }
+
+    dialog.connect_response(move |dialog, response_id| {
+        match response_id {
+            ResponseType::Ok => {
+                let hash = hash_entry.text().to_string();
+                if !hash.is_empty() {
+                    let mut app_manager_thread = match app_manager.lock() {
+                        Ok(res) => res,
+                        Err(_) => return,
+                    };
+                    println!("HASH {}", hash);
+                    // app_manager_thread -> poi
+                    drop(app_manager_thread);
+                }
+            }
+            _ => dialog.hide(),
+        }
+        hash_entry.set_text("");
+        dialog.hide();
+    });
+
+    dialog.show_all();
+    dialog.run();
 }
 
 fn satoshis_u64_to_btc_string(satoshis: u64) -> String {
