@@ -142,7 +142,7 @@ fn get_file_size(path: String) -> Result<u64, NodoBitcoinError> {
     Ok(metadata.unwrap().len())
 }
 
-fn get_file_header_size() -> Result<u64, NodoBitcoinError> {
+pub fn get_file_header_size() -> Result<u64, NodoBitcoinError> {
     let path = get_headers_filename()?;
     get_file_size(path)
 }

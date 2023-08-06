@@ -2,7 +2,7 @@ use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::file::{
     escribir_archivo, escribir_archivo_bloque, get_blocks_filename, get_headers_filename,
-    leer_todos_blocks,
+    leer_todos_blocks,leer_header_desde_archivo,
 };
 use crate::blockchain::file::leer_bloque;
 use crate::blockchain::index::get_start_index;
@@ -13,6 +13,9 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
+use crate::blockchain::file::get_file_header_size;
+use crate::blockchain::file::leer_bytes;
+use crate::protocol::initial_block_download::GENESIS_BLOCK;
 
 #[derive(Clone)]
 pub struct FileManager {
@@ -32,7 +35,7 @@ pub enum FileMessages {
             Sender<Result<(), NodoBitcoinError>>,
         ),
     ),
-    GetBlock(([u8; 32],Sender<Result<(Vec<u8>, u64), NodoBitcoinError>>)),
+    GetHeader(([u8; 32],Sender<Result<Vec<u8>, NodoBitcoinError>>)),
     ShutDown(),
 }
 
@@ -141,18 +144,52 @@ impl FileManager {
             FileMessages::ReadAllBlocks(result) => {
                 result.send(leer_todos_blocks());
             }
-            FileMessages::GetBlock((hash_id, result)) => {
-                let block_index = match get_start_index(self.block_file_name.clone(),hash_id){
-                    Ok(index) =>  index,
+            FileMessages::ShutDown() => {
+                return;
+            }
+
+            FileMessages::GetHeader((hash_id, result)) => {
+                let mut header_index;
+
+                if hash_id == GENESIS_BLOCK{
+                    header_index = 0;
+                }else {
+                    header_index = match get_start_index(self.headers_file_name.clone(),hash_id){
+                        Ok(index) =>  index,
+                        Err(error) => {
+                            result.send(Err(error));
+                            return
+                        }
+                    };
+                }
+
+                let file_size = match get_file_header_size()  {
+                    Ok(size) => size,
                     Err(error) => {
                         result.send(Err(error));
                         return
                     }
                 };
-                result.send(leer_bloque(block_index));
-            }
-            FileMessages::ShutDown() => {
-                return;
+
+                //muevo 80 bytes por que necesito a partir del siguietne
+                header_index = header_index + 80;
+
+                let length = 80 * 2000;
+                // valor menor entre leght + offset y file_size
+                let length = if length + header_index < file_size {
+                    length
+                } else {
+                    file_size - header_index
+                };
+
+                let bytes = match leer_bytes(self.headers_file_name.clone(), header_index, length){
+                    Ok(data) => data,
+                    Err(error) => {
+                        result.send(Err(error));
+                        return
+                    }
+                };
+                result.send(Ok(bytes));
             }
         }
     }
@@ -176,6 +213,18 @@ pub fn read_blocks_from_file(
         Err(_) => {
             // todo log error
             // handle error
+            Err(NodoBitcoinError::InvalidAccount)
+        }
+    }
+}
+
+pub fn get_headers(file_manager: Sender<FileMessages>, hash_buscado: [u8; 32]) -> Result<Vec<u8>, NodoBitcoinError> {
+    let (result_sender, result_receiver) = channel();
+    _ = file_manager.send(FileMessages::GetHeader((hash_buscado,result_sender)));
+    match result_receiver.recv() {
+        Ok(result) => result,
+        Err(err) => {
+            // todo handle
             Err(NodoBitcoinError::InvalidAccount)
         }
     }
