@@ -8,3 +8,4 @@ headers.bin
 /tx_report_by_accounts.dat
 /utxos_for_account.dat
 /tx_report_pending_by_accounts.dat
+/src/indexes/headers.bin
