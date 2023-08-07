@@ -163,11 +163,19 @@ impl PartialOrd for SerializedBlock {
     fn partial_cmp(&self, other: &SerializedBlock) -> Option<Ordering> {
         let self_timestamp = self.header.time;
         let other_timestamp = other.header.time;
+        let self_nonce = self.header.nonce;
+        let other_nonce = other.header.nonce;
         match self_timestamp > other_timestamp {
             true => return Some(Ordering::Greater),
             false => match self_timestamp < other_timestamp {
                 true => return Some(Ordering::Less),
-                false => (),
+                false => match self_nonce < other_nonce {
+                    true => return Some(Ordering::Less),
+                    false => match self_nonce > other_nonce {
+                        true => return Some(Ordering::Greater),
+                        false => {}
+                    },
+                },
             },
         }
         Some(Ordering::Equal)
@@ -210,7 +218,7 @@ mod tests {
 
     use std::collections::HashMap;
 
-    use crate::config;
+    use crate::{common::uint256::Uint256, config};
 
     use super::*;
 
@@ -401,6 +409,76 @@ mod tests {
             "Hash map terminado{}",
             chrono::offset::Local::now().format("%F %T")
         );
+    }
+
+    #[test]
+    fn test_verificar_diferencias() {
+        let args: Vec<String> = vec!["app_name".to_string(), "src/nodo2.conf".to_string()];
+        _ = config::inicializar(args);
+
+        // let mut hash_map_1 = HashMap::new();
+        // for block in &blocks_1 {
+        //     let hash = block.header.hash().unwrap();
+        //     // agregar al hash map
+        //     hash_map_1.insert(hash, block);
+        // }
+
+        let blocks_2 = SerializedBlock::read_blocks_from_file();
+        assert!(blocks_2.is_ok());
+
+        let args: Vec<String> = vec!["app_name".to_string(), "src/nodo.conf".to_string()];
+        _ = config::inicializar(args);
+        let blocks_1 = SerializedBlock::read_blocks_from_file();
+        assert!(blocks_1.is_ok());
+
+        let mut blocks_1 = blocks_1.unwrap();
+        let mut blocks_2 = blocks_2.unwrap();
+
+        let blocks_1_len = blocks_1.len();
+
+        blocks_1.sort();
+        blocks_2.sort();
+        for i in 0..blocks_1_len {
+            let block_1 = &blocks_1[i];
+            let hash_1 = block_1.header.hash().unwrap();
+            let block_2 = &blocks_2[i];
+            let hash_2 = block_2.header.hash().unwrap();
+            if hash_1 != hash_2 {
+                let hash_1_hexa_big = Uint256::from_be_bytes(hash_1);
+                let hash_2_hexa_big = Uint256::from_be_bytes(hash_2);
+                println!(
+                    "1: {:?}, 2: {:?}",
+                    hash_1_hexa_big.to_hexa_le_string(),
+                    hash_2_hexa_big.to_hexa_le_string()
+                );
+            }
+        }
+
+        let mut hash_map_1 = HashMap::new();
+        for block in &blocks_1 {
+            let hash = block.header.hash().unwrap();
+            // agregar al hash map
+            hash_map_1.insert(hash, block);
+        }
+
+        let mut hash_map_2 = HashMap::new();
+        for block in &blocks_2 {
+            let hash = block.header.hash().unwrap();
+            // agregar al hash map
+            hash_map_2.insert(hash, block);
+        }
+
+        let keys_only_in_1: Vec<_> = hash_map_1
+            .keys()
+            .filter(|&k| !hash_map_2.contains_key(k))
+            .collect();
+        let keys_only_in_2: Vec<_> = hash_map_2
+            .keys()
+            .filter(|&k| !hash_map_2.contains_key(k))
+            .collect();
+
+        println!("Keys only in HashMap 1: {:?}", keys_only_in_1);
+        println!("Keys only in HashMap 2: {:?}", keys_only_in_2);
     }
 
     // #[test]

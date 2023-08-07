@@ -1,3 +1,4 @@
+use crate::blockchain::file_manager::FileMessages;
 use std::{
     io::{ErrorKind, Read, Write},
     net::{TcpListener, TcpStream},
@@ -8,7 +9,6 @@ use std::{
     thread::{self},
     time::Duration,
 };
-use crate::blockchain::file_manager::FileMessages;
 
 use chrono::Utc;
 
@@ -45,7 +45,7 @@ pub fn init_server(
     let port = config::get_valor("PORT".to_owned())?;
 
     let address = "127.0.0.1:".to_owned() + &port;
-    _ = server_run(&address, file_manager,logger, sender_tx_manager);
+    _ = server_run(&address, file_manager, logger, sender_tx_manager);
     Ok(())
 }
 
@@ -245,7 +245,6 @@ fn handle_message(
     tx_sender: Sender<TransactionMessages>,
     logger: Sender<LogMessages>,
 ) {
-
     let duration = stream.set_read_timeout(Some(Duration::new(READ_TIMEOUT_SECONDS, 0)));
     if duration.is_err() {
         log_error_message(logger, "Error al setear read timeout.".to_string());
@@ -257,7 +256,7 @@ fn handle_message(
             logger.clone(),
             "Handshake exitoso con el cliente".to_string(),
         );
-        thread_connection(stream, file_manager,receiver_thread, tx_sender, logger);
+        thread_connection(stream, file_manager, receiver_thread, tx_sender, logger);
     };
 }
 
@@ -328,10 +327,10 @@ fn thread_connection(
         }
 
         if command == "getheaders" {
-            log_info_message(
-                logger.clone(),
-                format!("getheaders recibido de {}", client_address),
-            );
+            // log_info_message(
+            //     logger.clone(),
+            //     format!("getheaders recibido de {}", client_address),
+            // );
             let getheaders_deserealized = GetHeadersMessage::deserealize(&message);
             if getheaders_deserealized.is_err() {
                 log_error_message(
@@ -341,7 +340,7 @@ fn thread_connection(
                 continue;
             }
 
-            match make_headers_msg(file_manager.clone(),getheaders_deserealized.unwrap()) {
+            match make_headers_msg(file_manager.clone(), getheaders_deserealized.unwrap()) {
                 Ok(headers_msg) => {
                     if stream.write_all(&headers_msg).is_err() {
                         log_error_message(
@@ -362,10 +361,10 @@ fn thread_connection(
             }
         }
         if command == "getdata" {
-            log_info_message(
-                logger.clone(),
-                format!("getdata recibido de {}", client_address),
-            );
+            // log_info_message(
+            //     logger.clone(),
+            //     format!("getdata recibido de {}", client_address),
+            // );
             _ = send_block(message, stream, logger.clone(), tx_sender.clone());
             continue;
         }
@@ -424,7 +423,7 @@ fn send_block(
         log_error_message(logger, "No se puede enviar el mensaje BLOCK".to_string());
         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
     }
-    log_info_message(logger, "BLOCK enviado".to_string());
+    //log_info_message(logger, "BLOCK enviado".to_string());
     Ok(())
 }
 

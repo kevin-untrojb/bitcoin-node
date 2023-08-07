@@ -113,7 +113,7 @@ impl FileManager {
 
                 let index_header =
                     match escribir_archivo(self.headers_file_name.clone(), &header_bytes) {
-                        Ok(index) => index,
+                        Ok(index) => index - 1,
                         Err(error) => {
                             result.send(Err(error));
                             return;
@@ -174,7 +174,7 @@ impl FileManager {
                     length
                 } else if header_index <= file_size {
                     file_size - header_index
-                } else { 
+                } else {
                     result.send(Ok(vec![]));
                     return;
                 };
