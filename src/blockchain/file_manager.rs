@@ -161,7 +161,7 @@ impl FileManager {
                     header_index = 0;
                 } else {
                     header_index = match get_start_index(self.headers_file_name.clone(), hash_id) {
-                        Ok(index) => index,
+                        Ok(index) => index + 80,
                         Err(error) => {
                             result.send(Err(error));
                             return;
@@ -176,9 +176,6 @@ impl FileManager {
                         return;
                     }
                 };
-
-                //muevo 80 bytes por que necesito a partir del siguietne
-                header_index = header_index + 80;
 
                 let length = 80 * 2000;
                 // valor menor entre leght + offset y file_size
@@ -276,6 +273,7 @@ mod tests {
         blockchain::file_manager::{get_headers_from_file, FileManager},
         config,
         log::create_logger_actor,
+        protocol::initial_block_download::GENESIS_BLOCK,
     };
 
     fn init_config() {
@@ -293,7 +291,9 @@ mod tests {
             10, 111, 146, 99, 54, 138, 72, 107, 37, 0, 0, 0, 0,
         ];
 
-        let result = get_headers_from_file(file_manager, hash);
+        let genesis = GENESIS_BLOCK;
+
+        let result = get_headers_from_file(file_manager, genesis);
         assert!(result.is_ok());
     }
 }
