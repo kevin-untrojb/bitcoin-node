@@ -52,17 +52,11 @@ pub fn escribir_archivo(path: String, datos: &[u8]) -> Result<u64, NodoBitcoinEr
     Ok(actual_file_size + 1)
 }
 
-// usos: initial_block_broadcasting, file_manager
-pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<u64, NodoBitcoinError> {
-    let mut archivo = match OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path.clone())
-    {
+pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<(), NodoBitcoinError> {
+    let mut archivo = match OpenOptions::new().create(true).append(true).open(path) {
         Ok(archivo) => archivo,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
-    let actual_file_size = get_file_size(path)?;
 
     let datos_len = datos.len();
     let datos_len_bytes: [u8; 8] = datos_len.to_ne_bytes();
@@ -75,19 +69,14 @@ pub fn escribir_archivo_bloque(path: String, datos: &[u8]) -> Result<u64, NodoBi
     archivo
         .write_all(bytes_para_guardar)
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;
-
-    Ok(actual_file_size + 1)
+    Ok(())
 }
 
-////// **** no son concurrentes //////
-
-// usos: initial_block_broadcasting
 pub fn leer_ultimo_header() -> Result<Vec<u8>, NodoBitcoinError> {
     let cantidad_headers = header_count()?;
     leer_header_desde_archivo(cantidad_headers - 1)
 }
 
-// usos: initial_block_broadcasting
 pub fn existe_archivo_headers() -> bool {
     let path = match get_headers_filename() {
         Ok(path) => path,
@@ -96,7 +85,7 @@ pub fn existe_archivo_headers() -> bool {
     Path::new(&path).exists()
 }
 
-// usos: utils_file
+
 pub fn leer_bytes(path: String, offset: u64, length: u64) -> Result<Vec<u8>, NodoBitcoinError> {
     let mut file = match File::open(path) {
         Ok(file) => file,

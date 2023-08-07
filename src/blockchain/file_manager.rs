@@ -97,28 +97,14 @@ impl FileManager {
                     self.logger.clone(),
                     "Guardando headers y bloques...".to_string(),
                 );
-                let index_block =
-                    match escribir_archivo_bloque(self.block_file_name.clone(), &block_bytes) {
-                        Ok(index) => index,
-                        Err(error) => {
-                            result.send(Err(error));
-                            return;
-                        }
-                    };
-                log_info_message(self.logger.clone(), "Bloque nuevo guardado".to_string());
-
-                match dump_hash_in_the_index(self.block_file_name.clone(), block_hash, index_block)
-                {
-                    Ok(_) => {}
+                match escribir_archivo_bloque(self.block_file_name.clone(), &block_bytes) {
+                    Ok(index) => index,
                     Err(error) => {
                         result.send(Err(error));
                         return;
                     }
                 };
-                log_info_message(
-                    self.logger.clone(),
-                    format!("Indice de bloque guardado {}", index_block),
-                );
+                log_info_message(self.logger.clone(), "Bloque nuevo guardado".to_string());
 
                 let index_header =
                     match escribir_archivo(self.headers_file_name.clone(), &header_bytes) {

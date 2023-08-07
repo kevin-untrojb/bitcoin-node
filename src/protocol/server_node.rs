@@ -89,10 +89,8 @@ fn server_run(
 
     let mut threads = vec![];
 
-    // creo el channel para poder cerrar los hilos y mandarle el sender al manager
     let (sender, receiver) = channel();
 
-    // mandarle el sender al manager que llamó al server y controla que se cierre
     if sender_tx_manager
         .send(TransactionMessages::SenderServerNode(sender))
         .is_err()
@@ -144,7 +142,6 @@ fn server_run(
             }
         }
 
-        // Acá tenemos que verificar si llegó el mensaje para salir del hilo
         if let Ok(message) = receiver.try_recv() {
             match message {
                 ServerNodeMessages::ShutDown => {
@@ -170,7 +167,6 @@ fn server_run(
         }
     }
 
-    // Acá tenemos que esperar a que todos los hilos terminen
     for thread in threads {
         let _ = thread.join();
     }
@@ -180,7 +176,6 @@ fn server_run(
         "Todas las conexiones del Nodo server se cerraron satisfactoriamente.".to_string(),
     );
 
-    // enviar mensaje de que terminó el hilo de server
     _ = sender_tx_manager.send(TransactionMessages::ShutdownedServerNode(
         sender_tx_manager.clone(),
     ));
@@ -250,32 +245,7 @@ fn handle_message(
     tx_sender: Sender<TransactionMessages>,
     logger: Sender<LogMessages>,
 ) {
-    // handshake al revés
-    // read version
-    // write version
-    // read verack
-    // write verack
 
-    // si es ok el handshake, se hace el loop de recibir mensajes
-    // si no, se cierra el socket
-    // loop
-    // si el read sale por timeout N veces, enviamos un ping, si no responde pong se cierra el socket
-    // si el read no lee bytes, se cierra el socket
-    // si el read lee bytes, se hace el parseo del mensaje
-
-    // los mensajes que podemos recibir son:
-    // - ping
-    // - pong
-    // - getheaders
-    // - getdata
-
-    // los mensajes que podemos enviar son:
-    // - ping
-    // - pong
-    // - headers
-    // - block
-
-    // timeout de 10 segundos para que el read no se quede esperando y no poder cerrar el hilo
     let duration = stream.set_read_timeout(Some(Duration::new(READ_TIMEOUT_SECONDS, 0)));
     if duration.is_err() {
         log_error_message(logger, "Error al setear read timeout.".to_string());
@@ -283,7 +253,6 @@ fn handle_message(
     }
 
     if let Ok(()) = shakehand(stream) {
-        // salio bien el handshake, ponerse a escuchar
         log_info_message(
             logger.clone(),
             "Handshake exitoso con el cliente".to_string(),
@@ -330,14 +299,12 @@ fn thread_connection(
             }
         }
 
-        // configuro si tengo que enviar un ping
         let send_ping_on_timeout = time_out_counter >= max_time_outs();
         time_out_counter += 1;
         if send_ping_on_timeout {
             time_out_counter = 0;
         }
 
-        // leo el mensaje
         let (command, message) = match read_message(stream, logger.clone(), send_ping_on_timeout) {
             Ok(option) => {
                 if option.is_none() {
@@ -359,6 +326,7 @@ fn thread_connection(
                 Err(_) => break,
             }
         }
+
         if command == "getheaders" {
             log_info_message(
                 logger.clone(),
@@ -414,7 +382,6 @@ fn get_blocks_from_hashes(
 ) -> Result<Vec<SerializedBlock>, NodoBitcoinError> {
     let mut blocks: Vec<SerializedBlock> = Vec::new();
 
-    // crear un channel para pedirle el bloque al transaction manager
     let (sender, receiver) = channel();
     for hash in hashes {
         _ = tx_sender.send(TransactionMessages::GetBlockRequest(hash, sender.clone()));
@@ -443,16 +410,14 @@ fn send_block(
     let get_data_message = GetDataMessage::deserealize(&data_message)?;
     let hashes = get_data_message.get_hashes();
 
-    // obtener los bloques del archivo que corresponden a los hashes
     let blocks = get_blocks_from_hashes(hashes, tx_sender)?;
 
-    // recorro los bloques y armo un array de bytes con la desearlización de cada uno
     let mut blocks_bytes: Vec<u8> = Vec::new();
     for block in blocks {
         let block_bytes = block.serialize()?;
         blocks_bytes.extend(block_bytes);
     }
-    // armar el mensaje BLOCK
+
     let block_message = make_block(&blocks_bytes)?;
 
     if stream.write_all(&block_message).is_err() {
