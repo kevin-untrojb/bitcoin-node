@@ -64,7 +64,6 @@ pub fn get_start_index(path: String, hash: [u8; 32]) -> Result<u64, NodoBitcoinE
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
     let mut offset = 0;
-    let mut i = 0;
     let size_of_u8 = mem::size_of::<u8>() as u64;
     while offset < file.metadata().unwrap().len() {
         if is_hash_searched(
@@ -79,7 +78,6 @@ pub fn get_start_index(path: String, hash: [u8; 32]) -> Result<u64, NodoBitcoinE
             let u64_index = u64::from_le_bytes(array_bytes);
             return Ok(u64_index);
         } else {
-            i = i + 1;
             offset = offset + 40;
         }
     }

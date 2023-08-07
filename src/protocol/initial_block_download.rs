@@ -8,6 +8,7 @@ use crate::blockchain::file::get_headers_filename;
 use crate::blockchain::file::{
     escribir_archivo, escribir_archivo_bloque, existe_archivo_headers, leer_ultimo_header,
 };
+use crate::blockchain::index::dump_hash_in_the_index;
 use crate::common::utils_data::total_reintentos;
 use crate::common::utils_timestamp::{obtener_timestamp_dia, timestamp_to_datetime};
 use crate::config;
@@ -21,7 +22,6 @@ use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::{cmp, thread, vec};
-use crate::blockchain::index::dump_hash_in_the_index;
 
 pub const GENESIS_BLOCK: [u8; 32] = [
     0x00, 0x00, 0x00, 0x00, 0x09, 0x33, 0xea, 0x01, 0xad, 0x0e, 0xe9, 0x84, 0x20, 0x97, 0x79, 0xba,
@@ -641,8 +641,8 @@ fn guardar_headers_y_bloques(
     log_info_message(logger.clone(), "Guardando headers...".to_string());
     for bh in blockheaders {
         let bytes = bh.serialize()?;
-        let indice = escribir_archivo(headers_path.clone(), &bytes)?;
-        if let Err(error) =  dump_hash_in_the_index(headers_path.clone(), bh.hash()?,indice){
+        let indice = escribir_archivo(headers_path.clone(), &bytes)? - 1;
+        if let Err(error) = dump_hash_in_the_index(headers_path.clone(), bh.hash()?, indice) {
             println!("ERROR write_headers_and_block_file {}.", error);
         }
     }

@@ -38,16 +38,12 @@ pub fn make_headers_msg(
     file_manager_sender: Sender<FileMessages>,
     get_headers: GetHeadersMessage,
 ) -> Result<Vec<u8>, NodoBitcoinError> {
-    // aca hay q agarrar el hash header del mensaje get headers y buscarlo en el archivo para devolver 2 mil headers desde ese header
     let header_buscado = get_headers.start_block_hash;
     let mut payload: Vec<u8> = Vec::new();
     let mut msg = Vec::new();
     let mut header_deserelized: Vec<BlockHeader> = Vec::new();
 
-    let mut headers: Vec<u8> = vec![];
-    let headers_descargados = get_headers_from_file(file_manager_sender, header_buscado)?;
-
-    headers.extend(headers_descargados);
+    let headers: Vec<u8> = get_headers_from_file(file_manager_sender, header_buscado)?;
 
     let cantidad_headers = headers.len() / 80;
     //headers.extend(leer_primeros_2mil_headers().unwrap());
@@ -70,6 +66,7 @@ pub fn make_headers_msg(
         payload.push(0);
     }
 
+    payload.pop();
     let header_msg = make_header("headers".to_string(), &payload)?;
 
     msg.extend_from_slice(&header_msg);
