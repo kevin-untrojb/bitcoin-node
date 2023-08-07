@@ -290,6 +290,19 @@ impl TransactionManager {
                 _ = sender.send(TransactionMessages::NewBlock(block));
             }
             TransactionMessages::NewBlock(block) => {
+                // verifico si está en el hash
+                let hash = match block.header.hash() {
+                    Ok(hash) => hash,
+                    Err(_) => {
+                        return;
+                    }
+                };
+                if !self.blocks_map.contains_key(&hash) {
+                    self.blocks.push(block.clone());
+                    let hash = block.header.hash().unwrap();
+                    self.blocks_map.insert(hash, block.clone());
+                }
+
                 let txns = block.txns.clone();
                 let _ = self
                     .utxos
