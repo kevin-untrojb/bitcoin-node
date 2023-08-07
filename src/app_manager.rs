@@ -10,9 +10,9 @@ use crate::{
     blockchain::block::{pow_poi_validation, SerializedBlock},
     blockchain::{
         file::header_count,
-        file_manager::{FileManager, FileMessages},
+        file_manager::{FileManager, FileMessages, get_header_from_file}, blockheader::BlockHeader,
     },
-    common::utils_data::total_reintentos,
+    common::{utils_data::total_reintentos, uint256::Uint256},
     config,
     errores::{InterfaceError, InterfaceMessage, NodoBitcoinError},
     interface::{
@@ -28,7 +28,7 @@ use crate::{
         transaction_manager::{create_transaction_manager, TransactionMessages},
         user::Account,
         uxto_set::TxReport,
-    },
+    }, merkle_tree::merkle_root::ProofOrder, 
 };
 
 #[derive(Clone)]
@@ -57,6 +57,7 @@ pub enum ApplicationManagerMessages {
     ApplicationError(String),
     UpdateProgressBar(usize, usize),
     POIInvalido,
+    GetMerklePath(Vec<(Uint256, ProofOrder)>)
 }
 
 impl ApplicationManager {
@@ -248,6 +249,17 @@ impl ApplicationManager {
                     end_loading(self.sender_frontend.clone());
                 }
             }
+            ApplicationManagerMessages::GetMerklePath(path) => {
+                if path.is_empty(){
+                    _ = self
+                    .sender_frontend
+                    .send(ViewObject::Error(InterfaceError::MerklePathError));
+                } else {
+                    _ = self
+                    .sender_frontend
+                    .send(ViewObject::PoiResponse(path));
+                }
+            },
         }
     }
 
@@ -471,5 +483,9 @@ impl ApplicationManager {
         // cambio el current_account
         self.current_account = current_account;
         self.send_messages_to_get_values()
+    }
+
+    pub fn proof_of_inclusion_from_front(&mut self, block_hash: Vec<u8>, tx_id: [u8; 32]){
+        let _ = self.tx_manager.send(TransactionMessages::GetMerklePath(block_hash, tx_id));
     }
 }

@@ -40,6 +40,7 @@ pub enum FileMessages {
             Sender<Result<(), NodoBitcoinError>>,
         ),
     ),
+    GetHeaders(([u8; 32], Sender<Result<Vec<u8>, NodoBitcoinError>>)),
     GetHeader(([u8; 32], Sender<Result<Vec<u8>, NodoBitcoinError>>)),
     ShutDown(),
 }
@@ -145,7 +146,7 @@ impl FileManager {
                 return;
             }
 
-            FileMessages::GetHeader((hash_id, result)) => {
+            FileMessages::GetHeaders((hash_id, result)) => {
                 let mut header_index;
 
                 if hash_id == GENESIS_BLOCK {
@@ -188,6 +189,42 @@ impl FileManager {
                 };
                 result.send(Ok(bytes));
             }
+            FileMessages::GetHeader((hash_id, result)) => {
+                let mut header_index;
+
+                header_index = match get_start_index(self.headers_file_name.clone(), hash_id) {
+                    Ok(index) => index,
+                    Err(error) => {
+                        result.send(Err(error));
+                        return;
+                    }
+                };
+
+                let file_size = match get_file_header_size() {
+                    Ok(size) => size,
+                    Err(error) => {
+                        result.send(Err(error));
+                        return;
+                    }
+                };
+
+                let length = 80;
+                // valor menor entre leght + offset y file_size
+                let length = if length + header_index < file_size {
+                    length
+                } else {
+                    file_size - header_index
+                };
+
+                let bytes = match leer_bytes(self.headers_file_name.clone(), header_index, length) {
+                    Ok(data) => data,
+                    Err(error) => {
+                        result.send(Err(error));
+                        return;
+                    }
+                };
+                result.send(Ok(bytes));
+            }
         }
     }
 }
@@ -216,6 +253,21 @@ pub fn read_blocks_from_file(
 }
 
 pub fn get_headers_from_file(
+    file_manager: Sender<FileMessages>,
+    hash_buscado: [u8; 32],
+) -> Result<Vec<u8>, NodoBitcoinError> {
+    let (result_sender, result_receiver) = channel();
+    _ = file_manager.send(FileMessages::GetHeaders((hash_buscado, result_sender)));
+    match result_receiver.recv() {
+        Ok(result) => result,
+        Err(err) => {
+            // todo handle
+            Err(NodoBitcoinError::InvalidAccount)
+        }
+    }
+}
+
+pub fn get_header_from_file(
     file_manager: Sender<FileMessages>,
     hash_buscado: [u8; 32],
 ) -> Result<Vec<u8>, NodoBitcoinError> {

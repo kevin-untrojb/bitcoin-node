@@ -18,6 +18,8 @@ use crate::{
 };
 
 use super::public::{open_message_dialog, start_loading};
+use crate::merkle_tree::merkle_root::ProofOrder;
+use crate::common::uint256::Uint256;
 
 pub enum ViewObject {
     Label(ViewObjectData),
@@ -31,6 +33,7 @@ pub enum ViewObject {
     CloseApplication,
     UpdateButtonPoiStatus(String),
     UploadProgressBar((usize, usize, usize)),
+    PoiResponse(Vec<(Uint256, ProofOrder)>)
 }
 
 pub struct ViewObjectData {
@@ -179,6 +182,18 @@ pub fn create_view() -> Sender<ViewObject> {
                     }
                 }
             }
+            ViewObject::PoiResponse(res) => {
+                let concatenated_text: String = res
+                .iter()
+                .map(|(hash, direction)| {
+                    let s_hash = hash.to_hexa_le_string();
+
+                    format!("{:?} ->> {:?}", direction, s_hash)
+                })
+                .collect::<Vec<String>>()
+                .join("\n");
+                open_path_dialog(&builder_receiver_clone, concatenated_text);
+            }
         }
         glib::Continue(true)
     });
@@ -231,22 +246,124 @@ fn handle_row_transaction_selected(sender: Sender<ViewObject>, builder: Builder)
 }
 
 fn handle_poi(
-    _manager_poi: Arc<Mutex<ApplicationManager>>,
+    manager_poi: Arc<Mutex<ApplicationManager>>,
     builder: Builder,
-    shared_tx: Arc<Mutex<ViewObjectData>>,
+    shared_tx: Arc<Mutex<ViewObjectData>>
 ) {
-    if let Some(button) = builder.object::<Button>("poi") {
-        button.connect_clicked(move |_| {
-            if shared_tx.lock().is_ok() {
-                let shared_tx_guard = shared_tx.lock().unwrap();
-                let tx_id = shared_tx_guard.text.clone();
-                drop(shared_tx_guard);
-
-                println!("Selected tx: {} send to app_manager", tx_id);
-            }
-        });
+    if let Some(res) = builder.object::<Dialog>("poi_dialog") {
+        let dialog = res;
+        if let Some(button) = builder.object::<Button>("poi") {
+            button.connect_clicked(move |_| {
+                if shared_tx.lock().is_ok() {
+                    let shared_tx_guard = shared_tx.lock().unwrap();
+                    let tx_id = shared_tx_guard.text.clone();
+                    drop(shared_tx_guard);
+                    open_poi_dialog(&dialog, &builder, manager_poi.clone(), tx_id);
+                }
+            });
+        }
     }
 }
+
+fn open_poi_dialog(
+    dialog: &Dialog,
+    builder: &Builder,
+    app_manager: Arc<Mutex<ApplicationManager>>,
+    tx_id: String
+) {
+    let hash_entry: Entry;
+    if let Some(res) = builder.object::<Entry>("block_hash") {
+        hash_entry = res;
+    } else {
+        return;
+    }
+
+    let tx_entry: Entry;
+    if let Some(res) = builder.object::<Entry>("tx_poi") {
+        tx_entry = res;
+    } else {
+        return;
+    }
+
+    tx_entry.set_text(&tx_id);
+
+    dialog.connect_response(move |dialog, response_id| {
+        match response_id {
+            ResponseType::Ok => {
+                let hash = hash_entry.text().to_string();
+                let tx = tx_entry.text().to_string();
+                let mut app_manager_thread = match app_manager.lock() {
+                    Ok(res) => res,
+                    Err(_) => return
+                };
+                if !hash.is_empty() && !tx.is_empty() && hash.len() == 64 && tx.len() == 64{
+                    let hash_bytes: Vec<u8> = hash
+                    .as_bytes()
+                    .chunks(2) 
+                    .map(|chunk| {
+                        let chunk_str = String::from_utf8_lossy(chunk);
+                        u8::from_str_radix(&chunk_str, 16).unwrap_or(0) 
+                    })
+                    .collect();
+
+                    let tx_id_vec: Vec<u8> = tx
+                    .as_bytes()
+                    .chunks(2) 
+                    .map(|chunk| {
+                        let chunk_str = String::from_utf8_lossy(chunk);
+                        u8::from_str_radix(&chunk_str, 16).unwrap_or(0) 
+                    })
+                    .collect();
+
+                    let mut tx_id_bytes = [0u8; 32];
+                    tx_id_bytes.copy_from_slice(tx_id_vec.as_slice());
+
+                    let _ = &app_manager_thread.proof_of_inclusion_from_front(hash_bytes, tx_id_bytes);
+                }
+                drop(app_manager_thread);
+            }
+            _ => dialog.hide(),
+        }
+        hash_entry.set_text("");
+        dialog.hide();
+    });
+
+    dialog.show_all();
+    dialog.run();
+}
+
+fn open_path_dialog(
+    builder: &Builder,
+    path: String
+) {
+    let label;
+    if let Some(res) = builder.object::<Label>("path") {
+        label = res;
+    } else {
+        return;
+    }
+
+    label.set_text(&path);
+
+    let dialog;
+    if let Some(res) = builder.object::<Dialog>("merkle_path_dialog") {
+        dialog = res;
+
+        dialog.connect_response(move |dialog, response_id| {
+            match response_id {
+                _ => dialog.hide(),
+            }
+            label.set_text(&"");
+    
+            dialog.hide();
+        });
+    
+        dialog.show_all();
+        dialog.run();
+    }
+
+}
+
 
 fn satoshis_u64_to_btc_string(satoshis: u64) -> String {
     let btc = satoshis as f64 / 100_000_000.0;

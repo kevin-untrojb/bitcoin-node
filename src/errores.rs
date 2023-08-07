@@ -179,6 +179,7 @@ pub enum InterfaceError {
     TransactionNotSent,
     BlockBroadcastingError,
     NodoServerError,
+    MerklePathError
 }
 
 impl Error for InterfaceError {}
@@ -213,6 +214,9 @@ impl fmt::Display for InterfaceError {
             InterfaceError::NodoServerError => {
                 write!(f, "Ha ocurrido un error en el nodo server.")
             }
+            InterfaceError::MerklePathError => {
+                write!(f, "POI invalido.")
+            },
         }
     }
 }
