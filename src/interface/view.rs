@@ -345,11 +345,9 @@ fn open_path_dialog(builder: &Builder, path: String) {
     if let Some(res) = builder.object::<Dialog>("merkle_path_dialog") {
         dialog = res;
 
-        dialog.connect_response(move |dialog, response_id| {
-            match response_id {
-                _ => dialog.hide(),
-            }
-            label.set_text(&"");
+        dialog.connect_response(move |dialog, _response_id| {
+            dialog.hide();
+            label.set_text("");
 
             dialog.hide();
         });

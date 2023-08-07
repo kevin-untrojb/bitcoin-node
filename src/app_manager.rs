@@ -40,7 +40,7 @@ pub struct ApplicationManager {
     sender_frontend: glib::Sender<ViewObject>,
     logger: mpsc::Sender<LogMessages>,
     sender_app_manager: Sender<ApplicationManagerMessages>,
-    file_manager: Sender<FileMessages>,
+    _file_manager: Sender<FileMessages>,
     shutdown_sent: bool,
 }
 
@@ -70,7 +70,7 @@ impl ApplicationManager {
         let (sender_app_manager, receiver_app_manager) = channel();
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
 
-        let file_manager = FileManager::new(logger.clone());
+        let file_manager = FileManager::create(logger.clone());
         let tx_manager = create_transaction_manager(
             accounts.clone(),
             logger.clone(),
@@ -85,7 +85,7 @@ impl ApplicationManager {
             sender_frontend,
             logger,
             tx_manager,
-            file_manager,
+            _file_manager: file_manager,
             shutdown_sent: false,
         };
         app_manager.thread_download_blockchain(0);
