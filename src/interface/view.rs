@@ -8,8 +8,6 @@ use gtk::{
 use gtk::{CellRendererText, ComboBox, ListStore};
 use std::sync::{Arc, Mutex};
 
-use std::println;
-
 use crate::{app_manager::ApplicationManager, config};
 use crate::{common::utils_timestamp::timestamp_to_datetime, wallet::user::Account};
 use crate::{

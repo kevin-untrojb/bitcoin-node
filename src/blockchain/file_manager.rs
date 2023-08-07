@@ -35,8 +35,7 @@ pub enum FileMessages {
         ),
     ),
     GetHeaders(([u8; 32], Sender<Result<Vec<u8>, NodoBitcoinError>>)),
-    GetHeader(([u8; 32], Sender<Result<Vec<u8>, NodoBitcoinError>>)),
-    ShutDown(),
+    _ShutDown(),
 }
 
 impl FileManager {
@@ -87,7 +86,7 @@ impl FileManager {
     fn handle_message(&mut self, message: FileMessages) {
         match message {
             FileMessages::WriteHeadersAndBlockFile((
-                block_hash,
+                _block_hash,
                 block_bytes,
                 header_hash,
                 header_bytes,
@@ -100,7 +99,7 @@ impl FileManager {
                 match escribir_archivo_bloque(self.block_file_name.clone(), &block_bytes) {
                     Ok(index) => index,
                     Err(error) => {
-                        result.send(Err(error));
+                        _ = result.send(Err(error));
                         return;
                     }
                 };
@@ -110,7 +109,7 @@ impl FileManager {
                     match escribir_archivo(self.headers_file_name.clone(), &header_bytes) {
                         Ok(index) => index - 1,
                         Err(error) => {
-                            result.send(Err(error));
+                            _ = result.send(Err(error));
                             return;
                         }
                     };
@@ -122,7 +121,7 @@ impl FileManager {
                 ) {
                     Ok(_) => {}
                     Err(error) => {
-                        result.send(Err(error));
+                        _ = result.send(Err(error));
                         return;
                     }
                 };
@@ -131,12 +130,12 @@ impl FileManager {
                     format!("Indice de header guardado {}", index_header),
                 );
 
-                result.send(Ok(()));
+                _ = result.send(Ok(()));
             }
             FileMessages::ReadAllBlocks(result) => {
-                result.send(leer_todos_blocks());
+                _ = result.send(leer_todos_blocks());
             }
-            FileMessages::ShutDown() => {
+            FileMessages::_ShutDown() => {
                 return;
             }
 
@@ -172,42 +171,6 @@ impl FileManager {
                 } else {
                     result.send(Ok(vec![]));
                     return;
-                };
-
-                let bytes = match leer_bytes(self.headers_file_name.clone(), header_index, length) {
-                    Ok(data) => data,
-                    Err(error) => {
-                        result.send(Err(error));
-                        return;
-                    }
-                };
-                result.send(Ok(bytes));
-            }
-            FileMessages::GetHeader((hash_id, result)) => {
-                let mut header_index;
-
-                header_index = match get_start_index(self.headers_file_name.clone(), hash_id) {
-                    Ok(index) => index,
-                    Err(error) => {
-                        result.send(Err(error));
-                        return;
-                    }
-                };
-
-                let file_size = match get_file_header_size() {
-                    Ok(size) => size,
-                    Err(error) => {
-                        result.send(Err(error));
-                        return;
-                    }
-                };
-
-                let length = 80;
-                // valor menor entre leght + offset y file_size
-                let length = if length + header_index < file_size {
-                    length
-                } else {
-                    file_size - header_index
                 };
 
                 let bytes = match leer_bytes(self.headers_file_name.clone(), header_index, length) {
@@ -261,21 +224,6 @@ pub fn get_headers_from_file(
     }
 }
 
-pub fn get_header_from_file(
-    file_manager: Sender<FileMessages>,
-    hash_buscado: [u8; 32],
-) -> Result<Vec<u8>, NodoBitcoinError> {
-    let (result_sender, result_receiver) = channel();
-    _ = file_manager.send(FileMessages::GetHeader((hash_buscado, result_sender)));
-    match result_receiver.recv() {
-        Ok(result) => result,
-        Err(err) => {
-            // todo handle
-            Err(NodoBitcoinError::InvalidAccount)
-        }
-    }
-}
-
 pub fn write_headers_and_block_file(
     file_manager: Sender<FileMessages>,
     block: SerializedBlock,
@@ -304,7 +252,7 @@ pub fn write_headers_and_block_file(
 }
 
 pub fn shutdown(file_manager: Sender<FileMessages>) {
-    file_manager.send(FileMessages::ShutDown());
+    file_manager.send(FileMessages::_ShutDown());
 }
 
 #[cfg(test)]

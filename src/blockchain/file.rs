@@ -202,7 +202,7 @@ pub fn _leer_headers(ix: u64) -> Result<Vec<u8>, NodoBitcoinError> {
     leer_bytes(path, offset, length)
 }
 
-pub fn create_all_indexes() -> Result<(), NodoBitcoinError> {
+pub fn _create_all_indexes() -> Result<(), NodoBitcoinError> {
     let path = get_headers_filename()?;
     let file_size = get_file_header_size()?;
     let mut offset = 0;
@@ -211,7 +211,7 @@ pub fn create_all_indexes() -> Result<(), NodoBitcoinError> {
         let header = BlockHeader::deserialize(bytes.as_slice())?;
         let hash = header.hash()?;
 
-        dump_hash_in_the_index(path.clone(), hash, offset);
+        _ = dump_hash_in_the_index(path.clone(), hash, offset);
         offset += 80;
     }
     Ok(())
@@ -221,7 +221,7 @@ pub fn create_all_indexes() -> Result<(), NodoBitcoinError> {
 mod tests {
     use crate::config;
 
-    use super::create_all_indexes;
+    use super::_create_all_indexes;
 
     fn init_config() {
         let args: Vec<String> = vec!["app_name".to_string(), "src/nodo.conf".to_string()];
@@ -231,6 +231,6 @@ mod tests {
     #[test]
     fn test_create_all_indexes() {
         init_config();
-        let _ = create_all_indexes();
+        let _ = _create_all_indexes();
     }
 }

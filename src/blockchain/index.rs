@@ -28,7 +28,7 @@ fn is_hash_searched(vec: Vec<u8>, slice: &[u8; 32]) -> bool {
 }
 
 pub fn dump_hash_in_the_index(
-    path: String,
+    _path: String,
     hash: [u8; 32],
     real_index: u64,
 ) -> Result<(), NodoBitcoinError> {
@@ -52,9 +52,9 @@ pub fn dump_hash_in_the_index(
     Ok(())
 }
 
-pub fn get_start_index(path: String, hash: [u8; 32]) -> Result<u64, NodoBitcoinError> {
+pub fn get_start_index(_path: String, hash: [u8; 32]) -> Result<u64, NodoBitcoinError> {
     let index_path = create_path(hash.clone());
-    let mut file = match File::open(index_path.clone()) {
+    let file = match File::open(index_path.clone()) {
         Ok(file) => file,
         Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
     };
