@@ -37,6 +37,7 @@ pub enum ServerNodeMessages {
     ShutDown,
 }
 
+/// Comienza a correr el servidor en el puerto especificado en la configuración
 pub fn init_server(
     logger: Sender<LogMessages>,
     file_manager: Sender<FileMessages>,
@@ -49,6 +50,7 @@ pub fn init_server(
     Ok(())
 }
 
+/// Crea y devuelve el listener que escucha en la dirección recibida por parámetro
 fn crear_listener(
     address: &str,
     logger: Sender<LogMessages>,
@@ -79,6 +81,9 @@ fn crear_listener(
     Ok(listener)
 }
 
+/// Realiza todas las acciones para que el servidor esté escuchando y maneje los mensajes que reciba en otro hilo
+/// Si recibe un mensaje de ShutDown, cierra todos sus hilos y luego termina, enviando un mensaje para 
+/// avisar que ya completó la finalización correctamente.
 fn server_run(
     address: &str,
     file_manager: Sender<FileMessages>,
@@ -188,6 +193,8 @@ fn server_run(
     Ok(())
 }
 
+/// Hace el handshake pero al revés, siendo el nodo que recibe el pedido de conexión
+/// Si termina satisfactoriamente, la conexión con el nodo cliente está realizada
 fn shakehand(stream: &mut TcpStream, logger: Sender<LogMessages>) -> Result<(), NodoBitcoinError> {
     let mut header = [0u8; 24];
     if stream.read_exact(&mut header).is_err() {
@@ -253,6 +260,8 @@ fn shakehand(stream: &mut TcpStream, logger: Sender<LogMessages>) -> Result<(), 
     Ok(())
 }
 
+/// Recibe el stream cliente
+/// Se realiza el handshake y si se realiza correctamente, se queda a la espera de mensajes de parte del cliente
 fn handle_message(
     stream: &mut TcpStream,
     file_manager: Sender<FileMessages>,
@@ -275,6 +284,10 @@ fn handle_message(
     };
 }
 
+/// Escucha por mensajes del cliente y realiza las acciones 
+/// necesarias en caso de recibir mensaje getdata, headers o ping
+/// También envía el mensaje ping en caso de que pase un determinado 
+/// tiempo sin recibir mensajes de parte del cliente
 fn thread_connection(
     stream: &mut TcpStream,
     file_manager: Sender<FileMessages>,
@@ -382,6 +395,8 @@ fn thread_connection(
     );
 }
 
+/// Recibe un vector de hash de bloques
+/// Devuelve un vector con los bloques correspondientes a esos hashes
 fn get_blocks_from_hashes(
     hashes: Vec<Vec<u8>>,
     tx_sender: Sender<TransactionMessages>,
@@ -407,6 +422,8 @@ fn get_blocks_from_hashes(
     Ok(blocks)
 }
 
+/// Se encarga de interpretar el mensaje getdata, buscar los bloques a devolver
+/// y enviar el mensaje block con los bloques pedidos por el cliente
 fn send_block(
     data_message: Vec<u8>,
     stream: &mut TcpStream,
@@ -430,10 +447,10 @@ fn send_block(
         log_error_message(logger, "No se puede enviar el mensaje BLOCK".to_string());
         return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes);
     }
-    //log_info_message(logger, "BLOCK enviado".to_string());
     Ok(())
 }
 
+/// Escribe al cliente el mensaje pong a partir del mensaje ping recibido
 fn send_pong(
     ping_message: Vec<u8>,
     stream: &mut TcpStream,
@@ -448,6 +465,8 @@ fn send_pong(
     Ok(())
 }
 
+/// Define la cantidad de timeouts que se permitirá que tenga el servidor al leer
+/// para luego enviar el mensaje ping para confirmar si el cliente sigue conectado
 fn max_time_outs() -> i32 {
     let ping_frequency_minutes = match config::get_valor("PING_FREQUENCY_MINUTES".to_string()) {
         Ok(res) => res,
@@ -459,6 +478,11 @@ fn max_time_outs() -> i32 {
     max_time_outs as i32
 }
 
+/// Lee el mensaje recibido del cliente
+/// Si el error en la lectura es WouldBlock (timeout), entonces si se llegó a la máxima
+/// cantidad de intentos de lectura se envía el mensaje ping para chequear que el
+/// cliente siga conectado y devuelve None.
+/// Si se lee algo, devuelve el comando del mensaje recibido y el mensaje
 fn read_message(
     stream: &mut TcpStream,
     logger: Sender<LogMessages>,
@@ -469,10 +493,6 @@ fn read_message(
         Ok(res) => res,
         Err(error) => {
             if error.kind() == ErrorKind::WouldBlock {
-                // TODO: Acá tenemos que verificar si llegó el mensaje para salir del hilo
-                // en caso de tener que salir, retornamos un error
-                // el flujo va a salir porque va a cerrar la conexión
-
                 if send_ping_on_timeout {
                     match send_ping_pong_messages(stream, logger.clone()) {
                         Ok(()) => {
@@ -503,7 +523,6 @@ fn read_message(
         return Err(NodoBitcoinError::ErrorAlLeerSolicitudDelCliente);
     }
 
-    // verifico los tipos de mensajes aceptados
     let (command, message) = match check_header(&buffer) {
         Ok((command, payload_len)) => {
             let mut message = vec![0u8; payload_len];
@@ -522,6 +541,8 @@ fn read_message(
     Ok(Some((command, message)))
 }
 
+/// Envía el mensaje ping al cliente 
+/// Devuelve error si el mensaje que se lee luego no es un pong
 fn send_ping_pong_messages(
     stream: &mut TcpStream,
     logger: Sender<LogMessages>,
@@ -555,7 +576,7 @@ fn send_ping_pong_messages(
     Ok(())
 }
 
-// crear una función que valide el pong
+// Devuelve true si el pong es válido, false si no
 fn validar_pong(
     command: String,
     message: Vec<u8>,
