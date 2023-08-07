@@ -155,7 +155,7 @@ fn get_headers_filtrados(
 
 const _DEFAULT_TOTAL_THREADS: usize = 5;
 
-fn _get_config_threads() -> usize {
+fn get_config_threads() -> usize {
     let total_reintentos_config = config::get_valor("CANTIDAD_THREADS".to_string());
     if let Ok(valor_string) = total_reintentos_config {
         if let Ok(value) = valor_string.parse::<usize>() {
@@ -170,7 +170,7 @@ fn headers_by_threads(headers_filtrados: &Vec<BlockHeader>) -> Vec<Vec<BlockHead
         return vec![];
     }
 
-    let n_threads_max = _get_config_threads();
+    let n_threads_max = get_config_threads();
     let len_response = cmp::min(n_threads_max, headers_filtrados.len());
 
     let n_blockheaders_by_thread =
@@ -621,8 +621,7 @@ fn blocks_joined_guardar(
     blockheaders: Vec<BlockHeader>,
     intento: usize,
 ) -> Result<(), NodoBitcoinError> {
-    // guardar bloques
-    // Convertir Result<MutexGuard<Vec<SerializedBlock>>, _> a Vec<SerializedBlock>
+
     let bloques_a_guardar = match blocks.lock() {
         Ok(mutex_guard) => mutex_guard.clone(),
         Err(_) => return Err(NodoBitcoinError::NoSePuedeEscribirLosBytes),
@@ -636,7 +635,6 @@ fn blocks_joined_guardar(
     };
 
     if bloques_a_guardar.len() == headers_filtrados_len {
-        // guardo los headers y los bloques
         guardar_headers_y_bloques(logger, bloques_a_guardar, blockheaders)?;
     } else {
         if intento > total_reintentos() {
@@ -668,12 +666,10 @@ fn guardar_headers_y_bloques(
     }
     log_info_message(logger.clone(), "Headers guardados".to_string());
 
-    // guardo los bloques
     if !bloques_a_guardar.is_empty() {
         log_info_message(logger.clone(), "Guardando bloques...".to_string());
         bloques_a_guardar.sort();
         for bloque in bloques_a_guardar {
-            // guardar bloque
             escribir_archivo_bloque(block_path.clone(), &bloque.serialize()?)?;
         }
         log_info_message(logger, "Bloques guardados".to_string());

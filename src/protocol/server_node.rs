@@ -102,9 +102,14 @@ fn server_run(
     let senders_threads_mutex = Arc::new(Mutex::new(senders_threads));
     let thread_logger_shutdown = logger.clone();
 
+    let address = match listener.local_addr() {
+        Ok(address) => address,
+        Err(_) => return Err(NodoBitcoinError::ErrorEnLaDireccion),
+    };
+
     log_info_message(
         logger.clone(),
-        format!("Escuchando en: {:?}", listener.local_addr().unwrap()),
+        format!("Escuchando en: {:?}", address),
     );
     loop {
         match listener.accept() {
@@ -183,7 +188,7 @@ fn server_run(
     Ok(())
 }
 
-fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
+fn shakehand(stream: &mut TcpStream, logger: Sender<LogMessages>) -> Result<(), NodoBitcoinError> {
     let mut header = [0u8; 24];
     if stream.read_exact(&mut header).is_err() {
         return Err(NodoBitcoinError::ErrorEnHandshake);
@@ -202,7 +207,6 @@ fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
 
     let version = VersionMessage::get_version(&payload);
     let my_version = match (config::get_valor("VERSION".to_string())?).parse::<u32>() {
-        // sacamos del config la version??
         Ok(res) => res,
         Err(_) => return Err(NodoBitcoinError::ErrorEnHandshake),
     };
@@ -213,7 +217,18 @@ fn shakehand(stream: &mut TcpStream) -> Result<(), NodoBitcoinError> {
 
     let timestamp = Utc::now().timestamp() as u64;
 
-    let version_message = VersionMessage::new(my_version, timestamp, stream.peer_addr().unwrap()); //LIMPIAR EL UNWRAP
+    let client_address = match stream.peer_addr() {
+        Ok(res) => res,
+        Err(_) => {
+            log_error_message(
+                logger,
+                "Error al obtener el address del cliente".to_string(),
+            );
+            return Err(NodoBitcoinError::ErrorEnLaDireccion);
+        }
+    };
+
+    let version_message = VersionMessage::new(my_version, timestamp, client_address);
     let mensaje = version_message.serialize()?;
     if stream.write_all(&mensaje).is_err() {
         return Err(NodoBitcoinError::ErrorEnHandshake);
@@ -251,7 +266,7 @@ fn handle_message(
         return;
     }
 
-    if let Ok(()) = shakehand(stream) {
+    if let Ok(()) = shakehand(stream, logger.clone()) {
         log_info_message(
             logger.clone(),
             "Handshake exitoso con el cliente".to_string(),
@@ -327,10 +342,6 @@ fn thread_connection(
         }
 
         if command == "getheaders" {
-            // log_info_message(
-            //     logger.clone(),
-            //     format!("getheaders recibido de {}", client_address),
-            // );
             let getheaders_deserealized = GetHeadersMessage::deserealize(&message);
             if getheaders_deserealized.is_err() {
                 log_error_message(
@@ -361,10 +372,6 @@ fn thread_connection(
             }
         }
         if command == "getdata" {
-            // log_info_message(
-            //     logger.clone(),
-            //     format!("getdata recibido de {}", client_address),
-            // );
             _ = send_block(message, stream, logger.clone(), tx_sender.clone());
             continue;
         }
@@ -573,7 +580,6 @@ fn validar_pong(
         );
         return false;
     }
-    // llamar a log_info_message con el nonce correcto
     log_info_message(logger, "Nonce del ping pong válido".to_string());
     true
 }
@@ -601,163 +607,4 @@ mod tests {
         };
         Ok(socket)
     }
-
-    // #[test]
-    // fn test_run_server() {
-    //     init_config();
-    //     // let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-    //     // let (sender, _) = channel();
-    //     //_ = init_server(logger, sender.clone());
-    // }
-
-    // #[test]
-    // fn test_run_client() {
-    //     init_config();
-    //     let socket = init_client();
-    //     assert!(socket.is_ok());
-
-    //     let socket = socket.unwrap();
-    //     let address = socket.local_addr();
-    //     assert!(address.is_ok());
-    //     let address = address.unwrap();
-
-    //     let handsahke = handshake(socket, address);
-    //     assert!(handsahke.is_ok());
-
-    //     let mut socket = handsahke.unwrap();
-
-    //     let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-    //     let ping_pong = send_ping_pong_messages(&mut socket, logger);
-    //     assert!(ping_pong.is_ok());
-    // }
-
-    // #[test]
-    // fn test_run_client_get_block() {
-    //     init_config();
-    //     let socket = init_client();
-    //     assert!(socket.is_ok());
-
-    //     let socket = socket.unwrap();
-    //     let address = socket.local_addr();
-    //     assert!(address.is_ok());
-    //     let address = address.unwrap();
-
-    //     let handsahke = handshake(socket, address);
-    //     assert!(handsahke.is_ok());
-
-    //     let mut socket = handsahke.unwrap();
-
-    //     let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-    //     let ping_pong = send_ping_pong_messages(&mut socket, logger.clone());
-    //     assert!(ping_pong.is_ok());
-
-    //     // obtengo el ultimo bloque descargado
-    //     // let block = SerializedBlock::read_last_block_from_file();
-    //     let vec_block = SerializedBlock::_read_n_blocks_from_file(1);
-    //     assert!(vec_block.is_ok());
-    //     let binding = vec_block.unwrap();
-    //     let block = binding.first();
-    //     assert!(block.is_some());
-    //     let block = block.unwrap().clone();
-
-    //     let block_bytes = block.serialize();
-    //     assert!(block_bytes.is_ok());
-    //     let block_bytes = block_bytes.unwrap();
-
-    //     let hash = block.header.hash();
-    //     assert!(hash.is_ok());
-    //     let hash = hash.unwrap();
-
-    //     let get_data = GetDataMessage::new(1, hash.clone());
-    //     let get_data_message = get_data.serialize();
-    //     assert!(get_data_message.is_ok());
-
-    //     let get_data_message = get_data_message.unwrap();
-    //     let _ = socket.write(&get_data_message);
-
-    //     let read_message = read_message(&mut socket, logger.clone(), false);
-    //     assert!(read_message.is_ok());
-
-    //     let read_message = read_message.unwrap();
-    //     assert!(read_message.is_some());
-
-    //     let (command, message) = read_message.unwrap();
-    //     assert_eq!(command, "block");
-    //     assert!(message.len() > 0);
-    //     assert_eq!(message, block_bytes);
-
-    //     let block_received = SerializedBlock::deserialize(&message);
-    //     assert!(block_received.is_ok());
-    //     let block_received = block_received.unwrap();
-
-    //     assert_eq!(block, block_received);
-    //     assert_eq!(block.header, block_received.header);
-    //     assert_eq!(block.txns, block_received.txns);
-    // }
-
-    // #[test]
-    // fn test_run_client_get_headers() {
-    //     init_config();
-    //     let socket = init_client();
-    //     assert!(socket.is_ok());
-
-    //     let socket = socket.unwrap();
-    //     let address = socket.local_addr();
-    //     assert!(address.is_ok());
-    //     let address = address.unwrap();
-
-    //     let handsahke = handshake(socket, address);
-    //     assert!(handsahke.is_ok());
-
-    //     let mut socket = handsahke.unwrap();
-
-    //     let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-    //     let ping_pong = send_ping_pong_messages(&mut socket, logger.clone());
-    //     assert!(ping_pong.is_ok());
-
-    //     // obtengo el ultimo bloque descargado
-    //     // let block = SerializedBlock::read_last_block_from_file();
-    //     let mut header_deserelized: Vec<BlockHeader> = Vec::new();
-    //     let primer_header = _leer_primer_header().unwrap();
-    //     let header = BlockHeader::deserialize(&primer_header).unwrap();
-
-    //     let hash_buscado = header.hash().unwrap();
-    //     let headers_bytes = buscar_header(hash_buscado).unwrap();
-
-    //     //let vec_header = leer_primeros_2mil_headers();
-    //     //assert!(vec_header.is_ok());
-    //     // let binding = vec_header.unwrap();
-    //     let cantidad_headers = headers_bytes.len() / 80;
-    //     //headers.extend(leer_primeros_2mil_headers().unwrap());
-    //     for i in 0..cantidad_headers {
-    //         header_deserelized
-    //             .push(BlockHeader::deserialize(&headers_bytes[i * 80..(i * 80) + 80]).unwrap());
-    //     }
-
-    //     // let get_headers =
-    //     //     GetHeadersMessage::new(70015, 1, header_deserelized[0].hash().unwrap(), [0; 32]);
-    //     let get_headers = GetHeadersMessage::new(70015, 1, hash_buscado, [0; 32]);
-
-    //     // let get_data_message = get_data_message.unwrap();
-    //     // let _ = socket.write(&get_data_message);
-
-    //     let get_headers_msg = get_headers.serialize().unwrap();
-    //     let _ = socket.write(&get_headers_msg);
-
-    //     let read_message = read_message(&mut socket, logger.clone(), false);
-    //     assert!(read_message.is_ok());
-
-    //     let read_message = read_message.unwrap();
-    //     assert!(read_message.is_some());
-
-    //     let (command, message) = read_message.unwrap();
-    //     assert_eq!(command, "headers");
-    //     assert!(message.len() > 0);
-
-    //     let header_recibidos = deserealize_sin_guardar(message);
-    //     assert!(header_recibidos.is_ok());
-    //     let header_recibidos = header_recibidos.unwrap();
-
-    //     assert_eq!(header_deserelized, header_recibidos);
-    // }
 }

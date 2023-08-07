@@ -6,6 +6,8 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::{fs::File, mem};
 
+use super::file::get_file_size;
+
 fn create_hash_to_find_index(hash: [u8; 32]) -> usize {
     let mut hasher = DefaultHasher::new();
     hash.hash(&mut hasher);
@@ -54,15 +56,13 @@ pub fn dump_hash_in_the_index(
 
 pub fn get_start_index(_path: String, hash: [u8; 32]) -> Result<u64, NodoBitcoinError> {
     let index_path = create_path(hash.clone());
-    let file = match File::open(index_path.clone()) {
-        Ok(file) => file,
-        Err(_) => return Err(NodoBitcoinError::NoExisteArchivo),
-    };
+    let len_archivo = get_file_size(index_path.clone())?;
     let mut offset = 0;
     let size_of_u8 = mem::size_of::<u8>() as u64;
-    while offset < file.metadata().unwrap().len() {
+    
+    while offset < len_archivo {
         if is_hash_searched(
-            leer_bytes(index_path.clone(), offset, size_of_u8 * 32).unwrap(),
+            leer_bytes(index_path.clone(), offset, size_of_u8 * 32)?,
             &hash,
         ) {
             offset = offset + size_of_u8 * 32;

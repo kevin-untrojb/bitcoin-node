@@ -46,6 +46,7 @@ pub enum NodoBitcoinError {
     // server
     ErrorEnPing,
     ErrorAlLeerSolicitudDelCliente,
+    ErrorEnLaDireccion,
 }
 
 impl Error for NodoBitcoinError {}
@@ -163,6 +164,9 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::ErrorAlLeerSolicitudDelCliente => {
                 write!(f, "ERROR: No se puede leer el mensaje del cliente")
+            }
+            NodoBitcoinError::ErrorEnLaDireccion => {
+                write!(f, "ERROR: No se puede acceder a la dirección del peer")
             }
         }
     }
