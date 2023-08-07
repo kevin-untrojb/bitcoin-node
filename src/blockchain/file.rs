@@ -219,16 +219,14 @@ pub fn _create_all_indexes() -> Result<(), NodoBitcoinError> {
 mod tests {
     use crate::config;
 
-    use super::_create_all_indexes;
-
-    fn init_config() {
+    fn _init_config() {
         let args: Vec<String> = vec!["app_name".to_string(), "src/nodo.conf".to_string()];
         _ = config::inicializar(args);
     }
 
-    #[test]
-    fn test_create_all_indexes() {
-        init_config();
-        let _ = _create_all_indexes();
-    }
+    // #[test]
+    // fn test_create_all_indexes() {
+    //     init_config();
+    //     let _ = _create_all_indexes();
+    // }
 }

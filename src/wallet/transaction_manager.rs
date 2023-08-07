@@ -300,13 +300,13 @@ impl TransactionManager {
                 }
 
                 let mut path = vec![];
-                if response.is_some() {
+                if let Some(response) = response {
                     let mut inv_tx = [0u8; 32];
                     for i in 0..32 {
                         inv_tx[i] = tx_id[31 - i];
                     }
 
-                    path = match response.unwrap().local_merkle_tree() {
+                    path = match response.local_merkle_tree() {
                         Ok(res) => match res.merkle_path(Uint256::from_be_bytes(inv_tx)) {
                             Ok(path) => path,
                             Err(_) => vec![],

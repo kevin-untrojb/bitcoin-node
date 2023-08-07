@@ -127,11 +127,9 @@ impl FileManager {
             FileMessages::_ShutDown() => {}
 
             FileMessages::GetHeaders((hash_id, result)) => {
-                let header_index;
+                let mut header_index = 0;
 
-                if hash_id == GENESIS_BLOCK {
-                    header_index = 0;
-                } else {
+                if hash_id != GENESIS_BLOCK {
                     header_index = match get_start_index(self.headers_file_name.clone(), hash_id) {
                         Ok(index) => index + 80,
                         Err(error) => {
