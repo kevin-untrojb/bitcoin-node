@@ -45,7 +45,7 @@ pub fn escribir_archivo(path: String, datos: &[u8]) -> Result<u64, NodoBitcoinEr
             return Err(NodoBitcoinError::NoExisteArchivo);
         }
     };
-    let actual_file_size = get_file_size(path.clone())?;
+    let actual_file_size = get_file_size(path)?;
     archivo
         .write_all(datos)
         .map_err(|_| NodoBitcoinError::NoSePuedeEscribirLosBytes)?;

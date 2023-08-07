@@ -39,27 +39,16 @@ pub enum FileMessages {
 }
 
 impl FileManager {
-    pub fn new(logger: Sender<LogMessages>) -> Sender<FileMessages> {
-        let headers_file_name: String;
-        let block_file_name: String;
+    pub fn create(logger: Sender<LogMessages>) -> Sender<FileMessages> {
+        let headers_file_name = match get_headers_filename() {
+            Ok(real_headers_file_name) => real_headers_file_name,
+            Err(_) => "".to_string(),
+        };
 
-        match get_headers_filename() {
-            Ok(real_headers_file_name) => {
-                headers_file_name = real_headers_file_name;
-            }
-            Err(_) => {
-                headers_file_name = "".to_string();
-            }
-        }
-
-        match get_blocks_filename() {
-            Ok(real_block_file_name) => {
-                block_file_name = real_block_file_name;
-            }
-            Err(_) => {
-                block_file_name = "".to_string();
-            }
-        }
+        let block_file_name = match get_blocks_filename() {
+            Ok(real_block_file_name) => real_block_file_name,
+            Err(_) => "".to_string(),
+        };
 
         let (sender, receiver) = channel();
 
@@ -135,9 +124,7 @@ impl FileManager {
             FileMessages::ReadAllBlocks(result) => {
                 _ = result.send(leer_todos_blocks());
             }
-            FileMessages::_ShutDown() => {
-                return;
-            }
+            FileMessages::_ShutDown() => {}
 
             FileMessages::GetHeaders((hash_id, result)) => {
                 let header_index;
@@ -273,7 +260,7 @@ mod tests {
     fn test_get_header() {
         init_config();
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-        let file_manager = FileManager::new(logger.clone());
+        let file_manager = FileManager::create(logger.clone());
         let _hash: [u8; 32] = [
             229, 94, 124, 89, 15, 75, 44, 222, 240, 35, 41, 188, 16, 213, 143, 250, 149, 109, 29,
             10, 111, 146, 99, 54, 138, 72, 107, 37, 0, 0, 0, 0,

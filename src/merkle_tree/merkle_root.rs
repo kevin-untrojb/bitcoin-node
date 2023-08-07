@@ -121,7 +121,7 @@ fn merkle_proof_node(
         Some(right) => right,
         None => return Err(NodoBitcoinError::NoChildren),
     };
-    let left = match current_node.left.clone() {
+    let left = match current_node.left {
         Some(left) => left,
         None => return Err(NodoBitcoinError::NoChildren),
     };

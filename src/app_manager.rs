@@ -70,7 +70,7 @@ impl ApplicationManager {
         let (sender_app_manager, receiver_app_manager) = channel();
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
 
-        let file_manager = FileManager::new(logger.clone());
+        let file_manager = FileManager::create(logger.clone());
         let tx_manager = create_transaction_manager(
             accounts.clone(),
             logger.clone(),

@@ -451,7 +451,7 @@ fn thread_data(
 
                 if cloned_connection.write_message(&pong_msg).is_err() {
                     log_error_message(
-                        logger.clone(),
+                        logger,
                         format!(
                             "Error al escribir el mensaje pong en conexión {}",
                             cloned_connection.id
