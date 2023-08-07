@@ -4,12 +4,7 @@ use crate::errores::NodoBitcoinError;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
-use std::{
-    fs::{File, OpenOptions},
-    io::{Read, Seek, SeekFrom, Write},
-    mem,
-    path::Path,
-};
+use std::{fs::File, mem};
 
 fn create_hash_to_find_index(hash: [u8; 32]) -> usize {
     let mut hasher = DefaultHasher::new();

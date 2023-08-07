@@ -1,13 +1,9 @@
 use crate::blockchain::file_manager::get_headers_from_file;
 use crate::blockchain::file_manager::FileMessages;
 use crate::{
-    blockchain::{
-        blockheader::BlockHeader,
-        file::{buscar_header, leer_primeros_2mil_headers},
-    },
+    blockchain::blockheader::BlockHeader,
     common::utils_bytes::{self, parse_varint},
     errores::NodoBitcoinError,
-    protocol::initial_block_download::GENESIS_BLOCK,
 };
 use std::sync::mpsc::Sender;
 

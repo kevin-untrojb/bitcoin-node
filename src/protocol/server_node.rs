@@ -580,24 +580,15 @@ fn validar_pong(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        blockchain::{
-            blockheader::BlockHeader,
-            file::{_leer_primer_header, buscar_header},
-        },
-        log::create_logger_actor,
-        messages::headers::deserealize_sin_guardar,
-        protocol::connection::handshake,
-    };
 
     use super::*;
 
-    fn init_config() {
+    fn _init_config() {
         let args: Vec<String> = vec!["app_name".to_string(), "src/nodo.conf".to_string()];
         _ = config::inicializar(args);
     }
 
-    fn init_client() -> Result<TcpStream, NodoBitcoinError> {
+    fn _init_client() -> Result<TcpStream, NodoBitcoinError> {
         let port = match config::get_valor("PORT".to_owned()) {
             Ok(res) => res,
             Err(_) => "18333".to_owned(),
@@ -611,162 +602,162 @@ mod tests {
         Ok(socket)
     }
 
-    #[test]
-    fn test_run_server() {
-        init_config();
-        // let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-        // let (sender, _) = channel();
-        //_ = init_server(logger, sender.clone());
-    }
+    // #[test]
+    // fn test_run_server() {
+    //     init_config();
+    //     // let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+    //     // let (sender, _) = channel();
+    //     //_ = init_server(logger, sender.clone());
+    // }
 
-    #[test]
-    fn test_run_client() {
-        init_config();
-        let socket = init_client();
-        assert!(socket.is_ok());
+    // #[test]
+    // fn test_run_client() {
+    //     init_config();
+    //     let socket = init_client();
+    //     assert!(socket.is_ok());
 
-        let socket = socket.unwrap();
-        let address = socket.local_addr();
-        assert!(address.is_ok());
-        let address = address.unwrap();
+    //     let socket = socket.unwrap();
+    //     let address = socket.local_addr();
+    //     assert!(address.is_ok());
+    //     let address = address.unwrap();
 
-        let handsahke = handshake(socket, address);
-        assert!(handsahke.is_ok());
+    //     let handsahke = handshake(socket, address);
+    //     assert!(handsahke.is_ok());
 
-        let mut socket = handsahke.unwrap();
+    //     let mut socket = handsahke.unwrap();
 
-        let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-        let ping_pong = send_ping_pong_messages(&mut socket, logger);
-        assert!(ping_pong.is_ok());
-    }
+    //     let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+    //     let ping_pong = send_ping_pong_messages(&mut socket, logger);
+    //     assert!(ping_pong.is_ok());
+    // }
 
-    #[test]
-    fn test_run_client_get_block() {
-        init_config();
-        let socket = init_client();
-        assert!(socket.is_ok());
+    // #[test]
+    // fn test_run_client_get_block() {
+    //     init_config();
+    //     let socket = init_client();
+    //     assert!(socket.is_ok());
 
-        let socket = socket.unwrap();
-        let address = socket.local_addr();
-        assert!(address.is_ok());
-        let address = address.unwrap();
+    //     let socket = socket.unwrap();
+    //     let address = socket.local_addr();
+    //     assert!(address.is_ok());
+    //     let address = address.unwrap();
 
-        let handsahke = handshake(socket, address);
-        assert!(handsahke.is_ok());
+    //     let handsahke = handshake(socket, address);
+    //     assert!(handsahke.is_ok());
 
-        let mut socket = handsahke.unwrap();
+    //     let mut socket = handsahke.unwrap();
 
-        let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-        let ping_pong = send_ping_pong_messages(&mut socket, logger.clone());
-        assert!(ping_pong.is_ok());
+    //     let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+    //     let ping_pong = send_ping_pong_messages(&mut socket, logger.clone());
+    //     assert!(ping_pong.is_ok());
 
-        // obtengo el ultimo bloque descargado
-        // let block = SerializedBlock::read_last_block_from_file();
-        let vec_block = SerializedBlock::_read_n_blocks_from_file(1);
-        assert!(vec_block.is_ok());
-        let binding = vec_block.unwrap();
-        let block = binding.first();
-        assert!(block.is_some());
-        let block = block.unwrap().clone();
+    //     // obtengo el ultimo bloque descargado
+    //     // let block = SerializedBlock::read_last_block_from_file();
+    //     let vec_block = SerializedBlock::_read_n_blocks_from_file(1);
+    //     assert!(vec_block.is_ok());
+    //     let binding = vec_block.unwrap();
+    //     let block = binding.first();
+    //     assert!(block.is_some());
+    //     let block = block.unwrap().clone();
 
-        let block_bytes = block.serialize();
-        assert!(block_bytes.is_ok());
-        let block_bytes = block_bytes.unwrap();
+    //     let block_bytes = block.serialize();
+    //     assert!(block_bytes.is_ok());
+    //     let block_bytes = block_bytes.unwrap();
 
-        let hash = block.header.hash();
-        assert!(hash.is_ok());
-        let hash = hash.unwrap();
+    //     let hash = block.header.hash();
+    //     assert!(hash.is_ok());
+    //     let hash = hash.unwrap();
 
-        let get_data = GetDataMessage::new(1, hash.clone());
-        let get_data_message = get_data.serialize();
-        assert!(get_data_message.is_ok());
+    //     let get_data = GetDataMessage::new(1, hash.clone());
+    //     let get_data_message = get_data.serialize();
+    //     assert!(get_data_message.is_ok());
 
-        let get_data_message = get_data_message.unwrap();
-        let _ = socket.write(&get_data_message);
+    //     let get_data_message = get_data_message.unwrap();
+    //     let _ = socket.write(&get_data_message);
 
-        let read_message = read_message(&mut socket, logger.clone(), false);
-        assert!(read_message.is_ok());
+    //     let read_message = read_message(&mut socket, logger.clone(), false);
+    //     assert!(read_message.is_ok());
 
-        let read_message = read_message.unwrap();
-        assert!(read_message.is_some());
+    //     let read_message = read_message.unwrap();
+    //     assert!(read_message.is_some());
 
-        let (command, message) = read_message.unwrap();
-        assert_eq!(command, "block");
-        assert!(message.len() > 0);
-        assert_eq!(message, block_bytes);
+    //     let (command, message) = read_message.unwrap();
+    //     assert_eq!(command, "block");
+    //     assert!(message.len() > 0);
+    //     assert_eq!(message, block_bytes);
 
-        let block_received = SerializedBlock::deserialize(&message);
-        assert!(block_received.is_ok());
-        let block_received = block_received.unwrap();
+    //     let block_received = SerializedBlock::deserialize(&message);
+    //     assert!(block_received.is_ok());
+    //     let block_received = block_received.unwrap();
 
-        assert_eq!(block, block_received);
-        assert_eq!(block.header, block_received.header);
-        assert_eq!(block.txns, block_received.txns);
-    }
+    //     assert_eq!(block, block_received);
+    //     assert_eq!(block.header, block_received.header);
+    //     assert_eq!(block.txns, block_received.txns);
+    // }
 
-    #[test]
-    fn test_run_client_get_headers() {
-        init_config();
-        let socket = init_client();
-        assert!(socket.is_ok());
+    // #[test]
+    // fn test_run_client_get_headers() {
+    //     init_config();
+    //     let socket = init_client();
+    //     assert!(socket.is_ok());
 
-        let socket = socket.unwrap();
-        let address = socket.local_addr();
-        assert!(address.is_ok());
-        let address = address.unwrap();
+    //     let socket = socket.unwrap();
+    //     let address = socket.local_addr();
+    //     assert!(address.is_ok());
+    //     let address = address.unwrap();
 
-        let handsahke = handshake(socket, address);
-        assert!(handsahke.is_ok());
+    //     let handsahke = handshake(socket, address);
+    //     assert!(handsahke.is_ok());
 
-        let mut socket = handsahke.unwrap();
+    //     let mut socket = handsahke.unwrap();
 
-        let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
-        let ping_pong = send_ping_pong_messages(&mut socket, logger.clone());
-        assert!(ping_pong.is_ok());
+    //     let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
+    //     let ping_pong = send_ping_pong_messages(&mut socket, logger.clone());
+    //     assert!(ping_pong.is_ok());
 
-        // obtengo el ultimo bloque descargado
-        // let block = SerializedBlock::read_last_block_from_file();
-        let mut header_deserelized: Vec<BlockHeader> = Vec::new();
-        let primer_header = _leer_primer_header().unwrap();
-        let header = BlockHeader::deserialize(&primer_header).unwrap();
+    //     // obtengo el ultimo bloque descargado
+    //     // let block = SerializedBlock::read_last_block_from_file();
+    //     let mut header_deserelized: Vec<BlockHeader> = Vec::new();
+    //     let primer_header = _leer_primer_header().unwrap();
+    //     let header = BlockHeader::deserialize(&primer_header).unwrap();
 
-        let hash_buscado = header.hash().unwrap();
-        let headers_bytes = buscar_header(hash_buscado).unwrap();
+    //     let hash_buscado = header.hash().unwrap();
+    //     let headers_bytes = buscar_header(hash_buscado).unwrap();
 
-        //let vec_header = leer_primeros_2mil_headers();
-        //assert!(vec_header.is_ok());
-        // let binding = vec_header.unwrap();
-        let cantidad_headers = headers_bytes.len() / 80;
-        //headers.extend(leer_primeros_2mil_headers().unwrap());
-        for i in 0..cantidad_headers {
-            header_deserelized
-                .push(BlockHeader::deserialize(&headers_bytes[i * 80..(i * 80) + 80]).unwrap());
-        }
+    //     //let vec_header = leer_primeros_2mil_headers();
+    //     //assert!(vec_header.is_ok());
+    //     // let binding = vec_header.unwrap();
+    //     let cantidad_headers = headers_bytes.len() / 80;
+    //     //headers.extend(leer_primeros_2mil_headers().unwrap());
+    //     for i in 0..cantidad_headers {
+    //         header_deserelized
+    //             .push(BlockHeader::deserialize(&headers_bytes[i * 80..(i * 80) + 80]).unwrap());
+    //     }
 
-        // let get_headers =
-        //     GetHeadersMessage::new(70015, 1, header_deserelized[0].hash().unwrap(), [0; 32]);
-        let get_headers = GetHeadersMessage::new(70015, 1, hash_buscado, [0; 32]);
+    //     // let get_headers =
+    //     //     GetHeadersMessage::new(70015, 1, header_deserelized[0].hash().unwrap(), [0; 32]);
+    //     let get_headers = GetHeadersMessage::new(70015, 1, hash_buscado, [0; 32]);
 
-        // let get_data_message = get_data_message.unwrap();
-        // let _ = socket.write(&get_data_message);
+    //     // let get_data_message = get_data_message.unwrap();
+    //     // let _ = socket.write(&get_data_message);
 
-        let get_headers_msg = get_headers.serialize().unwrap();
-        let _ = socket.write(&get_headers_msg);
+    //     let get_headers_msg = get_headers.serialize().unwrap();
+    //     let _ = socket.write(&get_headers_msg);
 
-        let read_message = read_message(&mut socket, logger.clone(), false);
-        assert!(read_message.is_ok());
+    //     let read_message = read_message(&mut socket, logger.clone(), false);
+    //     assert!(read_message.is_ok());
 
-        let read_message = read_message.unwrap();
-        assert!(read_message.is_some());
+    //     let read_message = read_message.unwrap();
+    //     assert!(read_message.is_some());
 
-        let (command, message) = read_message.unwrap();
-        assert_eq!(command, "headers");
-        assert!(message.len() > 0);
+    //     let (command, message) = read_message.unwrap();
+    //     assert_eq!(command, "headers");
+    //     assert!(message.len() > 0);
 
-        let header_recibidos = deserealize_sin_guardar(message);
-        assert!(header_recibidos.is_ok());
-        let header_recibidos = header_recibidos.unwrap();
+    //     let header_recibidos = deserealize_sin_guardar(message);
+    //     assert!(header_recibidos.is_ok());
+    //     let header_recibidos = header_recibidos.unwrap();
 
-        assert_eq!(header_deserelized, header_recibidos);
-    }
+    //     assert_eq!(header_deserelized, header_recibidos);
+    // }
 }

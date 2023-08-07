@@ -9,9 +9,8 @@ use std::{
 use crate::{
     blockchain::block::{pow_poi_validation, SerializedBlock},
     blockchain::{
-        blockheader::BlockHeader,
         file::header_count,
-        file_manager::{get_header_from_file, FileManager, FileMessages},
+        file_manager::{FileManager, FileMessages},
     },
     common::{uint256::Uint256, utils_data::total_reintentos},
     config,

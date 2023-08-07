@@ -1,26 +1,20 @@
-use gtk::gdk::keys::constants::_3270_ExSelect;
-
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::file::get_file_header_size;
-use crate::blockchain::file::leer_bloque;
 use crate::blockchain::file::leer_bytes;
 use crate::blockchain::file::{
     escribir_archivo, escribir_archivo_bloque, get_blocks_filename, get_headers_filename,
-    leer_header_desde_archivo, leer_todos_blocks,
+    leer_todos_blocks,
 };
 use crate::blockchain::index::dump_hash_in_the_index;
 use crate::blockchain::index::get_start_index;
-use crate::log::{log_error_message, log_info_message, LogMessages};
+use crate::errores::NodoBitcoinError;
+use crate::log::{log_info_message, LogMessages};
 use crate::protocol::initial_block_download::GENESIS_BLOCK;
-use crate::{config, errores::NodoBitcoinError};
-use std::f32::consts::E;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
-
-use super::file;
 
 #[derive(Clone)]
 pub struct FileManager {

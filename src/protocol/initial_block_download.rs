@@ -402,7 +402,6 @@ fn thread_data(
             }
             let thread_buffer = thread_buffer_result.unwrap();
 
-            let valid_command: bool;
             let (command, response_get_data) = match check_header(&thread_buffer) {
                 Ok((command, payload_len)) => {
                     let mut response_get_data = vec![0u8; payload_len];
@@ -417,7 +416,6 @@ fn thread_data(
                         );
                         continue;
                     }
-                    valid_command = command == "block";
                     (command, response_get_data)
                 }
                 Err(_) => {

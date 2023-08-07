@@ -190,38 +190,6 @@ pub fn _leer_todos_headers() -> Result<Vec<u8>, NodoBitcoinError> {
     leer_bytes(path, 0, file_size)
 }
 
-// leer el archivo de headers de a 80 bytes
-pub fn buscar_header(hash_buscado: [u8; 32]) -> Result<Vec<u8>, NodoBitcoinError> {
-    let path = get_headers_filename()?;
-    let file_size = get_file_header_size()?;
-    let mut offset = 0;
-    while offset < file_size {
-        let bytes = leer_bytes(path.clone(), offset, 80)?;
-        let header = BlockHeader::deserialize(bytes.as_slice())?;
-        let hash = header.hash()?;
-        offset += 80;
-        if hash == hash_buscado {
-            break;
-        }
-    }
-    // devolver los 80 * 2000 bytes siguientes al offset, o hasta el final del archivo
-    let length = 80 * 2000;
-    // valor menor entre leght + offset y file_size
-    let length = if length + offset < file_size {
-        length
-    } else {
-        file_size - offset
-    };
-    let bytes = leer_bytes(path, offset, length)?;
-    Ok(bytes)
-}
-
-pub fn leer_primeros_2mil_headers() -> Result<Vec<u8>, NodoBitcoinError> {
-    let path = get_headers_filename()?;
-    //let file_size = get_file_header_size()?;
-    leer_bytes(path, 0, 2000 * 80)
-}
-
 pub fn _leer_primer_header() -> Result<Vec<u8>, NodoBitcoinError> {
     leer_header_desde_archivo(0)
 }
