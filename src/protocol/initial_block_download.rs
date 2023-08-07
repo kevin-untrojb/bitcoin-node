@@ -18,6 +18,7 @@ use crate::messages::getdata::GetDataMessage;
 use crate::messages::getheaders::GetHeadersMessage;
 use crate::messages::headers::deserealize_sin_guardar;
 use crate::messages::messages_header::check_header;
+use crate::messages::ping_pong::make_pong;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
@@ -402,7 +403,7 @@ fn thread_data(
             let thread_buffer = thread_buffer_result.unwrap();
 
             let valid_command: bool;
-            let (_command, response_get_data) = match check_header(&thread_buffer) {
+            let (command, response_get_data) = match check_header(&thread_buffer) {
                 Ok((command, payload_len)) => {
                     let mut response_get_data = vec![0u8; payload_len];
 
@@ -443,7 +444,31 @@ fn thread_data(
                 }
             };
 
-            if valid_command {
+            if command == "ping" {
+                log_info_message(
+                    logger.clone(),
+                    "Ping recibido".to_string(),
+                );
+                let pong_msg = match make_pong(&response_get_data) {
+                    Ok(msg) => msg,
+                    Err(_) => continue,
+                };
+
+                if cloned_connection.write_message(&pong_msg).is_err() {
+                    log_error_message(
+                        logger.clone(),
+                        format!("Error al escribir el mensaje pong en conexión {}", cloned_connection.id),
+                    );
+                    return;
+                }
+
+                log_info_message(
+                    logger.clone(),
+                    "Pong enviado".to_string(),
+                );
+            }
+
+            if command == "block" {
                 let cloned_result = shared_blocks.lock();
                 if cloned_result.is_err() {
                     log_info_message(logger, "Error al lockear el vector de bloques".to_string());
