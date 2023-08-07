@@ -85,7 +85,6 @@ pub fn existe_archivo_headers() -> bool {
     Path::new(&path).exists()
 }
 
-
 pub fn leer_bytes(path: String, offset: u64, length: u64) -> Result<Vec<u8>, NodoBitcoinError> {
     let mut file = match File::open(path) {
         Ok(file) => file,

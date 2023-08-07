@@ -298,26 +298,26 @@ impl TransactionManager {
                     let bloque_encontrado = valor.clone();
                     response = Some(bloque_encontrado);
                 }
-                
+
                 let mut path = vec![];
                 if response.is_some() {
                     let mut inv_tx = [0u8; 32];
                     for i in 0..32 {
                         inv_tx[i] = tx_id[31 - i];
                     }
-    
+
                     path = match response.unwrap().local_merkle_tree() {
-                        Ok(res) => match res.merkle_path(Uint256::from_be_bytes(inv_tx)){
+                        Ok(res) => match res.merkle_path(Uint256::from_be_bytes(inv_tx)) {
                             Ok(path) => path,
                             Err(_) => vec![],
                         },
-                        Err(_) => vec![], 
+                        Err(_) => vec![],
                     };
                 }
 
                 _ = self
-                        .sender_app_manager
-                        .send(ApplicationManagerMessages::GetMerklePath(path));
+                    .sender_app_manager
+                    .send(ApplicationManagerMessages::GetMerklePath(path));
             }
             TransactionMessages::SaveBlockHeader(block, header, sender) => {
                 self.guardar_header_y_bloque(block.clone(), header);

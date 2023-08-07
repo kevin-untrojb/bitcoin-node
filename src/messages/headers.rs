@@ -58,20 +58,20 @@ pub fn make_headers_msg(
     if cantidad_headers > 0 {
         let prefix = utils_bytes::from_amount_bytes_to_prefix(3);
         let count = utils_bytes::build_varint_bytes(prefix, cantidad_headers)?;
-    
+
         payload.extend(count);
-    
+
         for header in header_deserelized {
             let header_bytes = header.serialize()?;
             payload.extend(header_bytes);
             payload.push(0);
         }
-    
+
         payload.pop();
-    }else{
+    } else {
         payload.push(1_u8);
     }
-    
+
     let header_msg = make_header("headers".to_string(), &payload)?;
 
     msg.extend_from_slice(&header_msg);

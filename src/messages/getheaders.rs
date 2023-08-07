@@ -1,4 +1,4 @@
-use crate::{errores::NodoBitcoinError, common::utils_bytes::parse_varint};
+use crate::{common::utils_bytes::parse_varint, errores::NodoBitcoinError};
 
 use super::messages_header::make_header;
 
@@ -70,8 +70,12 @@ impl GetHeadersMessage {
         let msg = GetHeadersMessage {
             version,
             num_hashes: num_hashes as u8,
-            start_block_hash: start_block_hash.try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
-            end_block_hash: end_block_hash.try_into().map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?
+            start_block_hash: start_block_hash
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
+            end_block_hash: end_block_hash
+                .try_into()
+                .map_err(|_| NodoBitcoinError::NoSePuedeLeerLosBytes)?,
         };
 
         Ok(msg)

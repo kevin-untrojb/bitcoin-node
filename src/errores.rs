@@ -46,7 +46,6 @@ pub enum NodoBitcoinError {
     // server
     ErrorEnPing,
     ErrorAlLeerSolicitudDelCliente,
-
 }
 
 impl Error for NodoBitcoinError {}
@@ -164,7 +163,6 @@ impl fmt::Display for NodoBitcoinError {
             }
             NodoBitcoinError::ErrorAlLeerSolicitudDelCliente => {
                 write!(f, "ERROR: No se puede leer el mensaje del cliente")
-
             }
         }
     }
@@ -179,7 +177,7 @@ pub enum InterfaceError {
     TransactionNotSent,
     BlockBroadcastingError,
     NodoServerError,
-    MerklePathError
+    MerklePathError,
 }
 
 impl Error for InterfaceError {}
@@ -216,7 +214,7 @@ impl fmt::Display for InterfaceError {
             }
             InterfaceError::MerklePathError => {
                 write!(f, "POI invalido.")
-            },
+            }
         }
     }
 }

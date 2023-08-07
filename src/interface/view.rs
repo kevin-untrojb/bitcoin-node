@@ -18,8 +18,8 @@ use crate::{
 };
 
 use super::public::{open_message_dialog, start_loading};
-use crate::merkle_tree::merkle_root::ProofOrder;
 use crate::common::uint256::Uint256;
+use crate::merkle_tree::merkle_root::ProofOrder;
 
 pub enum ViewObject {
     Label(ViewObjectData),
@@ -33,7 +33,7 @@ pub enum ViewObject {
     CloseApplication,
     UpdateButtonPoiStatus(String),
     UploadProgressBar((usize, usize, usize)),
-    PoiResponse(Vec<(Uint256, ProofOrder)>)
+    PoiResponse(Vec<(Uint256, ProofOrder)>),
 }
 
 pub struct ViewObjectData {
@@ -184,14 +184,14 @@ pub fn create_view() -> Sender<ViewObject> {
             }
             ViewObject::PoiResponse(res) => {
                 let concatenated_text: String = res
-                .iter()
-                .map(|(hash, direction)| {
-                    let s_hash = hash.to_hexa_le_string();
+                    .iter()
+                    .map(|(hash, direction)| {
+                        let s_hash = hash.to_hexa_le_string();
 
-                    format!("{:?} ->> {:?}", direction, s_hash)
-                })
-                .collect::<Vec<String>>()
-                .join("\n");
+                        format!("{:?} ->> {:?}", direction, s_hash)
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n");
                 open_path_dialog(&builder_receiver_clone, concatenated_text);
             }
         }
@@ -248,7 +248,7 @@ fn handle_row_transaction_selected(sender: Sender<ViewObject>, builder: Builder)
 fn handle_poi(
     manager_poi: Arc<Mutex<ApplicationManager>>,
     builder: Builder,
-    shared_tx: Arc<Mutex<ViewObjectData>>
+    shared_tx: Arc<Mutex<ViewObjectData>>,
 ) {
     if let Some(res) = builder.object::<Dialog>("poi_dialog") {
         let dialog = res;
@@ -269,7 +269,7 @@ fn open_poi_dialog(
     dialog: &Dialog,
     builder: &Builder,
     app_manager: Arc<Mutex<ApplicationManager>>,
-    tx_id: String
+    tx_id: String,
 ) {
     let hash_entry: Entry;
     if let Some(res) = builder.object::<Entry>("block_hash") {
@@ -294,31 +294,32 @@ fn open_poi_dialog(
                 let tx = tx_entry.text().to_string();
                 let mut app_manager_thread = match app_manager.lock() {
                     Ok(res) => res,
-                    Err(_) => return
+                    Err(_) => return,
                 };
-                if !hash.is_empty() && !tx.is_empty() && hash.len() == 64 && tx.len() == 64{
+                if !hash.is_empty() && !tx.is_empty() && hash.len() == 64 && tx.len() == 64 {
                     let hash_bytes: Vec<u8> = hash
-                    .as_bytes()
-                    .chunks(2) 
-                    .map(|chunk| {
-                        let chunk_str = String::from_utf8_lossy(chunk);
-                        u8::from_str_radix(&chunk_str, 16).unwrap_or(0) 
-                    })
-                    .collect();
+                        .as_bytes()
+                        .chunks(2)
+                        .map(|chunk| {
+                            let chunk_str = String::from_utf8_lossy(chunk);
+                            u8::from_str_radix(&chunk_str, 16).unwrap_or(0)
+                        })
+                        .collect();
 
                     let tx_id_vec: Vec<u8> = tx
-                    .as_bytes()
-                    .chunks(2) 
-                    .map(|chunk| {
-                        let chunk_str = String::from_utf8_lossy(chunk);
-                        u8::from_str_radix(&chunk_str, 16).unwrap_or(0) 
-                    })
-                    .collect();
+                        .as_bytes()
+                        .chunks(2)
+                        .map(|chunk| {
+                            let chunk_str = String::from_utf8_lossy(chunk);
+                            u8::from_str_radix(&chunk_str, 16).unwrap_or(0)
+                        })
+                        .collect();
 
                     let mut tx_id_bytes = [0u8; 32];
                     tx_id_bytes.copy_from_slice(tx_id_vec.as_slice());
 
-                    let _ = &app_manager_thread.proof_of_inclusion_from_front(hash_bytes, tx_id_bytes);
+                    let _ =
+                        &app_manager_thread.proof_of_inclusion_from_front(hash_bytes, tx_id_bytes);
                 }
                 drop(app_manager_thread);
             }
@@ -332,10 +333,7 @@ fn open_poi_dialog(
     dialog.run();
 }
 
-fn open_path_dialog(
-    builder: &Builder,
-    path: String
-) {
+fn open_path_dialog(builder: &Builder, path: String) {
     let label;
     if let Some(res) = builder.object::<Label>("path") {
         label = res;
@@ -354,16 +352,14 @@ fn open_path_dialog(
                 _ => dialog.hide(),
             }
             label.set_text(&"");
-    
+
             dialog.hide();
         });
-    
+
         dialog.show_all();
         dialog.run();
     }
-
 }
-
 
 fn satoshis_u64_to_btc_string(satoshis: u64) -> String {
     let btc = satoshis as f64 / 100_000_000.0;

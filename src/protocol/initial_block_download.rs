@@ -445,10 +445,7 @@ fn thread_data(
             };
 
             if command == "ping" {
-                log_info_message(
-                    logger.clone(),
-                    "Ping recibido".to_string(),
-                );
+                log_info_message(logger.clone(), "Ping recibido".to_string());
                 let pong_msg = match make_pong(&response_get_data) {
                     Ok(msg) => msg,
                     Err(_) => continue,
@@ -457,15 +454,15 @@ fn thread_data(
                 if cloned_connection.write_message(&pong_msg).is_err() {
                     log_error_message(
                         logger.clone(),
-                        format!("Error al escribir el mensaje pong en conexión {}", cloned_connection.id),
+                        format!(
+                            "Error al escribir el mensaje pong en conexión {}",
+                            cloned_connection.id
+                        ),
                     );
                     return;
                 }
 
-                log_info_message(
-                    logger.clone(),
-                    "Pong enviado".to_string(),
-                );
+                log_info_message(logger.clone(), "Pong enviado".to_string());
             }
 
             if command == "block" {

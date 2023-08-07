@@ -9,10 +9,11 @@ use std::{
 use crate::{
     blockchain::block::{pow_poi_validation, SerializedBlock},
     blockchain::{
+        blockheader::BlockHeader,
         file::header_count,
-        file_manager::{FileManager, FileMessages, get_header_from_file}, blockheader::BlockHeader,
+        file_manager::{get_header_from_file, FileManager, FileMessages},
     },
-    common::{utils_data::total_reintentos, uint256::Uint256},
+    common::{uint256::Uint256, utils_data::total_reintentos},
     config,
     errores::{InterfaceError, InterfaceMessage, NodoBitcoinError},
     interface::{
@@ -20,6 +21,7 @@ use crate::{
         view::ViewObject,
     },
     log::{create_logger_actor, log_error_message, log_info_message, LogMessages},
+    merkle_tree::merkle_root::ProofOrder,
     protocol::{
         admin_connections::AdminConnections, connection::connect,
         initial_block_download::get_full_blockchain,
@@ -28,7 +30,7 @@ use crate::{
         transaction_manager::{create_transaction_manager, TransactionMessages},
         user::Account,
         uxto_set::TxReport,
-    }, merkle_tree::merkle_root::ProofOrder, 
+    },
 };
 
 #[derive(Clone)]
@@ -57,7 +59,7 @@ pub enum ApplicationManagerMessages {
     ApplicationError(String),
     UpdateProgressBar(usize, usize),
     POIInvalido,
-    GetMerklePath(Vec<(Uint256, ProofOrder)>)
+    GetMerklePath(Vec<(Uint256, ProofOrder)>),
 }
 
 impl ApplicationManager {
@@ -250,16 +252,14 @@ impl ApplicationManager {
                 }
             }
             ApplicationManagerMessages::GetMerklePath(path) => {
-                if path.is_empty(){
+                if path.is_empty() {
                     _ = self
-                    .sender_frontend
-                    .send(ViewObject::Error(InterfaceError::MerklePathError));
+                        .sender_frontend
+                        .send(ViewObject::Error(InterfaceError::MerklePathError));
                 } else {
-                    _ = self
-                    .sender_frontend
-                    .send(ViewObject::PoiResponse(path));
+                    _ = self.sender_frontend.send(ViewObject::PoiResponse(path));
                 }
-            },
+            }
         }
     }
 
@@ -485,7 +485,9 @@ impl ApplicationManager {
         self.send_messages_to_get_values()
     }
 
-    pub fn proof_of_inclusion_from_front(&mut self, block_hash: Vec<u8>, tx_id: [u8; 32]){
-        let _ = self.tx_manager.send(TransactionMessages::GetMerklePath(block_hash, tx_id));
+    pub fn proof_of_inclusion_from_front(&mut self, block_hash: Vec<u8>, tx_id: [u8; 32]) {
+        let _ = self
+            .tx_manager
+            .send(TransactionMessages::GetMerklePath(block_hash, tx_id));
     }
 }
