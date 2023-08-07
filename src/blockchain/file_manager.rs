@@ -23,17 +23,17 @@ pub struct FileManager {
     logger: Sender<LogMessages>,
 }
 
+pub type WriteHeadersAndBlockFileParams = (
+    [u8; 32],
+    Vec<u8>,
+    [u8; 32],
+    Vec<u8>,
+    Sender<Result<(), NodoBitcoinError>>,
+);
+
 pub enum FileMessages {
     ReadAllBlocks(Sender<Result<Vec<Vec<u8>>, NodoBitcoinError>>),
-    WriteHeadersAndBlockFile(
-        (
-            [u8; 32],
-            Vec<u8>,
-            [u8; 32],
-            Vec<u8>,
-            Sender<Result<(), NodoBitcoinError>>,
-        ),
-    ),
+    WriteHeadersAndBlockFile(WriteHeadersAndBlockFileParams),
     GetHeaders(([u8; 32], Sender<Result<Vec<u8>, NodoBitcoinError>>)),
     _ShutDown(),
 }
