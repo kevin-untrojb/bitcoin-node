@@ -40,7 +40,7 @@ pub struct ApplicationManager {
     sender_frontend: glib::Sender<ViewObject>,
     logger: mpsc::Sender<LogMessages>,
     sender_app_manager: Sender<ApplicationManagerMessages>,
-    file_manager: Sender<FileMessages>,
+    _file_manager: Sender<FileMessages>,
     shutdown_sent: bool,
 }
 
@@ -85,7 +85,7 @@ impl ApplicationManager {
             sender_frontend,
             logger,
             tx_manager,
-            file_manager,
+            _file_manager: file_manager,
             shutdown_sent: false,
         };
         app_manager.thread_download_blockchain(0);

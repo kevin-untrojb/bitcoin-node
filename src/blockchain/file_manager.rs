@@ -140,7 +140,7 @@ impl FileManager {
             }
 
             FileMessages::GetHeaders((hash_id, result)) => {
-                let mut header_index;
+                let header_index;
 
                 if hash_id == GENESIS_BLOCK {
                     header_index = 0;
@@ -148,7 +148,7 @@ impl FileManager {
                     header_index = match get_start_index(self.headers_file_name.clone(), hash_id) {
                         Ok(index) => index + 80,
                         Err(error) => {
-                            result.send(Err(error));
+                            _ = result.send(Err(error));
                             return;
                         }
                     };
@@ -157,7 +157,7 @@ impl FileManager {
                 let file_size = match get_file_header_size() {
                     Ok(size) => size,
                     Err(error) => {
-                        result.send(Err(error));
+                        _ = result.send(Err(error));
                         return;
                     }
                 };
@@ -169,18 +169,18 @@ impl FileManager {
                 } else if header_index <= file_size {
                     file_size - header_index
                 } else {
-                    result.send(Ok(vec![]));
+                    _ = result.send(Ok(vec![]));
                     return;
                 };
 
                 let bytes = match leer_bytes(self.headers_file_name.clone(), header_index, length) {
                     Ok(data) => data,
                     Err(error) => {
-                        result.send(Err(error));
+                        _ = result.send(Err(error));
                         return;
                     }
                 };
-                result.send(Ok(bytes));
+                _ = result.send(Ok(bytes));
             }
         }
     }
@@ -217,7 +217,7 @@ pub fn get_headers_from_file(
     _ = file_manager.send(FileMessages::GetHeaders((hash_buscado, result_sender)));
     match result_receiver.recv() {
         Ok(result) => result,
-        Err(err) => {
+        Err(_) => {
             // todo handle
             Err(NodoBitcoinError::InvalidAccount)
         }
@@ -244,15 +244,15 @@ pub fn write_headers_and_block_file(
 
     match result_receiver.recv() {
         Ok(_) => Ok(()),
-        Err(err) => {
+        Err(_) => {
             // todo handle
             Err(NodoBitcoinError::InvalidAccount)
         }
     }
 }
 
-pub fn shutdown(file_manager: Sender<FileMessages>) {
-    file_manager.send(FileMessages::_ShutDown());
+pub fn _shutdown(file_manager: Sender<FileMessages>) {
+    _ = file_manager.send(FileMessages::_ShutDown());
 }
 
 #[cfg(test)]
@@ -274,7 +274,7 @@ mod tests {
         init_config();
         let logger = create_logger_actor(config::get_valor("LOG_FILE".to_string()));
         let file_manager = FileManager::new(logger.clone());
-        let hash: [u8; 32] = [
+        let _hash: [u8; 32] = [
             229, 94, 124, 89, 15, 75, 44, 222, 240, 35, 41, 188, 16, 213, 143, 250, 149, 109, 29,
             10, 111, 146, 99, 54, 138, 72, 107, 37, 0, 0, 0, 0,
         ];
