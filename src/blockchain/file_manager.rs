@@ -1,3 +1,5 @@
+use gtk::gdk::keys::constants::_3270_ExSelect;
+
 use crate::blockchain::block::SerializedBlock;
 use crate::blockchain::blockheader::BlockHeader;
 use crate::blockchain::file::get_file_header_size;
@@ -12,10 +14,13 @@ use crate::blockchain::index::get_start_index;
 use crate::log::{log_error_message, log_info_message, LogMessages};
 use crate::protocol::initial_block_download::GENESIS_BLOCK;
 use crate::{config, errores::NodoBitcoinError};
+use std::f32::consts::E;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
+
+use super::file;
 
 #[derive(Clone)]
 pub struct FileManager {
@@ -167,8 +172,11 @@ impl FileManager {
                 // valor menor entre leght + offset y file_size
                 let length = if length + header_index < file_size {
                     length
-                } else {
+                } else if header_index <= file_size {
                     file_size - header_index
+                } else { 
+                    result.send(Ok(vec![]));
+                    return;
                 };
 
                 let bytes = match leer_bytes(self.headers_file_name.clone(), header_index, length) {

@@ -46,7 +46,7 @@ pub fn make_headers_msg(
     let headers: Vec<u8> = get_headers_from_file(file_manager_sender, header_buscado)?;
 
     let cantidad_headers = headers.len() / 80;
-    //headers.extend(leer_primeros_2mil_headers().unwrap());
+
     for i in 0..cantidad_headers {
         let serialized_block = match BlockHeader::deserialize(&headers[i * 80..(i * 80) + 80]) {
             Ok(block) => block,
@@ -55,18 +55,23 @@ pub fn make_headers_msg(
         header_deserelized.push(serialized_block);
     }
 
-    let prefix = utils_bytes::from_amount_bytes_to_prefix(3);
-    let count = utils_bytes::build_varint_bytes(prefix, cantidad_headers)?;
-
-    payload.extend(count);
-
-    for header in header_deserelized {
-        let header_bytes = header.serialize()?;
-        payload.extend(header_bytes);
-        payload.push(0);
+    if cantidad_headers > 0 {
+        let prefix = utils_bytes::from_amount_bytes_to_prefix(3);
+        let count = utils_bytes::build_varint_bytes(prefix, cantidad_headers)?;
+    
+        payload.extend(count);
+    
+        for header in header_deserelized {
+            let header_bytes = header.serialize()?;
+            payload.extend(header_bytes);
+            payload.push(0);
+        }
+    
+        payload.pop();
+    }else{
+        payload.push(1_u8);
     }
-
-    payload.pop();
+    
     let header_msg = make_header("headers".to_string(), &payload)?;
 
     msg.extend_from_slice(&header_msg);
